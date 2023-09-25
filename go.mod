@@ -1,4 +1,4 @@
-module github.com/mattermost/mattermost-plugin-legalhold
+module github.com/mattermost/mattermost-plugin-legal-hold
 
 go 1.19
 
@@ -62,7 +62,7 @@ require (
 	github.com/tinylib/msgp v1.1.8 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
-	github.com/wiggin77/merror v1.0.5 // indirect
+	github.com/wiggin77/merror v1.0.5
 	github.com/wiggin77/srslog v1.0.1 // indirect
 	github.com/yuin/goldmark v1.4.13 // indirect
 	golang.org/x/crypto v0.10.0 // indirect
