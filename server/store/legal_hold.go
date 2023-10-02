@@ -1,6 +1,7 @@
 package store
 
 import (
+	sq "github.com/Masterminds/squirrel"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/pkg/errors"
 	"strings"
@@ -187,4 +188,32 @@ func (ss *SQLStore) LegalholdExport(job *model.Compliance, cursor model.Complian
 	}
 
 	return append(channelPosts, directMessagePosts...), cursor, nil
+}
+
+func (ss *SQLStore) GetChannelIDsForUserDuring(userID string, startTime int64, endTime int64) ([]string, error) {
+	query := ss.replicaBuilder.
+		Select("distinct(cmh.channelid)").
+		From("channelmemberhistory as cmh").
+		Where(sq.Lt{"cmh.jointime": endTime}).
+		Where(sq.Or{sq.Eq{"cmh.leavetime": nil}, sq.GtOrEq{"cmh.leavetime": startTime}}).
+		Where(sq.Eq{"cmh.userid": userID})
+
+	rows, err := query.Query()
+	if err != nil {
+		ss.logger.Error("error fetching channels for user during time period", "err", err)
+		return []string{}, err
+	}
+
+	var channelIDs []string
+	for rows.Next() {
+		var channelID string
+
+		if err := rows.Scan(&channelID); err != nil {
+			ss.logger.Error("error scanning channel of channels for user during time period", "err", err)
+			return []string{}, err
+		}
+		channelIDs = append(channelIDs, channelID)
+	}
+
+	return channelIDs, nil
 }
