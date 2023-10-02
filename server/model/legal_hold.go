@@ -1,5 +1,15 @@
 package model
 
+// LegalHold represents one legal hold.
+type LegalHold struct {
+	ID                   string
+	UserIDs              []string
+	StartsAt             int64
+	EndsAt               int64
+	LastExecutionEndedAt int64
+	ExecutionLength      int64
+}
+
 // LegalHoldCursor represents the state of a paginated LegalHold export query.
 // It is based on the model.ComplianceCursor struct from Mattermost Server.
 type LegalHoldCursor struct {
@@ -9,6 +19,7 @@ type LegalHoldCursor struct {
 	LastDirectMessagesQueryPostCreateAt int64
 	LastDirectMessagesQueryPostID       string
 	DirectMessagesQueryCompleted        bool
+	BatchNumber                         uint
 }
 
 func NewLegalHoldCursor(startTime int64) LegalHoldCursor {
@@ -17,6 +28,7 @@ func NewLegalHoldCursor(startTime int64) LegalHoldCursor {
 		LastChannelsQueryPostID:             "00000000000000000000000000",
 		LastDirectMessagesQueryPostCreateAt: startTime,
 		LastDirectMessagesQueryPostID:       "00000000000000000000000000",
+		BatchNumber:                         0,
 	}
 }
 
@@ -25,33 +37,33 @@ func NewLegalHoldCursor(startTime int64) LegalHoldCursor {
 type LegalHoldPost struct {
 
 	// From Team
-	TeamName        string
-	TeamDisplayName string
+	TeamName        string `csv:"TeamName"`
+	TeamDisplayName string `csv:"TeamDisplayName"`
 
 	// From Channel
-	ChannelName        string
-	ChannelDisplayName string
-	ChannelType        string
+	ChannelName        string `csv:"ChannelName"`
+	ChannelDisplayName string `csv:"ChannelDisplayName"`
+	ChannelType        string `csv:"ChannelType"`
 
 	// From User
-	UserUsername string
-	UserEmail    string
-	UserNickname string
+	UserUsername string `csv:"UserUsername"`
+	UserEmail    string `csv:"UserEmail"`
+	UserNickname string `csv:"UserNickname"`
 
 	// From Post
-	PostId         string
-	PostCreateAt   int64
-	PostUpdateAt   int64
-	PostDeleteAt   int64
-	PostRootId     string
-	PostOriginalId string
-	PostMessage    string
-	PostType       string
-	PostProps      string
-	PostHashtags   string
-	PostFileIds    string
+	PostId         string `csv:"PostId"`
+	PostCreateAt   int64  `csv:"PostCreateAt"`
+	PostUpdateAt   int64  `csv:"PostUpdateAt"`
+	PostDeleteAt   int64  `csv:"PostDeleteAt"`
+	PostRootId     string `csv:"PostRootId"`
+	PostOriginalId string `csv:"PostOriginalId"`
+	PostMessage    string `csv:"PostMessage"`
+	PostType       string `csv:"PostType"`
+	PostProps      string `csv:"PostProps"`
+	PostHashtags   string `csv:"PostHashtags"`
+	PostFileIds    string `csv:"PostFileIds"`
 
-	IsBot bool
+	IsBot bool `csv:"IsBot"`
 }
 
 // LegalHoldPostHeader returns the headers for a tabulated representation of LegalHoldPost structs.

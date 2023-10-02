@@ -6,13 +6,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (ss *SQLStore) LegalholdExport(channel string, endTime int64, cursor model.LegalHoldCursor, limit int) ([]model.LegalHoldPost, model.LegalHoldCursor, error) {
+func (ss *SQLStore) LegalholdExport(channelID string, endTime int64, cursor model.LegalHoldCursor, limit int) ([]model.LegalHoldPost, model.LegalHoldCursor, error) {
 	var channelPosts []model.LegalHoldPost
 	channelsQuery := ""
 	var argsChannelsQuery []any
 	if !cursor.ChannelsQueryCompleted {
 		// append the named parameters of SQL query in the correct order to argsChannelsQuery
 		argsChannelsQuery = append(argsChannelsQuery, cursor.LastChannelsQueryPostCreateAt, cursor.LastChannelsQueryPostCreateAt, cursor.LastChannelsQueryPostID, endTime)
+		argsChannelsQuery = append(argsChannelsQuery, channelID)
 		argsChannelsQuery = append(argsChannelsQuery, limit)
 		channelsQuery = `
 		SELECT
@@ -52,6 +53,7 @@ func (ss *SQLStore) LegalholdExport(channel string, endTime int64, cursor model.
 					OR (Posts.CreateAt = ? AND Posts.Id > ?)
 				)
 				AND Posts.CreateAt < ?
+			AND Channels.Id = ?
 		ORDER BY Posts.CreateAt, Posts.Id
 		LIMIT ?`
 		channelsQuery = ss.replica.Rebind(channelsQuery)
@@ -125,6 +127,7 @@ func (ss *SQLStore) LegalholdExport(channel string, endTime int64, cursor model.
 		}
 	}
 
+	cursor.BatchNumber += 1
 	return append(channelPosts, directMessagePosts...), cursor, nil
 }
 

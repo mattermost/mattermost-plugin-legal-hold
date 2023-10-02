@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 	"net/http"
 	"reflect"
@@ -9,6 +8,7 @@ import (
 
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-server/v6/plugin"
+	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/config"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store"
@@ -37,12 +37,13 @@ type Plugin struct {
 
 	// jobManager allows managing of scheduled tasks
 	//jobManager *jobs.JobManager
+
+	// FileBackend allows direct access to the Mattermost files backend bypassing the plugin API.
+	FileBackend *filestore.FileBackend
 }
 
 // ServeHTTP demonstrates a plugin that handles HTTP requests by greeting the world.
 func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
-	// TODO: Remove hello world code.
-	fmt.Fprint(w, "Hello, world!")
 }
 
 func (p *Plugin) OnActivate() error {
@@ -56,6 +57,17 @@ func (p *Plugin) OnActivate() error {
 		return err
 	}
 	p.SQLStore = SQLStore
+	// FIXME: do we need to handle MM configuration changes?
+
+	// Setup direct filestore access
+	filesBackendSettings := p.Client.Configuration.GetConfig().FileSettings.ToFileBackendSettings(true, false)
+	filesBackend, err := filestore.NewFileBackend(filesBackendSettings)
+	if err != nil {
+		p.Client.Log.Error("unable to initialize the files storage", "err", err)
+		return errors.New("unable to initialize the files storage")
+	}
+	p.FileBackend = &filesBackend
+	// FIXME: do we need to handle MM configuration changes?
 
 	// Create job manager
 	//p.jobManager = jobs.NewJobManager(&p.Client.Log)

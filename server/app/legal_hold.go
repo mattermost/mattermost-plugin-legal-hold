@@ -1,12 +1,16 @@
 package app
 
 import (
+	"fmt"
+	"github.com/gocarina/gocsv"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store"
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
+	"io"
+	"strings"
 )
 
-const POST_EXPORT_BATCH_LIMIT = 10000
+const PostExportBatchLimit = 10000
 
 type LegalHoldExecution struct {
 	LegalHoldID string
@@ -14,10 +18,33 @@ type LegalHoldExecution struct {
 	EndTime     int64
 	UserIDs     []string
 
-	store     *store.SQLStore
-	filestore *filestore.FileBackend
+	store       *store.SQLStore
+	fileBackend filestore.FileBackend
 
 	channelIDs []string
+}
+
+// NewLegalHoldExecution creates a new LegalHoldExecution that is ready to use.
+func NewLegalHoldExecution(legalHold model.LegalHold, store *store.SQLStore, fileBackend filestore.FileBackend) LegalHoldExecution {
+	return LegalHoldExecution{
+		LegalHoldID: legalHold.ID,
+		StartTime:   max(legalHold.LastExecutionEndedAt, legalHold.StartsAt),
+		EndTime:     min(legalHold.LastExecutionEndedAt+legalHold.ExecutionLength, legalHold.EndsAt),
+		UserIDs:     legalHold.UserIDs,
+		store:       store,
+		fileBackend: fileBackend,
+	}
+}
+
+// Execute executes the LegalHoldExecution.
+func (lhe *LegalHoldExecution) Execute() error {
+	err := lhe.GetChannels()
+	if err != nil {
+		return err
+	}
+
+	err = lhe.ExportData()
+	return err
 }
 
 // GetChannels populates the list of channels that the Legal Hold Export needs to cover within the
@@ -45,7 +72,7 @@ func (lhe *LegalHoldExecution) ExportData() error {
 			var posts []model.LegalHoldPost
 			var err error
 
-			posts, cursor, err = lhe.store.LegalholdExport(channelID, lhe.EndTime, cursor, POST_EXPORT_BATCH_LIMIT)
+			posts, cursor, err = lhe.store.LegalholdExport(channelID, lhe.EndTime, cursor, PostExportBatchLimit)
 			if err != nil {
 				return err
 			}
@@ -54,14 +81,38 @@ func (lhe *LegalHoldExecution) ExportData() error {
 				break
 			}
 
-			// TODO: Write those lines to the appropriate file-backend file.
+			err = lhe.WritePostsBatchToFile(cursor.BatchNumber, channelID, posts)
+			if err != nil {
+				return err
+			}
 
-			if len(posts) < POST_EXPORT_BATCH_LIMIT {
+			if len(posts) < PostExportBatchLimit {
 				break
 			}
 		}
 	}
 
+	return nil
+}
+
+func (lhe *LegalHoldExecution) WritePostsBatchToFile(batchNumber uint, channelID string, posts []model.LegalHoldPost) error {
+	path := fmt.Sprintf("legal_hold/%s/%s/messages/batch_%06d.csv", lhe.LegalHoldID, channelID, batchNumber)
+
+	csvContent, err := gocsv.MarshalString(&posts)
+	if err != nil {
+		return err
+	}
+
+	csvReader := strings.NewReader(csvContent)
+
+	_, err = writeFile(lhe.fileBackend, csvReader, path)
+
+	return err
+}
+
+// ExportFiles exports the file attachments with the provided FileIDs.
+func (lhe *LegalHoldExecution) ExportFiles(FileIDs []string) error {
+	// TODO: Implement me!
 	return nil
 }
 
@@ -78,4 +129,27 @@ func deduplicateStringSlice(slice []string) []string {
 	}
 
 	return result
+}
+
+func writeFile(backend filestore.FileBackend, fr io.Reader, path string) (int64, error) {
+	result, err := backend.WriteFile(fr, path)
+	fmt.Println("Writing file")
+	if err != nil {
+		return result, err
+	}
+	return result, nil
+}
+
+func max(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func min(a, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
 }
