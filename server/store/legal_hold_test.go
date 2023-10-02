@@ -4,14 +4,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
+	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/stretchr/testify/require"
-
-	"github.com/mattermost/mattermost-server/v6/model"
 )
 
 var (
-	yearAgo = model.GetMillisForTime(time.Now().AddDate(-1, 0, 0))
-	weekAgo = model.GetMillisForTime(time.Now().AddDate(0, 0, -7))
+	yearAgo = mattermostModel.GetMillisForTime(time.Now().AddDate(-1, 0, 0))
+	weekAgo = mattermostModel.GetMillisForTime(time.Now().AddDate(0, 0, -7))
 )
 
 func TestSQLStore_LegalHoldExport(t *testing.T) {
@@ -25,7 +25,7 @@ func TestSQLStore_LegalHoldExport(t *testing.T) {
 	channels, err := th.CreateChannels(channelCount, "stale-test", th.User1.Id, th.Team1.Id)
 	require.NoError(t, err)
 
-	var posts []*model.Post
+	var posts []*mattermostModel.Post
 
 	// add some posts
 	for _, channel := range channels {
@@ -35,30 +35,9 @@ func TestSQLStore_LegalHoldExport(t *testing.T) {
 
 	_ = posts
 
-	compliance := model.Compliance{
-		Id:       model.NewId(),
-		CreateAt: model.GetMillis(),
-		UserId:   th.User1.Id,
-		Status:   model.ComplianceStatusCreated,
-		Count:    0,
-		Desc:     "Description???",
-		Type:     model.ComplianceTypeAdhoc,
-		StartAt:  model.GetMillis() - 86400000, // Now - 1 day
-		EndAt:    model.GetMillis() + 86400000, // Now + 1 day
-		Keywords: "",
-		Emails:   "",
-	}
+	cursor := model.NewLegalHoldCursor(mattermostModel.GetMillis() - 1000000)
 
-	cursor := model.ComplianceExportCursor{
-		LastChannelsQueryPostCreateAt:       0,
-		LastChannelsQueryPostID:             "00000000000000000000000000",
-		ChannelsQueryCompleted:              false,
-		LastDirectMessagesQueryPostCreateAt: 0,
-		LastDirectMessagesQueryPostID:       "00000000000000000000000000",
-		DirectMessagesQueryCompleted:        false,
-	}
-
-	legalHold, cursor, err := th.Store.LegalholdExport(&compliance, cursor, 1000)
+	legalHold, cursor, err := th.Store.LegalholdExport(channels[0].Id, mattermostModel.GetMillis(), cursor, 1000)
 	require.NoError(t, err)
 	for _, legalHoldItem := range legalHold {
 		t.Log(legalHoldItem)
@@ -69,7 +48,7 @@ func TestSQLStore_LegalHold_GetChannelIDsForUserDuring(t *testing.T) {
 	th := SetupHelper(t).SetupBasic(t)
 	defer th.TearDown()
 
-	timeReference := model.GetMillis()
+	timeReference := mattermostModel.GetMillis()
 	startOne := timeReference + 1000000
 	endOne := startOne + 10000
 	startTwo := startOne + 1000000

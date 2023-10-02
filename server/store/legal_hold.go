@@ -2,70 +2,17 @@ package store
 
 import (
 	sq "github.com/Masterminds/squirrel"
-	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 	"github.com/pkg/errors"
-	"strings"
 )
 
-var escapeLikeSearchChar = []string{
-	"%",
-	"_",
-}
-
-func sanitizeSearchTerm(term string, escapeChar string) string {
-	term = strings.Replace(term, escapeChar, "", -1)
-
-	for _, c := range escapeLikeSearchChar {
-		term = strings.Replace(term, c, escapeChar+c, -1)
-	}
-
-	return term
-}
-
-func (ss *SQLStore) LegalholdExport(job *model.Compliance, cursor model.ComplianceExportCursor, limit int) ([]*model.CompliancePost, model.ComplianceExportCursor, error) {
-	keywordQuery := ""
-	var argsKeywords []any
-	keywords := strings.Fields(strings.TrimSpace(strings.ToLower(strings.Replace(job.Keywords, ",", " ", -1))))
-	if len(keywords) > 0 {
-		clauses := make([]string, len(keywords))
-
-		for i, keyword := range keywords {
-			keyword = sanitizeSearchTerm(keyword, "\\")
-			clauses[i] = "LOWER(Posts.Message) LIKE ?"
-			argsKeywords = append(argsKeywords, "%"+keyword+"%")
-		}
-
-		keywordQuery = "AND (" + strings.Join(clauses, " OR ") + ")"
-	}
-
-	emailQuery := ""
-	var argsEmails []any
-	emails := strings.Fields(strings.TrimSpace(strings.ToLower(strings.Replace(job.Emails, ",", " ", -1))))
-	if len(emails) > 0 {
-		clauses := make([]string, len(emails))
-
-		for i, email := range emails {
-			clauses[i] = "Users.Email = ?"
-			argsEmails = append(argsEmails, email)
-		}
-
-		emailQuery = "AND (" + strings.Join(clauses, " OR ") + ")"
-	}
-
-	// The idea is to first iterate over the channel posts, and then when we run out of those,
-	// start iterating over the direct message posts.
-
-	channelPosts := []*model.CompliancePost{}
+func (ss *SQLStore) LegalholdExport(channel string, endTime int64, cursor model.LegalHoldCursor, limit int) ([]model.LegalHoldPost, model.LegalHoldCursor, error) {
+	var channelPosts []model.LegalHoldPost
 	channelsQuery := ""
 	var argsChannelsQuery []any
 	if !cursor.ChannelsQueryCompleted {
-		if cursor.LastChannelsQueryPostCreateAt == 0 {
-			cursor.LastChannelsQueryPostCreateAt = job.StartAt
-		}
 		// append the named parameters of SQL query in the correct order to argsChannelsQuery
-		argsChannelsQuery = append(argsChannelsQuery, cursor.LastChannelsQueryPostCreateAt, cursor.LastChannelsQueryPostCreateAt, cursor.LastChannelsQueryPostID, job.EndAt)
-		argsChannelsQuery = append(argsChannelsQuery, argsEmails...)
-		argsChannelsQuery = append(argsChannelsQuery, argsKeywords...)
+		argsChannelsQuery = append(argsChannelsQuery, cursor.LastChannelsQueryPostCreateAt, cursor.LastChannelsQueryPostCreateAt, cursor.LastChannelsQueryPostID, endTime)
 		argsChannelsQuery = append(argsChannelsQuery, limit)
 		channelsQuery = `
 		SELECT
@@ -105,8 +52,6 @@ func (ss *SQLStore) LegalholdExport(job *model.Compliance, cursor model.Complian
 					OR (Posts.CreateAt = ? AND Posts.Id > ?)
 				)
 				AND Posts.CreateAt < ?
-				` + emailQuery + `
-				` + keywordQuery + `
 		ORDER BY Posts.CreateAt, Posts.Id
 		LIMIT ?`
 		channelsQuery = ss.replica.Rebind(channelsQuery)
@@ -121,17 +66,12 @@ func (ss *SQLStore) LegalholdExport(job *model.Compliance, cursor model.Complian
 		}
 	}
 
-	directMessagePosts := []*model.CompliancePost{}
+	directMessagePosts := []model.LegalHoldPost{}
 	directMessagesQuery := ""
 	var argsDirectMessagesQuery []any
 	if !cursor.DirectMessagesQueryCompleted && len(channelPosts) < limit {
-		if cursor.LastDirectMessagesQueryPostCreateAt == 0 {
-			cursor.LastDirectMessagesQueryPostCreateAt = job.StartAt
-		}
 		// append the named parameters of SQL query in the correct order to argsDirectMessagesQuery
-		argsDirectMessagesQuery = append(argsDirectMessagesQuery, cursor.LastDirectMessagesQueryPostCreateAt, cursor.LastDirectMessagesQueryPostCreateAt, cursor.LastDirectMessagesQueryPostID, job.EndAt)
-		argsDirectMessagesQuery = append(argsDirectMessagesQuery, argsEmails...)
-		argsDirectMessagesQuery = append(argsDirectMessagesQuery, argsKeywords...)
+		argsDirectMessagesQuery = append(argsDirectMessagesQuery, cursor.LastDirectMessagesQueryPostCreateAt, cursor.LastDirectMessagesQueryPostCreateAt, cursor.LastDirectMessagesQueryPostID, endTime)
 		argsDirectMessagesQuery = append(argsDirectMessagesQuery, limit-len(channelPosts))
 		directMessagesQuery = `
 		SELECT
@@ -170,8 +110,6 @@ func (ss *SQLStore) LegalholdExport(job *model.Compliance, cursor model.Complian
 					OR (Posts.CreateAt = ? AND Posts.Id > ?)
 				)
 				AND Posts.CreateAt < ?
-				` + emailQuery + `
-				` + keywordQuery + `
 		ORDER BY Posts.CreateAt, Posts.Id
 		LIMIT ?`
 
