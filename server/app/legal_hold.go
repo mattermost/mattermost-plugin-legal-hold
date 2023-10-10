@@ -75,7 +75,7 @@ func (lhe *LegalHoldExecution) ExportData() error {
 			var posts []model.LegalHoldPost
 			var err error
 
-			posts, cursor, err = lhe.store.LegalholdExport(channelID, lhe.EndTime, cursor, PostExportBatchLimit)
+			posts, cursor, err = lhe.store.GetPostsBatch(channelID, lhe.EndTime, cursor, PostExportBatchLimit)
 			if err != nil {
 				return err
 			}

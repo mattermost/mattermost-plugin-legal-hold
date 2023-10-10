@@ -13,24 +13,20 @@ type LegalHold struct {
 // LegalHoldCursor represents the state of a paginated LegalHold export query.
 // It is based on the model.ComplianceCursor struct from Mattermost Server.
 type LegalHoldCursor struct {
-	LastChannelsQueryPostCreateAt       int64
-	LastChannelsQueryPostID             string
-	ChannelsQueryCompleted              bool
-	LastDirectMessagesQueryPostCreateAt int64
-	LastDirectMessagesQueryPostID       string
-	DirectMessagesQueryCompleted        bool
-	BatchNumber                         uint
+	LastPostCreateAt int64
+	LastPostID       string
+	BatchNumber      uint
+	Completed        bool
 }
 
 // NewLegalHoldCursor creates a new LegalHoldCursor object with the provided startTime
 // that is initialised and ready to use.
 func NewLegalHoldCursor(startTime int64) LegalHoldCursor {
 	return LegalHoldCursor{
-		LastChannelsQueryPostCreateAt:       startTime,
-		LastChannelsQueryPostID:             "00000000000000000000000000",
-		LastDirectMessagesQueryPostCreateAt: startTime,
-		LastDirectMessagesQueryPostID:       "00000000000000000000000000",
-		BatchNumber:                         0,
+		LastPostCreateAt: startTime,
+		LastPostID:       "00000000000000000000000000",
+		BatchNumber:      0,
+		Completed:        false,
 	}
 }
 

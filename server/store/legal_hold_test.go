@@ -7,34 +7,55 @@ import (
 	"testing"
 )
 
-func TestSQLStore_LegalHoldExport(t *testing.T) {
+func TestSQLStore_GetPostsBatch(t *testing.T) {
 	th := SetupHelper(t).SetupBasic(t)
 	defer th.TearDown()
 
-	const channelCount = 10
 	const postCount = 10
 
-	// create a bunch of channels
-	channels, err := th.CreateChannels(channelCount, "stale-test", th.User1.Id, th.Team1.Id)
+	// Test with an open channel first
+
+	// create an open channel
+	channel, err := th.CreateChannel("stale-test", th.User1.Id, th.Team1.Id)
 	require.NoError(t, err)
 
 	var posts []*mattermostModel.Post
 
 	// add some posts
-	for _, channel := range channels {
-		posts, err = th.CreatePosts(postCount, th.User1.Id, channel.Id)
-		require.NoError(t, err)
-	}
+	posts, err = th.CreatePosts(postCount, th.User1.Id, channel.Id)
+	require.NoError(t, err)
 
 	_ = posts
 
 	cursor := model.NewLegalHoldCursor(mattermostModel.GetMillis() - 1000000)
 
-	legalHold, cursor, err := th.Store.LegalholdExport(channels[0].Id, mattermostModel.GetMillis(), cursor, 1000)
+	legalHold, cursor, err := th.Store.GetPostsBatch(channel.Id, mattermostModel.GetMillis(), cursor, 1000)
 	require.NoError(t, err)
 	for _, legalHoldItem := range legalHold {
 		t.Log(legalHoldItem)
 	}
+
+	// TODO: Assert on result contents
+
+	// Test with a DM channel
+
+	// create a DM channel and add some posts
+	directChannel, err := th.CreateDirectMessageChannel(th.User1, th.User2)
+	require.NoError(t, err)
+
+	// populate it with some posts
+	posts, err = th.CreatePosts(postCount, th.User1.Id, directChannel.Id)
+	require.NoError(t, err)
+
+	cursor = model.NewLegalHoldCursor(mattermostModel.GetMillis() - 1000000)
+
+	legalHold, cursor, err = th.Store.GetPostsBatch(directChannel.Id, mattermostModel.GetMillis(), cursor, 1000)
+	require.NoError(t, err)
+	for _, legalHoldItem := range legalHold {
+		t.Log(legalHoldItem)
+	}
+
+	// TODO: Assert on result contents
 }
 
 func TestSQLStore_LegalHold_GetChannelIDsForUserDuring(t *testing.T) {

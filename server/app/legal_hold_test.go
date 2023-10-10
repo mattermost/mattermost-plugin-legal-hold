@@ -42,4 +42,6 @@ func TestApp_LegalHoldExecution_Execute(t *testing.T) {
 	err = lhe.Execute()
 	require.Greater(t, len(lhe.channelIDs), 1)
 	require.NoError(t, err)
+
+	// TODO: Do some proper assertions here to really test the functionality.
 }

@@ -121,6 +121,17 @@ func (th *TestHelper) CreateTeams(num int, namePrefix string) ([]*model.Team, er
 	return teams, nil
 }
 
+func (th *TestHelper) CreateChannel(name string, userID string, teamID string) (*model.Channel, error) {
+	channel := &model.Channel{
+		Name:        name,
+		DisplayName: name,
+		Type:        model.ChannelTypeOpen,
+		CreatorId:   userID,
+		TeamId:      teamID,
+	}
+	return th.mainHelper.Store.Channel().Save(channel, 1024)
+}
+
 func (th *TestHelper) CreateChannels(num int, namePrefix string, userID string, teamID string) ([]*model.Channel, error) {
 	var channels []*model.Channel
 	for i := 0; i < num; i++ {
@@ -162,6 +173,10 @@ func (th *TestHelper) CreateChannelsWithChannelMemberHistory(num int, namePrefix
 		}
 	}
 	return channels, nil
+}
+
+func (th *TestHelper) CreateDirectMessageChannel(user1 *model.User, user2 *model.User) (*model.Channel, error) {
+	return th.mainHelper.Store.Channel().CreateDirectChannel(user1, user2)
 }
 
 func (th *TestHelper) CreateUsers(num int, namePrefix string) ([]*model.User, error) {
