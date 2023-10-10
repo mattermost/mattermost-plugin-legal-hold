@@ -83,6 +83,7 @@ func (ss *SQLStore) GetPostsBatch(channelID string, endTime int64, cursor model.
 // a member of during the time period from (and including) the startTime up until (but not including) the
 // endTime.
 func (ss *SQLStore) GetChannelIDsForUserDuring(userID string, startTime int64, endTime int64) ([]string, error) {
+	// FIXME: This query does not currently capture DM/GM channels the user is a member of.
 	query := ss.replicaBuilder.
 		Select("distinct(cmh.channelid)").
 		From("channelmemberhistory as cmh").

@@ -1,5 +1,7 @@
 package model
 
+import "github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
+
 // LegalHold represents one legal hold.
 type LegalHold struct {
 	ID                   string
@@ -102,6 +104,51 @@ type LegalHoldChannelMembership struct {
 	EndTime   int64
 }
 
-func (*LegalHoldChannelIndex) Merge(new *LegalHoldChannelIndex) {
-	// TODO: Implement me!
+// Merge merges the new LegalHoldChannelIndex into this LegalHoldChannelIndex.
+func (lhci *LegalHoldChannelIndex) Merge(new *LegalHoldChannelIndex) {
+	for userID, newChannels := range *new {
+		if oldChannels, ok := (*lhci)[userID]; !ok {
+			(*lhci)[userID] = newChannels
+		} else {
+			var combinedChannels []LegalHoldChannelMembership
+			for _, newChannel := range newChannels {
+				if oldChannel, ok := getLegalHoldChannelMembership(oldChannels, newChannel.ChannelID); ok {
+					// Record for channel exists in both indexes.
+					combinedChannels = append(combinedChannels, oldChannel.Combine(newChannel))
+				} else {
+					// Record for channel only exists in new index.
+					combinedChannels = append(combinedChannels, newChannel)
+				}
+			}
+
+			for _, oldChannel := range oldChannels {
+				if _, ok := getLegalHoldChannelMembership(newChannels, oldChannel.ChannelID); !ok {
+					// Record for channel only exists in old index.
+					combinedChannels = append(combinedChannels, oldChannel)
+				}
+			}
+
+			(*lhci)[userID] = combinedChannels
+		}
+	}
+}
+
+func getLegalHoldChannelMembership(channelMemberships []LegalHoldChannelMembership, channelID string) (LegalHoldChannelMembership, bool) {
+	for _, cm := range channelMemberships {
+		if cm.ChannelID == channelID {
+			return cm, true
+		}
+	}
+
+	return LegalHoldChannelMembership{}, false
+}
+
+// Combine combines the data from two LegalHoldChannelMembership structs and returns a new one
+// representing the combined result.
+func (lhcm LegalHoldChannelMembership) Combine(new LegalHoldChannelMembership) LegalHoldChannelMembership {
+	return LegalHoldChannelMembership{
+		ChannelID: lhcm.ChannelID,
+		StartTime: utils.Min(lhcm.StartTime, new.StartTime),
+		EndTime:   utils.Max(lhcm.EndTime, new.EndTime),
+	}
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/gocarina/gocsv"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 	"strings"
 )
@@ -35,8 +36,8 @@ type LegalHoldExecution struct {
 func NewLegalHoldExecution(legalHold model.LegalHold, store *store.SQLStore, fileBackend filestore.FileBackend) LegalHoldExecution {
 	return LegalHoldExecution{
 		LegalHoldID:   legalHold.ID,
-		StartTime:     max(legalHold.LastExecutionEndedAt, legalHold.StartsAt),
-		EndTime:       min(max(legalHold.LastExecutionEndedAt, legalHold.StartsAt)+legalHold.ExecutionLength, legalHold.EndsAt),
+		StartTime:     utils.Max(legalHold.LastExecutionEndedAt, legalHold.StartsAt),
+		EndTime:       utils.Min(utils.Max(legalHold.LastExecutionEndedAt, legalHold.StartsAt)+legalHold.ExecutionLength, legalHold.EndsAt),
 		UserIDs:       legalHold.UserIDs,
 		store:         store,
 		fileBackend:   fileBackend,
@@ -92,7 +93,7 @@ func (lhe *LegalHoldExecution) GetChannels() error {
 
 	}
 
-	lhe.channelIDs = deduplicateStringSlice(lhe.channelIDs)
+	lhe.channelIDs = utils.DeduplicateStringSlice(lhe.channelIDs)
 
 	return nil
 }
@@ -153,10 +154,29 @@ func (lhe *LegalHoldExecution) ExportFiles(FileIDs []string) error {
 
 // UpdateIndexes updates the index files in the file backend in relation to this legal hold.
 func (lhe *LegalHoldExecution) UpdateIndexes() error {
-	// TODO: Actually read in the old index and merge with the new info.
-	// For now, just write out the latest index data as if there isn't any previous data
-	// for this legal hold.
+	filePath := fmt.Sprintf("legal_hold/%s/channels_index.json", lhe.LegalHoldID)
 
+	// Check if the channels index already exists in the file backend.
+	if exists, err := lhe.fileBackend.FileExists(filePath); err != nil {
+		return err
+	} else if exists {
+		// Index already exists. Need to read it and then merge with the new data.
+		readData, err := lhe.fileBackend.ReadFile(filePath)
+		if err != nil {
+			return err
+		}
+
+		var existingIndex model.LegalHoldChannelIndex
+		err = json.Unmarshal(readData, &existingIndex)
+		if err != nil {
+			return err
+		}
+
+		existingIndex.Merge(&lhe.channelsIndex)
+		lhe.channelsIndex = existingIndex
+	}
+
+	// Write the index data out to the file backend.
 	data, err := json.MarshalIndent(lhe.channelsIndex, "", "  ")
 	if err != nil {
 		return err
@@ -164,38 +184,6 @@ func (lhe *LegalHoldExecution) UpdateIndexes() error {
 
 	reader := bytes.NewReader(data)
 
-	filePath := fmt.Sprintf("legal_hold/%s/channels_index.json", lhe.LegalHoldID)
 	_, err = lhe.fileBackend.WriteFile(reader, filePath)
 	return err
-}
-
-// deduplicateStringSlice removes duplicate entries from a slice of strings.
-func deduplicateStringSlice(slice []string) []string {
-	keys := make(map[string]bool)
-	var result []string
-
-	for _, item := range slice {
-		if _, value := keys[item]; !value {
-			result = append(result, item)
-			keys[item] = true
-		}
-	}
-
-	return result
-}
-
-// max returns the larger of two int64 values.
-func max(a, b int64) int64 {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-// min returns the smaller of two int64 values.
-func min(a, b int64) int64 {
-	if a < b {
-		return a
-	}
-	return b
 }
