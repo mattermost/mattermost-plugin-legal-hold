@@ -29,7 +29,7 @@ func NewLegalHoldExecution(legalHold model.LegalHold, store *store.SQLStore, fil
 	return LegalHoldExecution{
 		LegalHoldID: legalHold.ID,
 		StartTime:   max(legalHold.LastExecutionEndedAt, legalHold.StartsAt),
-		EndTime:     min(legalHold.LastExecutionEndedAt+legalHold.ExecutionLength, legalHold.EndsAt),
+		EndTime:     min(max(legalHold.LastExecutionEndedAt, legalHold.StartsAt)+legalHold.ExecutionLength, legalHold.EndsAt),
 		UserIDs:     legalHold.UserIDs,
 		store:       store,
 		fileBackend: fileBackend,

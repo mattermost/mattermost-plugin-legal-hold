@@ -1,17 +1,10 @@
 package store
 
 import (
-	"testing"
-	"time"
-
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/stretchr/testify/require"
-)
-
-var (
-	yearAgo = mattermostModel.GetMillisForTime(time.Now().AddDate(-1, 0, 0))
-	weekAgo = mattermostModel.GetMillisForTime(time.Now().AddDate(0, 0, -7))
+	"testing"
 )
 
 func TestSQLStore_LegalHoldExport(t *testing.T) {

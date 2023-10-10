@@ -11,13 +11,11 @@ func TestApp_LegalHoldExecution_Execute(t *testing.T) {
 	th := SetupHelper(t).SetupBasic(t)
 	defer th.TearDown()
 
-	//plugintest.NewAPI().CreateChannel()
-
 	const channelCount = 10
 	const postCount = 10
 
 	// create a bunch of channels
-	channels, err := th.CreateChannels(channelCount, "stale-test", th.User1.Id, th.Team1.Id)
+	channels, err := th.CreateChannelsWithChannelMemberHistory(channelCount, "stale-test", th.User1.Id, th.Team1.Id)
 	require.NoError(t, err)
 
 	var posts []*mattermostModel.Post

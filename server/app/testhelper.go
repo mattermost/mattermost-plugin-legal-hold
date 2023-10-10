@@ -159,6 +159,30 @@ func (th *TestHelper) CreateChannels(num int, namePrefix string, userID string, 
 	return channels, nil
 }
 
+func (th *TestHelper) CreateChannelsWithChannelMemberHistory(num int, namePrefix string, userID string, teamID string) ([]*model.Channel, error) {
+	var channels []*model.Channel
+	for i := 0; i < num; i++ {
+		channel := &model.Channel{
+			Name:        fmt.Sprintf("%s-%d", namePrefix, i),
+			DisplayName: fmt.Sprintf("%s-%d", namePrefix, i),
+			Type:        model.ChannelTypeOpen,
+			CreatorId:   userID,
+			TeamId:      teamID,
+		}
+		channel, err := th.mainHelper.Store.Channel().Save(channel, 1024)
+		if err != nil {
+			return nil, err
+		}
+		channels = append(channels, channel)
+
+		err = th.mainHelper.Store.ChannelMemberHistory().LogJoinEvent(userID, channel.Id, model.GetMillis())
+		if err != nil {
+			return nil, err
+		}
+	}
+	return channels, nil
+}
+
 func (th *TestHelper) CreateUsers(num int, namePrefix string) ([]*model.User, error) {
 	var users []*model.User
 	for i := 0; i < num; i++ {
