@@ -22,6 +22,8 @@ type LegalHoldCursor struct {
 	BatchNumber                         uint
 }
 
+// NewLegalHoldCursor creates a new LegalHoldCursor object with the provided startTime
+// that is initialised and ready to use.
 func NewLegalHoldCursor(startTime int64) LegalHoldCursor {
 	return LegalHoldCursor{
 		LastChannelsQueryPostCreateAt:       startTime,

@@ -6,12 +6,15 @@ import (
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store"
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
-	"io"
 	"strings"
 )
 
 const PostExportBatchLimit = 10000
 
+// LegalHoldExecution represents one execution of a LegalHold, i.e. a daily (or other duration)
+// batch process to hold all data relating to that particular LegalHold. It is defined by the
+// properties of the associated LegalHold as well as a start and end time for the period this
+// execution of the LegalHold relates to.
 type LegalHoldExecution struct {
 	LegalHoldID string
 	StartTime   int64
@@ -47,7 +50,7 @@ func (lhe *LegalHoldExecution) Execute() error {
 	return err
 }
 
-// GetChannels populates the list of channels that the Legal Hold Export needs to cover within the
+// GetChannels populates the list of channels that the LegalHoldExecution needs to cover within the
 // internal state of the LegalHoldExecution struct.
 func (lhe *LegalHoldExecution) GetChannels() error {
 	for _, userID := range lhe.UserIDs {
@@ -64,7 +67,7 @@ func (lhe *LegalHoldExecution) GetChannels() error {
 	return nil
 }
 
-// ExportData ...
+// ExportData is the main function to run the batch data export for this LegalHoldExecution.
 func (lhe *LegalHoldExecution) ExportData() error {
 	for _, channelID := range lhe.channelIDs {
 		cursor := model.NewLegalHoldCursor(lhe.StartTime)
@@ -95,6 +98,8 @@ func (lhe *LegalHoldExecution) ExportData() error {
 	return nil
 }
 
+// WritePostsBatchToFile writes a batch of posts from a channel to the appropriate file
+// in the file backend.
 func (lhe *LegalHoldExecution) WritePostsBatchToFile(batchNumber uint, channelID string, posts []model.LegalHoldPost) error {
 	path := fmt.Sprintf("legal_hold/%s/%s/messages/batch_%06d.csv", lhe.LegalHoldID, channelID, batchNumber)
 
@@ -105,12 +110,12 @@ func (lhe *LegalHoldExecution) WritePostsBatchToFile(batchNumber uint, channelID
 
 	csvReader := strings.NewReader(csvContent)
 
-	_, err = writeFile(lhe.fileBackend, csvReader, path)
+	_, err = lhe.fileBackend.WriteFile(csvReader, path)
 
 	return err
 }
 
-// ExportFiles exports the file attachments with the provided FileIDs.
+// ExportFiles exports the file attachments with the provided FileIDs to the file backend.
 func (lhe *LegalHoldExecution) ExportFiles(FileIDs []string) error {
 	// TODO: Implement me!
 	return nil
@@ -131,15 +136,7 @@ func deduplicateStringSlice(slice []string) []string {
 	return result
 }
 
-func writeFile(backend filestore.FileBackend, fr io.Reader, path string) (int64, error) {
-	result, err := backend.WriteFile(fr, path)
-	fmt.Println("Writing file")
-	if err != nil {
-		return result, err
-	}
-	return result, nil
-}
-
+// max returns the larger of two int64 values.
 func max(a, b int64) int64 {
 	if a > b {
 		return a
@@ -147,6 +144,7 @@ func max(a, b int64) int64 {
 	return b
 }
 
+// min returns the smaller of two int64 values.
 func min(a, b int64) int64 {
 	if a < b {
 		return a
