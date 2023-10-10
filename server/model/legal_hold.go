@@ -93,3 +93,15 @@ func LegalHoldPostHeader() []string {
 		"PostFileIds",
 	}
 }
+
+type LegalHoldChannelIndex map[string][]LegalHoldChannelMembership
+
+type LegalHoldChannelMembership struct {
+	ChannelID string
+	StartTime int64
+	EndTime   int64
+}
+
+func (*LegalHoldChannelIndex) Merge(new *LegalHoldChannelIndex) {
+	// TODO: Implement me!
+}
