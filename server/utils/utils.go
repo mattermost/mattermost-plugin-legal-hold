@@ -1,6 +1,6 @@
 package utils
 
-// deduplicateStringSlice removes duplicate entries from a slice of strings.
+// DeduplicateStringSlice removes duplicate entries from a slice of strings.
 func DeduplicateStringSlice(slice []string) []string {
 	keys := make(map[string]bool)
 	var result []string
@@ -15,7 +15,7 @@ func DeduplicateStringSlice(slice []string) []string {
 	return result
 }
 
-// max returns the larger of two int64 values.
+// Max returns the larger of two int64 values.
 func Max(a, b int64) int64 {
 	if a > b {
 		return a
@@ -23,7 +23,7 @@ func Max(a, b int64) int64 {
 	return b
 }
 
-// min returns the smaller of two int64 values.
+// Min returns the smaller of two int64 values.
 func Min(a, b int64) int64 {
 	if a < b {
 		return a
