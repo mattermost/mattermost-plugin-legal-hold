@@ -22,7 +22,7 @@ func TestApp_LegalHoldExecution_Execute(t *testing.T) {
 
 	// add some posts
 	for _, channel := range channels {
-		posts, err = th.CreatePosts(postCount, th.User1.Id, channel.Id)
+		posts, err = th.CreatePostsWithAttachments(postCount, th.User1.Id, channel.Id)
 		require.NoError(t, err)
 	}
 

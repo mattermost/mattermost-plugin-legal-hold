@@ -218,6 +218,48 @@ func (th *TestHelper) CreatePosts(num int, userID string, channelID string) ([]*
 	return posts, nil
 }
 
+func (th *TestHelper) CreatePostsWithAttachments(num int, userID string, channelID string) ([]*model.Post, error) {
+	var posts []*model.Post
+	for i := 0; i < num; i++ {
+		text := "This is a test uploaded file."
+		reader := strings.NewReader(text)
+		size, err := th.FileBackend.WriteFile(reader, "tests/file_upload_test.txt")
+		if err != nil {
+			return nil, err
+		}
+
+		fileInfo := &model.FileInfo{
+			Id:        model.NewId(),
+			CreateAt:  model.GetMillis(),
+			UpdateAt:  model.GetMillis(),
+			CreatorId: userID,
+			Name:      "file_upload_test.txt",
+			Path:      "tests/file_upload_test.txt",
+			MimeType:  "text/plain",
+			Size:      size,
+		}
+
+		fileInfo, err = th.mainHelper.Store.FileInfo().Save(fileInfo)
+		if err != nil {
+			return nil, err
+		}
+
+		post := &model.Post{
+			UserId:    userID,
+			ChannelId: channelID,
+			Type:      model.PostTypeDefault,
+			Message:   fmt.Sprintf("test post %d of %d", i, num),
+			FileIds:   []string{fileInfo.Id},
+		}
+		post, err = th.mainHelper.Store.Post().Save(post)
+		if err != nil {
+			return nil, err
+		}
+		posts = append(posts, post)
+	}
+	return posts, nil
+}
+
 func (th *TestHelper) CreateReactions(posts []*model.Post, userID string) ([]*model.Reaction, error) {
 	var reactions []*model.Reaction
 	for _, post := range posts {

@@ -115,7 +115,23 @@ func (lhe *LegalHoldExecution) ExportData() error {
 				break
 			}
 
-			err = lhe.WritePostsBatchToFile(cursor.BatchNumber, channelID, posts)
+			err = lhe.WritePostsBatchToFile(channelID, posts)
+			if err != nil {
+				return err
+			}
+
+			// Extract the FileIDs to export
+			var fileIDs []string
+			for _, post := range posts {
+				var postFileIDs []string
+				err = json.Unmarshal([]byte(post.PostFileIds), &postFileIDs)
+				if err != nil {
+					return err
+				}
+				fileIDs = append(fileIDs, postFileIDs...)
+			}
+
+			err = lhe.ExportFiles(channelID, posts[0].PostCreateAt, posts[0].PostId, fileIDs)
 			if err != nil {
 				return err
 			}
@@ -131,7 +147,7 @@ func (lhe *LegalHoldExecution) ExportData() error {
 
 // WritePostsBatchToFile writes a batch of posts from a channel to the appropriate file
 // in the file backend.
-func (lhe *LegalHoldExecution) WritePostsBatchToFile(batchNumber uint, channelID string, posts []model.LegalHoldPost) error {
+func (lhe *LegalHoldExecution) WritePostsBatchToFile(channelID string, posts []model.LegalHoldPost) error {
 	path := fmt.Sprintf("legal_hold/%s/%s/messages/messages-%d-%s.csv", lhe.LegalHoldID, channelID, posts[0].PostCreateAt, posts[0].PostId)
 
 	csvContent, err := gocsv.MarshalString(&posts)
@@ -147,8 +163,35 @@ func (lhe *LegalHoldExecution) WritePostsBatchToFile(batchNumber uint, channelID
 }
 
 // ExportFiles exports the file attachments with the provided FileIDs to the file backend.
-func (lhe *LegalHoldExecution) ExportFiles(FileIDs []string) error {
-	// TODO: Implement me!
+func (lhe *LegalHoldExecution) ExportFiles(channelID string, batchCreateAt int64, batchPostID string, fileIDs []string) error {
+	if len(fileIDs) == 0 {
+		return nil
+	}
+
+	// Batch get the FileInfos for the FileIDs.
+	fileInfos, err := lhe.store.GetFileInfosByIDs(fileIDs)
+	if err != nil {
+		return err
+	}
+
+	// Copy the files from one to another.
+	for _, fileInfo := range fileInfos {
+		path := fmt.Sprintf(
+			"legal_hold/%s/%s/files/files-%d-%s/%s/%s",
+			lhe.LegalHoldID,
+			channelID,
+			batchCreateAt,
+			batchPostID,
+			fileInfo.Id,
+			fileInfo.Name,
+		)
+		err = lhe.fileBackend.CopyFile(fileInfo.Path, path)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Write the
 	return nil
 }
 

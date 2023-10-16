@@ -10,7 +10,7 @@ import (
 // hold export, using the cursor, endTime and limit parameters to track batching state.
 // This method was originally based on Mattermost Server's ComplianceStore.ComplianceExport()
 // function but considerably simplified to suit the LegalHold use case better.
-func (ss *SQLStore) GetPostsBatch(channelID string, endTime int64, cursor model.LegalHoldCursor, limit int) ([]model.LegalHoldPost, model.LegalHoldCursor, error) {
+func (ss SQLStore) GetPostsBatch(channelID string, endTime int64, cursor model.LegalHoldCursor, limit int) ([]model.LegalHoldPost, model.LegalHoldCursor, error) {
 	var posts []model.LegalHoldPost
 
 	var args []any
@@ -82,7 +82,7 @@ func (ss *SQLStore) GetPostsBatch(channelID string, endTime int64, cursor model.
 // GetChannelIDsForUserDuring gets the channel IDs for all channels that the user indicated by userID is
 // a member of during the time period from (and including) the startTime up until (but not including) the
 // endTime.
-func (ss *SQLStore) GetChannelIDsForUserDuring(userID string, startTime int64, endTime int64) ([]string, error) {
+func (ss SQLStore) GetChannelIDsForUserDuring(userID string, startTime int64, endTime int64) ([]string, error) {
 	// FIXME: This query does not currently capture DM/GM channels the user is a member of.
 	query := ss.replicaBuilder.
 		Select("distinct(cmh.channelid)").
@@ -109,4 +109,32 @@ func (ss *SQLStore) GetChannelIDsForUserDuring(userID string, startTime int64, e
 	}
 
 	return channelIDs, nil
+}
+
+// GetFileInfosByIDs gets the file infos corresponding to the provided ids.
+func (ss SQLStore) GetFileInfosByIDs(ids []string) ([]model.FileInfo, error) {
+	query := ss.replicaBuilder.
+		Select(
+			"FileInfo.Id",
+			"FileInfo.Path",
+			"FileInfo.Name",
+			"FileInfo.Size",
+			"FileInfo.MimeType",
+		).
+		From("FileInfo").
+		Where(sq.Eq{"FileInfo.Id": ids}).
+		OrderBy("FileInfo.CreateAt DESC")
+
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return []model.FileInfo{}, errors.Wrap(err, "unable to get sql for GetFileInfosByIDs")
+	}
+
+	var fileInfos []model.FileInfo
+	err = ss.replica.Select(&fileInfos, sql, args...)
+	if err != nil {
+		return []model.FileInfo{}, errors.Wrap(err, "unable to run query for GetFileInfosByIDs")
+	}
+
+	return fileInfos, nil
 }
