@@ -3,8 +3,6 @@ package app
 import (
 	"database/sql"
 	"fmt"
-	"github.com/mattermost/mattermost-plugin-legal-hold/server/store"
-	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 	"os"
 	"os/exec"
 	"strings"
@@ -13,8 +11,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 	"github.com/mattermost/mattermost-server/v6/store/storetest"
 	"github.com/mattermost/mattermost-server/v6/testlib"
+
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/store"
 )
 
 type TestHelper struct {

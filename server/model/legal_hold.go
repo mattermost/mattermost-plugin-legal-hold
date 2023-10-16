@@ -22,7 +22,7 @@ type LegalHoldCursor struct {
 }
 
 // NewLegalHoldCursor creates a new LegalHoldCursor object with the provided startTime
-// that is initialised and ready to use.
+// that is initialized and ready to use.
 func NewLegalHoldCursor(startTime int64) LegalHoldCursor {
 	return LegalHoldCursor{
 		LastPostCreateAt: startTime,
@@ -51,17 +51,17 @@ type LegalHoldPost struct {
 	UserNickname string `csv:"UserNickname"`
 
 	// From Post
-	PostId         string `csv:"PostId"`
+	PostID         string `csv:"PostId"`
 	PostCreateAt   int64  `csv:"PostCreateAt"`
 	PostUpdateAt   int64  `csv:"PostUpdateAt"`
 	PostDeleteAt   int64  `csv:"PostDeleteAt"`
-	PostRootId     string `csv:"PostRootId"`
-	PostOriginalId string `csv:"PostOriginalId"`
+	PostRootID     string `csv:"PostRootId"`
+	PostOriginalID string `csv:"PostOriginalId"`
 	PostMessage    string `csv:"PostMessage"`
 	PostType       string `csv:"PostType"`
 	PostProps      string `csv:"PostProps"`
 	PostHashtags   string `csv:"PostHashtags"`
-	PostFileIds    string `csv:"PostFileIds"`
+	PostFileIDs    string `csv:"PostFileIds"`
 
 	IsBot bool `csv:"IsBot"`
 }

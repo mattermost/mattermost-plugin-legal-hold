@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	"github.com/gocarina/gocsv"
+	"github.com/mattermost/mattermost-server/v6/shared/filestore"
+
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
-	"github.com/mattermost/mattermost-server/v6/shared/filestore"
-	"strings"
 )
 
 const PostExportBatchLimit = 10000
@@ -90,7 +92,6 @@ func (lhe *LegalHoldExecution) GetChannels() error {
 				})
 			}
 		}
-
 	}
 
 	lhe.channelIDs = utils.DeduplicateStringSlice(lhe.channelIDs)
@@ -124,14 +125,14 @@ func (lhe *LegalHoldExecution) ExportData() error {
 			var fileIDs []string
 			for _, post := range posts {
 				var postFileIDs []string
-				err = json.Unmarshal([]byte(post.PostFileIds), &postFileIDs)
+				err = json.Unmarshal([]byte(post.PostFileIDs), &postFileIDs)
 				if err != nil {
 					return err
 				}
 				fileIDs = append(fileIDs, postFileIDs...)
 			}
 
-			err = lhe.ExportFiles(channelID, posts[0].PostCreateAt, posts[0].PostId, fileIDs)
+			err = lhe.ExportFiles(channelID, posts[0].PostCreateAt, posts[0].PostID, fileIDs)
 			if err != nil {
 				return err
 			}
@@ -148,7 +149,7 @@ func (lhe *LegalHoldExecution) ExportData() error {
 // WritePostsBatchToFile writes a batch of posts from a channel to the appropriate file
 // in the file backend.
 func (lhe *LegalHoldExecution) WritePostsBatchToFile(channelID string, posts []model.LegalHoldPost) error {
-	path := fmt.Sprintf("legal_hold/%s/%s/messages/messages-%d-%s.csv", lhe.LegalHoldID, channelID, posts[0].PostCreateAt, posts[0].PostId)
+	path := fmt.Sprintf("legal_hold/%s/%s/messages/messages-%d-%s.csv", lhe.LegalHoldID, channelID, posts[0].PostCreateAt, posts[0].PostID)
 
 	csvContent, err := gocsv.MarshalString(&posts)
 	if err != nil {
@@ -182,7 +183,7 @@ func (lhe *LegalHoldExecution) ExportFiles(channelID string, batchCreateAt int64
 			channelID,
 			batchCreateAt,
 			batchPostID,
-			fileInfo.Id,
+			fileInfo.ID,
 			fileInfo.Name,
 		)
 		err = lhe.fileBackend.CopyFile(fileInfo.Path, path)

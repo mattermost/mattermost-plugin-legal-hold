@@ -28,36 +28,36 @@ func (ss SQLStore) GetPostsBatch(channelID string, endTime int64, cursor model.L
 			Users.Username AS UserUsername,
 			Users.Email AS UserEmail,
 			Users.Nickname AS UserNickname,
-			Posts.Id AS PostId,
+			Posts.ID AS PostID,
 			Posts.CreateAt AS PostCreateAt,
 			Posts.UpdateAt AS PostUpdateAt,
 			Posts.DeleteAt AS PostDeleteAt,
-			Posts.RootId AS PostRootId,
-			Posts.OriginalId AS PostOriginalId,
+			Posts.RootId AS PostRootID,
+			Posts.OriginalId AS PostOriginalID,
 			Posts.Message AS PostMessage,
 			Posts.Type AS PostType,
 			Posts.Props AS PostProps,
 			Posts.Hashtags AS PostHashtags,
-			Posts.FileIds AS PostFileIds,
+			Posts.FileIds AS PostFileIDs,
 			Bots.UserId IS NOT NULL AS IsBot
 		FROM
 			Posts
 		JOIN
-		    Users on Posts.UserId = Users.Id
+		    Users on Posts.UserId = Users.ID
 		JOIN
-			Channels on Channels.Id = Posts.ChannelId
+			Channels on Channels.ID = Posts.ChannelId
 		LEFT OUTER JOIN
 			Bots ON Bots.UserId = Posts.UserId
 		LEFT OUTER JOIN
-			Teams ON Teams.Id = Channels.TeamId
+			Teams ON Teams.ID = Channels.TeamId
 		WHERE
 		 	(
 				Posts.CreateAt > ?
-				OR (Posts.CreateAt = ? AND Posts.Id > ?)
+				OR (Posts.CreateAt = ? AND Posts.ID > ?)
 			)
 				AND Posts.CreateAt < ?
-			AND Channels.Id = ?
-		ORDER BY Posts.CreateAt, Posts.Id
+			AND Channels.ID = ?
+		ORDER BY Posts.CreateAt, Posts.ID
 		LIMIT ?
 	`
 
@@ -71,12 +71,12 @@ func (ss SQLStore) GetPostsBatch(channelID string, endTime int64, cursor model.L
 		cursor.Completed = true
 	} else {
 		cursor.LastPostCreateAt = posts[len(posts)-1].PostCreateAt
-		cursor.LastPostID = posts[len(posts)-1].PostId
+		cursor.LastPostID = posts[len(posts)-1].PostID
 	}
 
-	cursor.BatchNumber += 1
+	cursor.BatchNumber++
 
-	return append(posts), cursor, nil
+	return posts, cursor, nil
 }
 
 // GetChannelIDsForUserDuring gets the channel IDs for all channels that the user indicated by userID is
@@ -115,14 +115,14 @@ func (ss SQLStore) GetChannelIDsForUserDuring(userID string, startTime int64, en
 func (ss SQLStore) GetFileInfosByIDs(ids []string) ([]model.FileInfo, error) {
 	query := ss.replicaBuilder.
 		Select(
-			"FileInfo.Id",
+			"FileInfo.ID",
 			"FileInfo.Path",
 			"FileInfo.Name",
 			"FileInfo.Size",
 			"FileInfo.MimeType",
 		).
 		From("FileInfo").
-		Where(sq.Eq{"FileInfo.Id": ids}).
+		Where(sq.Eq{"FileInfo.ID": ids}).
 		OrderBy("FileInfo.CreateAt DESC")
 
 	sql, args, err := query.ToSql()

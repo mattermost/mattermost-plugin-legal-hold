@@ -1,10 +1,12 @@
 package app
 
 import (
-	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
+	"testing"
+
 	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/stretchr/testify/require"
-	"testing"
+
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 )
 
 func TestApp_LegalHoldExecution_Execute(t *testing.T) {

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/pkg/errors"
 	"net/http"
 	"reflect"
 	"sync"
@@ -9,6 +8,7 @@ import (
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
+	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/config"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store"
@@ -36,7 +36,7 @@ type Plugin struct {
 	SQLStore *store.SQLStore
 
 	// jobManager allows managing of scheduled tasks
-	//jobManager *jobs.JobManager
+	// jobManager *jobs.JobManager
 
 	// FileBackend allows direct access to the Mattermost files backend bypassing the plugin API.
 	FileBackend *filestore.FileBackend
@@ -44,6 +44,9 @@ type Plugin struct {
 
 // ServeHTTP demonstrates a plugin that handles HTTP requests by greeting the world.
 func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
+	_ = c
+	_ = w
+	_ = r
 }
 
 func (p *Plugin) OnActivate() error {
@@ -70,7 +73,7 @@ func (p *Plugin) OnActivate() error {
 	// FIXME: do we need to handle MM configuration changes?
 
 	// Create job manager
-	//p.jobManager = jobs.NewJobManager(&p.Client.Log)
+	// p.jobManager = jobs.NewJobManager(&p.Client.Log)
 
 	// Create job for legal hold execution
 	// FIXME: Implement me!

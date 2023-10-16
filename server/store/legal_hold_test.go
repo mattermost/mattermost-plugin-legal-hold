@@ -1,10 +1,12 @@
 package store
 
 import (
-	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
+	"testing"
+
 	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/stretchr/testify/require"
-	"testing"
+
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 )
 
 func TestSQLStore_GetPostsBatch(t *testing.T) {
@@ -29,7 +31,8 @@ func TestSQLStore_GetPostsBatch(t *testing.T) {
 
 	cursor := model.NewLegalHoldCursor(mattermostModel.GetMillis() - 1000000)
 
-	legalHold, cursor, err := th.Store.GetPostsBatch(channel.Id, mattermostModel.GetMillis(), cursor, 1000)
+	var legalHold []model.LegalHoldPost
+	legalHold, _, err = th.Store.GetPostsBatch(channel.Id, mattermostModel.GetMillis(), cursor, 1000)
 	require.NoError(t, err)
 	for _, legalHoldItem := range legalHold {
 		t.Log(legalHoldItem)
@@ -40,16 +43,17 @@ func TestSQLStore_GetPostsBatch(t *testing.T) {
 	// Test with a DM channel
 
 	// create a DM channel and add some posts
-	directChannel, err := th.CreateDirectMessageChannel(th.User1, th.User2)
+	var directChannel *mattermostModel.Channel
+	directChannel, err = th.CreateDirectMessageChannel(th.User1, th.User2)
 	require.NoError(t, err)
 
 	// populate it with some posts
-	posts, err = th.CreatePosts(postCount, th.User1.Id, directChannel.Id)
+	_, err = th.CreatePosts(postCount, th.User1.Id, directChannel.Id)
 	require.NoError(t, err)
 
 	cursor = model.NewLegalHoldCursor(mattermostModel.GetMillis() - 1000000)
 
-	legalHold, cursor, err = th.Store.GetPostsBatch(directChannel.Id, mattermostModel.GetMillis(), cursor, 1000)
+	legalHold, _, err = th.Store.GetPostsBatch(directChannel.Id, mattermostModel.GetMillis(), cursor, 1000)
 	require.NoError(t, err)
 	for _, legalHoldItem := range legalHold {
 		t.Log(legalHoldItem)
