@@ -1,4 +1,4 @@
-package app
+package legalhold
 
 import (
 	"bytes"
@@ -16,11 +16,11 @@ import (
 
 const PostExportBatchLimit = 10000
 
-// LegalHoldExecution represents one execution of a LegalHold, i.e. a daily (or other duration)
+// Execution represents one execution of a LegalHold, i.e. a daily (or other duration)
 // batch process to hold all data relating to that particular LegalHold. It is defined by the
 // properties of the associated LegalHold as well as a start and end time for the period this
 // execution of the LegalHold relates to.
-type LegalHoldExecution struct {
+type Execution struct {
 	LegalHoldID string
 	StartTime   int64
 	EndTime     int64
@@ -34,9 +34,9 @@ type LegalHoldExecution struct {
 	channelsIndex model.LegalHoldChannelIndex
 }
 
-// NewLegalHoldExecution creates a new LegalHoldExecution that is ready to use.
-func NewLegalHoldExecution(legalHold model.LegalHold, store *store.SQLStore, fileBackend filestore.FileBackend) LegalHoldExecution {
-	return LegalHoldExecution{
+// NewExecution creates a new Execution that is ready to use.
+func NewExecution(legalHold model.LegalHold, store *store.SQLStore, fileBackend filestore.FileBackend) Execution {
+	return Execution{
 		LegalHoldID:   legalHold.ID,
 		StartTime:     utils.Max(legalHold.LastExecutionEndedAt, legalHold.StartsAt),
 		EndTime:       utils.Min(utils.Max(legalHold.LastExecutionEndedAt, legalHold.StartsAt)+legalHold.ExecutionLength, legalHold.EndsAt),
@@ -47,8 +47,8 @@ func NewLegalHoldExecution(legalHold model.LegalHold, store *store.SQLStore, fil
 	}
 }
 
-// Execute executes the LegalHoldExecution.
-func (lhe *LegalHoldExecution) Execute() error {
+// Execute executes the Execution.
+func (lhe *Execution) Execute() error {
 	err := lhe.GetChannels()
 	if err != nil {
 		return err
@@ -63,9 +63,9 @@ func (lhe *LegalHoldExecution) Execute() error {
 	return err
 }
 
-// GetChannels populates the list of channels that the LegalHoldExecution needs to cover within the
-// internal state of the LegalHoldExecution struct.
-func (lhe *LegalHoldExecution) GetChannels() error {
+// GetChannels populates the list of channels that the Execution needs to cover within the
+// internal state of the Execution struct.
+func (lhe *Execution) GetChannels() error {
 	for _, userID := range lhe.UserIDs {
 		channelIDs, err := lhe.store.GetChannelIDsForUserDuring(userID, lhe.StartTime, lhe.EndTime)
 		if err != nil {
@@ -99,8 +99,8 @@ func (lhe *LegalHoldExecution) GetChannels() error {
 	return nil
 }
 
-// ExportData is the main function to run the batch data export for this LegalHoldExecution.
-func (lhe *LegalHoldExecution) ExportData() error {
+// ExportData is the main function to run the batch data export for this Execution.
+func (lhe *Execution) ExportData() error {
 	for _, channelID := range lhe.channelIDs {
 		cursor := model.NewLegalHoldCursor(lhe.StartTime)
 		for {
@@ -148,7 +148,7 @@ func (lhe *LegalHoldExecution) ExportData() error {
 
 // WritePostsBatchToFile writes a batch of posts from a channel to the appropriate file
 // in the file backend.
-func (lhe *LegalHoldExecution) WritePostsBatchToFile(channelID string, posts []model.LegalHoldPost) error {
+func (lhe *Execution) WritePostsBatchToFile(channelID string, posts []model.LegalHoldPost) error {
 	path := fmt.Sprintf("legal_hold/%s/%s/messages/messages-%d-%s.csv", lhe.LegalHoldID, channelID, posts[0].PostCreateAt, posts[0].PostID)
 
 	csvContent, err := gocsv.MarshalString(&posts)
@@ -164,7 +164,7 @@ func (lhe *LegalHoldExecution) WritePostsBatchToFile(channelID string, posts []m
 }
 
 // ExportFiles exports the file attachments with the provided FileIDs to the file backend.
-func (lhe *LegalHoldExecution) ExportFiles(channelID string, batchCreateAt int64, batchPostID string, fileIDs []string) error {
+func (lhe *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPostID string, fileIDs []string) error {
 	if len(fileIDs) == 0 {
 		return nil
 	}
@@ -197,7 +197,7 @@ func (lhe *LegalHoldExecution) ExportFiles(channelID string, batchCreateAt int64
 }
 
 // UpdateIndexes updates the index files in the file backend in relation to this legal hold.
-func (lhe *LegalHoldExecution) UpdateIndexes() error {
+func (lhe *Execution) UpdateIndexes() error {
 	filePath := fmt.Sprintf("legal_hold/%s/channels_index.json", lhe.LegalHoldID)
 
 	// Check if the channels index already exists in the file backend.

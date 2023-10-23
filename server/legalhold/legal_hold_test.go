@@ -1,4 +1,4 @@
-package app
+package legalhold
 
 import (
 	"testing"
@@ -40,7 +40,7 @@ func TestApp_LegalHoldExecution_Execute(t *testing.T) {
 		ExecutionLength:      1000000,
 	}
 
-	lhe := NewLegalHoldExecution(lh, th.Store, th.FileBackend)
+	lhe := NewExecution(lh, th.Store, th.FileBackend)
 	err = lhe.Execute()
 	require.Greater(t, len(lhe.channelIDs), 1)
 	require.NoError(t, err)

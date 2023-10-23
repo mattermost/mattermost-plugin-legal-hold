@@ -1,4 +1,4 @@
-package app
+package legalhold
 
 import (
 	"database/sql"

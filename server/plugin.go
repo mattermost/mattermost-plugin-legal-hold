@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"reflect"
 	"sync"
@@ -11,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/config"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/jobs"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store"
 )
 
@@ -35,11 +37,14 @@ type Plugin struct {
 	// SQLStore allows direct access to the Mattermost store bypassing the plugin API
 	SQLStore *store.SQLStore
 
-	// jobManager allows managing of scheduled tasks
-	// jobManager *jobs.JobManager
-
 	// FileBackend allows direct access to the Mattermost files backend bypassing the plugin API.
-	FileBackend *filestore.FileBackend
+	FileBackend filestore.FileBackend
+
+	// jobManager allows managing of scheduled tasks
+	jobManager *jobs.JobManager
+
+	// legalHoldJob runs the legal hold jobs
+	legalHoldJob *jobs.LegalHoldJob
 }
 
 // ServeHTTP demonstrates a plugin that handles HTTP requests by greeting the world.
@@ -69,24 +74,21 @@ func (p *Plugin) OnActivate() error {
 		p.Client.Log.Error("unable to initialize the files storage", "err", err)
 		return errors.New("unable to initialize the files storage")
 	}
-	p.FileBackend = &filesBackend
+	p.FileBackend = filesBackend
 	// FIXME: do we need to handle MM configuration changes?
 
 	// Create job manager
-	// p.jobManager = jobs.NewJobManager(&p.Client.Log)
+	p.jobManager = jobs.NewJobManager(&p.Client.Log)
 
 	// Create job for legal hold execution
-	// FIXME: Implement me!
-	/*
-		channelArchiverJob, err := jobs.NewChannelArchiverJob(LegalHoldJobID, p.API, p.Client, SQLStore)
-		if err != nil {
-			return fmt.Errorf("cannot create channel archiver job: %w", err)
-		}
-		if err := p.jobManager.AddJob(channelArchiverJob); err != nil {
-			return fmt.Errorf("cannot add channel archiver job: %w", err)
-		}
-		_ = p.jobManager.OnConfigurationChange(p.getConfiguration())
-	*/
+	p.legalHoldJob, err = jobs.NewLegalHoldJob(LegalHoldJobID, p.API, p.Client, p.SQLStore, p.FileBackend)
+	if err != nil {
+		return fmt.Errorf("cannot create legal hold job: %w", err)
+	}
+	if err := p.jobManager.AddJob(p.legalHoldJob); err != nil {
+		return fmt.Errorf("cannot add legal hold job: %w", err)
+	}
+	_ = p.jobManager.OnConfigurationChange(p.getConfiguration())
 
 	return nil
 }
