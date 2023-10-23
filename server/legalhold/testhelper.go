@@ -3,6 +3,7 @@ package legalhold
 import (
 	"database/sql"
 	"fmt"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 	"os"
 	"os/exec"
 	"strings"
@@ -14,15 +15,13 @@ import (
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 	"github.com/mattermost/mattermost-server/v6/store/storetest"
 	"github.com/mattermost/mattermost-server/v6/testlib"
-
-	"github.com/mattermost/mattermost-plugin-legal-hold/server/store"
 )
 
 type TestHelper struct {
 	mainHelper *testlib.MainHelper
 	restoreEnv map[string]string
 
-	Store       *store.SQLStore
+	Store       *sqlstore.SQLStore
 	FileBackend filestore.FileBackend
 
 	Team1    *model.Team
@@ -67,7 +66,7 @@ func SetupHelper(t *testing.T) *TestHelper {
 	dbStore.MarkSystemRanUnitTests()
 	th.mainHelper.PreloadMigrations()
 
-	store, err := store.New(storeWrapper{th.mainHelper}, &testLogger{t})
+	store, err := sqlstore.New(storeWrapper{th.mainHelper}, &testLogger{t})
 	require.NoError(t, err, "could not create store")
 	th.Store = store
 

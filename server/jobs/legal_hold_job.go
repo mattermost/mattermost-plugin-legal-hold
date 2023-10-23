@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 	"sync"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/config"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/legalhold"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
-	"github.com/mattermost/mattermost-plugin-legal-hold/server/store"
 )
 
 type LegalHoldJob struct {
@@ -28,11 +28,11 @@ type LegalHoldJob struct {
 	id          string
 	papi        plugin.API
 	client      *pluginapi.Client
-	sqlstore    *store.SQLStore
+	sqlstore    *sqlstore.SQLStore
 	filebackend filestore.FileBackend
 }
 
-func NewLegalHoldJob(id string, api plugin.API, client *pluginapi.Client, sqlstore *store.SQLStore, filebackend filestore.FileBackend) (*LegalHoldJob, error) {
+func NewLegalHoldJob(id string, api plugin.API, client *pluginapi.Client, sqlstore *sqlstore.SQLStore, filebackend filestore.FileBackend) (*LegalHoldJob, error) {
 	return &LegalHoldJob{
 		settings:    &LegalHoldJobSettings{},
 		id:          id,

@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 	"strings"
 
 	"github.com/gocarina/gocsv"
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
-	"github.com/mattermost/mattermost-plugin-legal-hold/server/store"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
 )
 
@@ -26,7 +26,7 @@ type Execution struct {
 	EndTime     int64
 	UserIDs     []string
 
-	store       *store.SQLStore
+	store       *sqlstore.SQLStore
 	fileBackend filestore.FileBackend
 
 	channelIDs []string
@@ -35,7 +35,7 @@ type Execution struct {
 }
 
 // NewExecution creates a new Execution that is ready to use.
-func NewExecution(legalHold model.LegalHold, store *store.SQLStore, fileBackend filestore.FileBackend) Execution {
+func NewExecution(legalHold model.LegalHold, store *sqlstore.SQLStore, fileBackend filestore.FileBackend) Execution {
 	return Execution{
 		LegalHoldID:   legalHold.ID,
 		StartTime:     utils.Max(legalHold.LastExecutionEndedAt, legalHold.StartsAt),

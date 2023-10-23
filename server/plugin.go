@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 	"net/http"
 	"reflect"
 	"sync"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/config"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/jobs"
-	"github.com/mattermost/mattermost-plugin-legal-hold/server/store"
 )
 
 const (
@@ -35,7 +35,7 @@ type Plugin struct {
 	Client *pluginapi.Client
 
 	// SQLStore allows direct access to the Mattermost store bypassing the plugin API
-	SQLStore *store.SQLStore
+	SQLStore *sqlstore.SQLStore
 
 	// FileBackend allows direct access to the Mattermost files backend bypassing the plugin API.
 	FileBackend filestore.FileBackend
@@ -59,7 +59,7 @@ func (p *Plugin) OnActivate() error {
 	p.Client = pluginapi.NewClient(p.API, p.Driver)
 
 	// Setup direct store access
-	SQLStore, err := store.New(p.Client.Store, &p.Client.Log)
+	SQLStore, err := sqlstore.New(p.Client.Store, &p.Client.Log)
 	if err != nil {
 		p.Client.Log.Error("cannot create SQLStore", "err", err)
 		return err

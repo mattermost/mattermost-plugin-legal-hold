@@ -14,17 +14,17 @@ const (
 	legalHoldPrefix = "kvstore_legal_hold_"
 )
 
-type KVStore struct {
+type KVStoreImpl struct {
 	client *pluginapi.Client
 }
 
 func NewKVStore(client *pluginapi.Client) KVStore {
-	return KVStore{
+	return KVStoreImpl{
 		client: client,
 	}
 }
 
-func (kvs *KVStore) CreateLegalHold(lh model.LegalHold) (*model.LegalHold, error) {
+func (kvs KVStoreImpl) CreateLegalHold(lh model.LegalHold) (*model.LegalHold, error) {
 	if err := lh.IsValidForCreate(); err != nil {
 		return nil, errors.Wrap(err, "LegalHold is not valid for create")
 	}
@@ -50,7 +50,7 @@ func (kvs *KVStore) CreateLegalHold(lh model.LegalHold) (*model.LegalHold, error
 	return &savedLegalHold, nil
 }
 
-func (kvs *KVStore) GetAllLegalHolds() ([]model.LegalHold, error) {
+func (kvs KVStoreImpl) GetAllLegalHolds() ([]model.LegalHold, error) {
 	keys, err := kvs.client.KV.ListKeys(
 		0, 1000000000,
 		pluginapi.WithPrefix(legalHoldPrefix))
@@ -72,7 +72,18 @@ func (kvs *KVStore) GetAllLegalHolds() ([]model.LegalHold, error) {
 	return legalHolds, nil
 }
 
-func (kvs *KVStore) UpdateLegalHold(lh, oldValue model.LegalHold) (*model.LegalHold, error) {
+func (kvs KVStoreImpl) GetLegalHoldByID(id string) (*model.LegalHold, error) {
+	key := fmt.Sprintf("%s%s", legalHoldPrefix, id)
+
+	var legalHold model.LegalHold
+	if err := kvs.client.KV.Get(key, &legalHold); err != nil {
+		return nil, errors.Wrap(err, "could not get legal hold by id")
+	}
+
+	return &legalHold, nil
+}
+
+func (kvs KVStoreImpl) UpdateLegalHold(lh, oldValue model.LegalHold) (*model.LegalHold, error) {
 	// FIXME: Should validation function be different for update?
 	if err := lh.IsValidForCreate(); err != nil {
 		return nil, errors.Wrap(err, "LegalHold is not valid for create")
