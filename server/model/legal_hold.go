@@ -1,15 +1,41 @@
 package model
 
-import "github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
+import (
+	"fmt"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
+	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
+	"github.com/pkg/errors"
+)
 
 // LegalHold represents one legal hold.
 type LegalHold struct {
-	ID                   string
-	UserIDs              []string
-	StartsAt             int64
-	EndsAt               int64
-	LastExecutionEndedAt int64
-	ExecutionLength      int64
+	ID                   string   `json:"id"`
+	Name                 string   `json:"name"`
+	DisplayName          string   `json:"display_name"`
+	CreateAt             int64    `json:"create_at"`
+	UpdateAt             int64    `json:"update_at"`
+	DeleteAt             int64    `json:"delete_at"`
+	UserIDs              []string `json:"user_ids"`
+	StartsAt             int64    `json:"starts_at"`
+	EndsAt               int64    `json:"ends_at"`
+	LastExecutionEndedAt int64    `json:"last_execution_ended_at"`
+	ExecutionLength      int64    `json:"execution_length"`
+}
+
+func (lh *LegalHold) IsValidForCreate() error {
+	if !mattermostModel.IsValidId(lh.ID) {
+		return errors.New(fmt.Sprintf("LegalHold ID is not valid: %s", lh.ID))
+	}
+
+	if !mattermostModel.IsValidAlphaNumHyphenUnderscore(lh.Name, true) {
+		return errors.New(fmt.Sprintf("LegalHold Name is not valid: %s", lh.Name))
+	}
+
+	if len(lh.Name) > 64 || len(lh.Name) < 2 {
+		return errors.New("LegalHold name must be between 2 and 64 characters in length")
+	}
+
+	return nil
 }
 
 // LegalHoldCursor represents the state of a paginated LegalHold export query.
