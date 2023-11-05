@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/kvstore"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
-	"net/http"
 	"reflect"
 	"sync"
 
@@ -37,6 +37,9 @@ type Plugin struct {
 	// SQLStore allows direct access to the Mattermost store bypassing the plugin API
 	SQLStore *sqlstore.SQLStore
 
+	// KVStore provides tailored access to this plugin's KV Store.
+	KVStore kvstore.KVStore
+
 	// FileBackend allows direct access to the Mattermost files backend bypassing the plugin API.
 	FileBackend filestore.FileBackend
 
@@ -45,13 +48,6 @@ type Plugin struct {
 
 	// legalHoldJob runs the legal hold jobs
 	legalHoldJob *jobs.LegalHoldJob
-}
-
-// ServeHTTP demonstrates a plugin that handles HTTP requests by greeting the world.
-func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
-	_ = c
-	_ = w
-	_ = r
 }
 
 func (p *Plugin) OnActivate() error {
@@ -66,6 +62,8 @@ func (p *Plugin) OnActivate() error {
 	}
 	p.SQLStore = SQLStore
 	// FIXME: do we need to handle MM configuration changes?
+
+	p.KVStore = kvstore.NewKVStore(p.Client)
 
 	// Setup direct filestore access
 	filesBackendSettings := p.Client.Configuration.GetConfig().FileSettings.ToFileBackendSettings(true, false)

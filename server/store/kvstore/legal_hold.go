@@ -59,7 +59,7 @@ func (kvs KVStoreImpl) GetAllLegalHolds() ([]model.LegalHold, error) {
 		return nil, errors.Wrap(err, "could not get all legal holds")
 	}
 
-	var legalHolds []model.LegalHold
+	var legalHolds = make([]model.LegalHold, 0)
 	for _, key := range keys {
 		var legalHold model.LegalHold
 		err = kvs.client.KV.Get(key, &legalHold)

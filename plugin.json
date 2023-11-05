@@ -1,28 +1,34 @@
 {
-    "id": "com.mattermost.plugin-legal-hold",
-    "name": "Legal Hold Plugin",
-    "description": "This plugin adds Legal Hold functionality to Mattermost.",
-    "homepage_url": "https://github.com/mattermost/mattermost-plugin-legal-hold",
-    "support_url": "https://github.com/mattermost/mattermost-plugin-legal-hold/issues",
-    "release_notes_url": "https://github.com/mattermost/mattermost-plugin-legal-hold/releases/tag/v0.1.0",
-    "icon_path": "assets/starter-template-icon.svg",
-    "version": "0.1.0",
-    "min_server_version": "6.2.1",
-    "server": {
-        "executables": {
-            "linux-amd64": "server/dist/plugin-linux-amd64",
-            "linux-arm64": "server/dist/plugin-linux-arm64",
-            "darwin-amd64": "server/dist/plugin-darwin-amd64",
-            "darwin-arm64": "server/dist/plugin-darwin-arm64",
-            "windows-amd64": "server/dist/plugin-windows-amd64.exe"
-        }
-    },
-    "webapp": {
-        "bundle_path": "webapp/dist/main.js"
-    },
-    "settings_schema": {
-        "header": "",
-        "footer": "",
-        "settings": []
+  "id": "com.mattermost.plugin-legal-hold",
+  "name": "Legal Hold Plugin",
+  "description": "This plugin adds Legal Hold functionality to Mattermost.",
+  "homepage_url": "https://github.com/mattermost/mattermost-plugin-legal-hold",
+  "support_url": "https://github.com/mattermost/mattermost-plugin-legal-hold/issues",
+  "release_notes_url": "https://github.com/mattermost/mattermost-plugin-legal-hold/releases/tag/v0.1.0",
+  "icon_path": "assets/starter-template-icon.svg",
+  "version": "0.1.0",
+  "min_server_version": "6.2.1",
+  "server": {
+    "executables": {
+      "linux-amd64": "server/dist/plugin-linux-amd64",
+      "linux-arm64": "server/dist/plugin-linux-arm64",
+      "darwin-amd64": "server/dist/plugin-darwin-amd64",
+      "darwin-arm64": "server/dist/plugin-darwin-arm64",
+      "windows-amd64": "server/dist/plugin-windows-amd64.exe"
     }
+  },
+  "webapp": {
+    "bundle_path": "webapp/dist/main.js"
+  },
+  "settings_schema": {
+    "header": "Legal Hold",
+    "footer": "",
+    "settings": [
+      {
+        "key": "LegalHoldsSettings",
+        "display_name": "Legal Holds:",
+        "type": "custom"
+      }
+    ]
+  }
 }
