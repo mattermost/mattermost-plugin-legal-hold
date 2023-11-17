@@ -1,13 +1,15 @@
 import React, {useEffect, useState} from 'react';
-import Client from "client";
+import Client from "@/client";
+import {LegalHold} from '@/types'
+import CreateLegalHoldForm from "@/components/create_legal_hold_form";
 
-const LegalHoldsSetting = (props) => {
+const LegalHoldsSetting = () => {
     let [legalHoldsFetched, setLegalHoldsFetched] = useState(false);
     let [legalHoldsFetching, setLegalHoldsFetching] = useState(false);
-    let [legalHolds, setLegalHolds] = useState([]);
+    let [legalHolds, setLegalHolds] = useState(Array<LegalHold>());
 
-    useEffect(async () => {
-        if (!legalHoldsFetched && !legalHoldsFetching) {
+    useEffect(() => {
+        const fetchLegalHolds = async () => {
             try {
                 setLegalHoldsFetching(true);
                 const data = await Client.listLegalHolds();
@@ -16,17 +18,22 @@ const LegalHoldsSetting = (props) => {
                 setLegalHoldsFetching(false);
                 setLegalHoldsFetched(true);
             } catch (error) {
-                //setLegalHoldsFetching(false);
+                setLegalHoldsFetching(false);
                 console.warn(error);
                 setLegalHoldsFetched(true);
             }
+        }
+
+        if (!legalHoldsFetched && !legalHoldsFetching) {
+            fetchLegalHolds().catch(console.error);
         }
     });
 
     return (
         <div>
             <div>Hello World</div>
-            {legalHolds.map((lh) => <div>{lh.id}</div>)}
+            {legalHolds.map((lh) => <div>{lh.name}</div>)}
+            <CreateLegalHoldForm/>
         </div>);
 }
 

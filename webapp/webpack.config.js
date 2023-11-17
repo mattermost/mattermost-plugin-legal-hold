@@ -36,7 +36,6 @@ const config = {
     resolve: {
         alias: {
             '@': path.resolve(__dirname, 'src'),
-            'mattermost-redux': path.resolve(__dirname, 'node_modules/@mattermost/webapp/packages/mattermost-redux/src'),
         },
         modules: [
             'src',
@@ -49,6 +48,7 @@ const config = {
         rules: [
             {
                 test: /\.(js|jsx|ts|tsx)$/,
+                //exclude: /node_modules\/(?!(mattermost-webapp|@mattermost)\/).*/,
                 exclude: /node_modules/,
                 use: {
                     loader: 'babel-loader',

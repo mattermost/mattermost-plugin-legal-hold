@@ -5,7 +5,7 @@ import {GlobalState} from '@mattermost/types/lib/store';
 import {manifest} from '@/manifest';
 
 import {PluginRegistry} from '@/types/mattermost-webapp';
-import LegalHoldsSetting from "@/components/legal_holds_setting.jsx";
+import LegalHoldsSetting from "@/components/legal_holds_setting";
 
 export default class Plugin {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function

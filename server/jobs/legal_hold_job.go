@@ -3,7 +3,6 @@ package jobs
 import (
 	"context"
 	"fmt"
-	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 	"sync"
 	"time"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/config"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/legalhold"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 )
 
 type LegalHoldJob struct {

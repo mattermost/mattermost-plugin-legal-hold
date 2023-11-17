@@ -21,10 +21,11 @@ const PostExportBatchLimit = 10000
 // properties of the associated LegalHold as well as a start and end time for the period this
 // execution of the LegalHold relates to.
 type Execution struct {
-	LegalHoldID string
-	StartTime   int64
-	EndTime     int64
-	UserIDs     []string
+	LegalHoldID   string
+	LegalHoldName string
+	StartTime     int64
+	EndTime       int64
+	UserIDs       []string
 
 	store       *sqlstore.SQLStore
 	fileBackend filestore.FileBackend
@@ -38,6 +39,7 @@ type Execution struct {
 func NewExecution(legalHold model.LegalHold, store *sqlstore.SQLStore, fileBackend filestore.FileBackend) Execution {
 	return Execution{
 		LegalHoldID:   legalHold.ID,
+		LegalHoldName: legalHold.Name,
 		StartTime:     utils.Max(legalHold.LastExecutionEndedAt, legalHold.StartsAt),
 		EndTime:       utils.Min(utils.Max(legalHold.LastExecutionEndedAt, legalHold.StartsAt)+legalHold.ExecutionLength, legalHold.EndsAt),
 		UserIDs:       legalHold.UserIDs,
@@ -149,7 +151,7 @@ func (lhe *Execution) ExportData() error {
 // WritePostsBatchToFile writes a batch of posts from a channel to the appropriate file
 // in the file backend.
 func (lhe *Execution) WritePostsBatchToFile(channelID string, posts []model.LegalHoldPost) error {
-	path := fmt.Sprintf("legal_hold/%s/%s/messages/messages-%d-%s.csv", lhe.LegalHoldID, channelID, posts[0].PostCreateAt, posts[0].PostID)
+	path := lhe.messagesBatchPath(channelID, posts[0].PostCreateAt, posts[0].PostID)
 
 	csvContent, err := gocsv.MarshalString(&posts)
 	if err != nil {
@@ -177,9 +179,7 @@ func (lhe *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPo
 
 	// Copy the files from one to another.
 	for _, fileInfo := range fileInfos {
-		path := fmt.Sprintf(
-			"legal_hold/%s/%s/files/files-%d-%s/%s/%s",
-			lhe.LegalHoldID,
+		path := lhe.filePath(
 			channelID,
 			batchCreateAt,
 			batchPostID,
@@ -198,7 +198,7 @@ func (lhe *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPo
 
 // UpdateIndexes updates the index files in the file backend in relation to this legal hold.
 func (lhe *Execution) UpdateIndexes() error {
-	filePath := fmt.Sprintf("legal_hold/%s/channels_index.json", lhe.LegalHoldID)
+	filePath := lhe.channelsIndexPath()
 
 	// Check if the channels index already exists in the file backend.
 	if exists, err := lhe.fileBackend.FileExists(filePath); err != nil {
@@ -230,4 +230,45 @@ func (lhe *Execution) UpdateIndexes() error {
 
 	_, err = lhe.fileBackend.WriteFile(reader, filePath)
 	return err
+}
+
+// basePath returns the base file storage path for this Execution.
+func (lhe *Execution) basePath() string {
+	return fmt.Sprintf("legal_hold/%s_(%s)", lhe.LegalHoldName, lhe.LegalHoldID)
+}
+
+// channelPath returns the base file storage path for a given channel within
+// this Execution.
+func (lhe *Execution) channelPath(channelID string) string {
+	return fmt.Sprintf("%s/%s", lhe.basePath(), channelID)
+}
+
+// messageBatchPath returns the file path for a given message batch
+// within this Execution.
+func (lhe *Execution) messagesBatchPath(channelID string, batchCreateAt int64, batchPostID string) string {
+	return fmt.Sprintf(
+		"%s/messages/messages-%d-%s.csv",
+		lhe.channelPath(channelID),
+		batchCreateAt,
+		batchPostID,
+	)
+}
+
+// channelsIndexPath returns the file path for the Channels Index
+// within this Execution.
+func (lhe *Execution) channelsIndexPath() string {
+	return fmt.Sprintf("%s/channels_index.json", lhe.basePath())
+}
+
+// filePath returns the file path for a given file attachment within
+// this Execution.
+func (lhe *Execution) filePath(channelID string, batchCreateAt int64, batchPostID string, fileID string, fileName string) string {
+	return fmt.Sprintf(
+		"%s/files/files-%d-%s/%s/%s",
+		lhe.channelPath(channelID),
+		batchCreateAt,
+		batchPostID,
+		fileID,
+		fileName,
+	)
 }

@@ -1,3 +1,5 @@
+import React from "react";
+
 export interface PluginRegistry {
     registerPostTypeComponent(typeName: string, component: React.ElementType)
     registerAdminConsoleCustomSetting(key: string, component: React.ElementType, options: {showTitle: boolean})

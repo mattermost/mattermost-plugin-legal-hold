@@ -78,9 +78,13 @@
     "@mattermost/client": "9.1.0",
     "@mattermost/webapp": "github:mattermost/mattermost-webapp",
     "core-js": "3.22.8",
+    "lodash": "4.17.21",
     "mattermost-redux": "5.33.1",
+    "prop-types": "15.8.1",
     "react": "^16.14.0",
+    "react-dom": "^16.14.0",
     "react-redux": "8.0.2",
+    "react-select": "3.0.8",
     "redux": "4.2.0",
     "typescript": "4.6.4"
   },

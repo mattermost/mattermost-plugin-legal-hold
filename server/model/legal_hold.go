@@ -38,6 +38,29 @@ func (lh *LegalHold) IsValidForCreate() error {
 	return nil
 }
 
+type CreateLegalHold struct {
+	Name        string   `json:"name"`
+	DisplayName string   `json:"display_name"`
+	UserIDs     []string `json:"user_ids"`
+	StartsAt    int64    `json:"starts_at"`
+	EndsAt      int64    `json:"ends_at"`
+}
+
+// NewLegalHoldFromCreate creates and populates a new LegalHold struct from
+// the provided CreateLegalHold struct.
+func NewLegalHoldFromCreate(lhc CreateLegalHold) LegalHold {
+	return LegalHold{
+		ID:                   mattermostModel.NewId(),
+		Name:                 lhc.Name,
+		DisplayName:          lhc.DisplayName,
+		UserIDs:              lhc.UserIDs,
+		StartsAt:             lhc.StartsAt,
+		EndsAt:               lhc.EndsAt,
+		LastExecutionEndedAt: 0,
+		ExecutionLength:      864000,
+	}
+}
+
 // LegalHoldCursor represents the state of a paginated LegalHold export query.
 // It is based on the model.ComplianceCursor struct from Mattermost Server.
 type LegalHoldCursor struct {
