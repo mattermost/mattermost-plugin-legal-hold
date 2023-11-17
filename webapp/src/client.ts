@@ -12,7 +12,7 @@ class APIClient {
     };
 
     createLegalHold = (data: CreateLegalHold) => {
-        const url = `${this.url}/legalhold`;
+        const url = `${this.url}/legalhold/create`;
         return this.doPost(url, data);
     }
 

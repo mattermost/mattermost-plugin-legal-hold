@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useEffect} from "react";
 import {useState} from "react";
 import UsersInput from "@/components/users_input";
 import {IntlProvider} from "react-intl";
@@ -33,6 +33,31 @@ const CreateLegalHoldForm = () => {
         console.log("Save Clicked");
         setSaving(true);
     };
+
+    useEffect(() => {
+        if (saving) {
+            Client.createLegalHold(
+                {
+                    users: users,
+                    ends_at: endsAt,
+                    starts_at: startsAt,
+                    display_name: displayName,
+                    name: displayName,
+                }
+            ).then(response => {
+                    console.log("Success")
+                    setDisplayName("");
+                    setStartsAt(0);
+                    setEndsAt(0);
+                    setUsers([]);
+                    setSaving(false);
+                })
+                .catch(error => {
+                    console.error(error);
+                    setSaving(false);
+                });
+        }
+    }, [saving]);
 
     return (
         <IntlProvider locale="en-US">

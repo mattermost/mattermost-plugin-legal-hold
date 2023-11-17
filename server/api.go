@@ -32,7 +32,7 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 	case "/api/v1/legalhold/list":
 		p.listLegalHolds(w, r)
 		return
-	case "api/v1/legalhold/create":
+	case "/api/v1/legalhold/create":
 		p.createLegalHold(w, r)
 		return
 	default:
