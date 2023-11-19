@@ -79,7 +79,7 @@ func (p *Plugin) OnActivate() error {
 	p.jobManager = jobs.NewJobManager(&p.Client.Log)
 
 	// Create job for legal hold execution
-	p.legalHoldJob, err = jobs.NewLegalHoldJob(LegalHoldJobID, p.API, p.Client, p.SQLStore, p.FileBackend)
+	p.legalHoldJob, err = jobs.NewLegalHoldJob(LegalHoldJobID, p.API, p.Client, p.SQLStore, p.KVStore, p.FileBackend)
 	if err != nil {
 		return fmt.Errorf("cannot create legal hold job: %w", err)
 	}

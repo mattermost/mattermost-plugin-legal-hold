@@ -50,19 +50,23 @@ func NewExecution(legalHold model.LegalHold, store *sqlstore.SQLStore, fileBacke
 }
 
 // Execute executes the Execution.
-func (lhe *Execution) Execute() error {
+func (lhe *Execution) Execute() (int64, error) {
 	err := lhe.GetChannels()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	err = lhe.ExportData()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	err = lhe.UpdateIndexes()
-	return err
+	if err != nil {
+		return 0, err
+	}
+
+	return lhe.EndTime, nil
 }
 
 // GetChannels populates the list of channels that the Execution needs to cover within the

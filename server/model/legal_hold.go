@@ -38,6 +38,26 @@ func (lh *LegalHold) IsValidForCreate() error {
 	return nil
 }
 
+// NeedsExecuting returns true if, at the time provided for "now", the Legal Hold is ready to
+// be executed, or false if it is not yet ready to executed.
+func (lh *LegalHold) NeedsExecuting(now int64) bool {
+	// Calculate the execution start time.
+	startTime := utils.Max(lh.LastExecutionEndedAt, lh.StartsAt)
+
+	// Calculate the end time.
+	endTime := utils.Min(startTime+lh.ExecutionLength, lh.EndsAt)
+
+	// The legal hold is only ready to be executed if the end time is in the past relative
+	// to the "now" time.
+	return now > endTime
+}
+
+// IsFinished returns true if the legal hold has executed all the way to the end time or false
+// if it has not.
+func (lh *LegalHold) IsFinished() bool {
+	return lh.LastExecutionEndedAt >= lh.EndsAt
+}
+
 type CreateLegalHold struct {
 	Name        string   `json:"name"`
 	DisplayName string   `json:"display_name"`
@@ -57,7 +77,7 @@ func NewLegalHoldFromCreate(lhc CreateLegalHold) LegalHold {
 		StartsAt:             lhc.StartsAt,
 		EndsAt:               lhc.EndsAt,
 		LastExecutionEndedAt: 0,
-		ExecutionLength:      864000,
+		ExecutionLength:      864000000,
 	}
 }
 
