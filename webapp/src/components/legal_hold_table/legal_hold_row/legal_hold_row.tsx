@@ -1,9 +1,11 @@
 import {LegalHold} from "@/types";
 import React from "react";
+import {UserProfile} from "mattermost-redux/types/users";
 
 
 interface LegalHoldRowProps {
     legalHold: LegalHold;
+    users: UserProfile[]
 }
 
 const LegalHoldRow = (props: LegalHoldRowProps) => {
@@ -17,7 +19,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
             <div>{lh.display_name}</div>
             <div>{startsAt}</div>
             <div>{endsAt}</div>
-            <div>{lh.user_ids}</div>
+            <div>{props.users.map((user) => `@${user.username} `)}</div>
             <div><a href="#">Edit</a></div>
         </React.Fragment>
     );
