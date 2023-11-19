@@ -1,16 +1,21 @@
-import React, {useEffect} from "react";
+import React from "react";
 import {useState} from "react";
 import UsersInput from "@/components/users_input";
 import {IntlProvider} from "react-intl";
-import Client from "@/client";
+import {UserProfile} from 'mattermost-redux/types/users';
 
 import SaveButton from "@/components/mattermost-webapp/save_button"
+import {CreateLegalHold} from "@/types";
 
-const CreateLegalHoldForm = () => {
+interface CreateLegalHoldFormProps {
+    createLegalHold: (data: CreateLegalHold) => Promise<any>;
+}
+
+const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
     const [displayName, setDisplayName] = useState("");
-    const [users, setUsers] = useState(Array<string>());
-    const [startsAt, setStartsAt] = useState(0);
-    const [endsAt, setEndsAt] = useState(0);
+    const [users, setUsers] = useState(Array<UserProfile>());
+    const [startsAt, setStartsAt] = useState("");
+    const [endsAt, setEndsAt] = useState("");
     const [saving, setSaving] = useState(false);
 
     const displayNameChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -18,46 +23,36 @@ const CreateLegalHoldForm = () => {
     };
 
     const startsAtChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
-        console.log(e.target.value);
-        setStartsAt((new Date(e.target.value)).getTime());
-        console.log((new Date(e.target.value)).getTime());
+        setStartsAt(e.target.value);
     };
 
     const endsAtChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
-        console.log(e.target.value);
-        setEndsAt((new Date(e.target.value)).getTime());
-        console.log((new Date(e.target.value)).getTime());
+        setEndsAt(e.target.value);
     };
 
     const saveClicked = () => {
-        console.log("Save Clicked");
+        if (saving) return;
         setSaving(true);
-    };
 
-    useEffect(() => {
-        if (saving) {
-            Client.createLegalHold(
-                {
-                    users: users,
-                    ends_at: endsAt,
-                    starts_at: startsAt,
-                    display_name: displayName,
-                    name: displayName,
-                }
-            ).then(response => {
-                    console.log("Success")
-                    setDisplayName("");
-                    setStartsAt(0);
-                    setEndsAt(0);
-                    setUsers([]);
-                    setSaving(false);
-                })
-                .catch(error => {
-                    console.error(error);
-                    setSaving(false);
-                });
-        }
-    }, [saving]);
+        const data = {
+            user_ids: users.map((user) => user.id),
+            ends_at: (new Date(endsAt)).getTime(),
+            starts_at: (new Date(startsAt)).getTime(),
+            display_name: displayName,
+            name: displayName,
+        };
+
+        props.createLegalHold(data).
+            then(response => {
+                setDisplayName("");
+                setStartsAt("");
+                setEndsAt("");
+                setUsers([]);
+                setSaving(false);
+        }).catch(error => {
+            setSaving(false);
+        });
+    };
 
     return (
         <IntlProvider locale="en-US">
@@ -75,6 +70,7 @@ const CreateLegalHoldForm = () => {
                             type={"text"}
                             className="form-control"
                             onChange={displayNameChanged}
+                            value={displayName}
                         />
                     </div>
                     <div>
@@ -95,6 +91,7 @@ const CreateLegalHoldForm = () => {
                             type={"date"}
                             onChange={startsAtChanged}
                             className="form-control"
+                            value={startsAt}
                         />
                     </div>
                     <div>
@@ -105,6 +102,7 @@ const CreateLegalHoldForm = () => {
                             type={"date"}
                             onChange={endsAtChanged}
                             className="form-control"
+                            value={endsAt}
                         />
                     </div>
                     <div/>
