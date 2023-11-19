@@ -32,9 +32,23 @@ const LegalHoldTable = (props: LegalHoldTableProps) => {
 
     return (
         <div>
-            {legalHolds.map((legalHold, index) => {
-                return <LegalHoldRow legalHold={legalHold} key={index}/>
-            })}
+            <h3>Legal Holds</h3>
+            <div
+                style={{
+                    display: "grid",
+                    gridTemplateColumns: "auto auto auto auto auto auto"
+                }}
+            >
+                <div style={{fontWeight: "bold"}}>Name</div>
+                <div style={{fontWeight: "bold"}}>Slug</div>
+                <div style={{fontWeight: "bold"}}>Start Date</div>
+                <div style={{fontWeight: "bold"}}>End Date</div>
+                <div style={{fontWeight: "bold"}}>Users</div>
+                <div/>
+                {legalHolds.map((legalHold, index) => {
+                    return <LegalHoldRow legalHold={legalHold} key={index}/>
+                })}
+            </div>
         </div>
     );
 }
