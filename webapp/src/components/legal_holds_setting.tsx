@@ -23,6 +23,17 @@ const LegalHoldsSetting = () => {
         }
     };
 
+    const releaseLegalHold = async (id: string) => {
+        try {
+            const response = await Client.releaseLegalHold(id);
+            setLegalHoldsFetched(false);
+            return response;
+        } catch (error) {
+            console.log(error);
+            throw error;
+        }
+    }
+
     useEffect(() => {
         const fetchLegalHolds = async () => {
             try {
@@ -47,6 +58,7 @@ const LegalHoldsSetting = () => {
         <div>
             <LegalHoldTable
                 legalHolds={legalHolds}
+                releaseLegalHold={releaseLegalHold}
             />
             <CreateLegalHoldForm
                 createLegalHold={createLegalHold}

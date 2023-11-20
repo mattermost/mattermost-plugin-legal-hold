@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 	"net/http"
 
 	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
@@ -28,16 +30,14 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 	p.Client.Log.Info(r.URL.Path)
 
-	switch path := r.URL.Path; path {
-	case "/api/v1/legalhold/list":
-		p.listLegalHolds(w, r)
-		return
-	case "/api/v1/legalhold/create":
-		p.createLegalHold(w, r)
-		return
-	default:
-		http.NotFound(w, r)
-	}
+	router := mux.NewRouter()
+
+	router.HandleFunc("/api/v1/legalhold/list", p.listLegalHolds)
+	router.HandleFunc("/api/v1/legalhold/create", p.createLegalHold)
+	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/release", p.releaseLegalHold)
+
+	p.router = router
+	p.router.ServeHTTP(w, r)
 }
 
 // listLegalHolds serves a list of all LegalHold objects
@@ -94,4 +94,62 @@ func (p *Plugin) createLegalHold(w http.ResponseWriter, r *http.Request) {
 		p.API.LogError("failed to write http response", err.Error())
 		return
 	}
+}
+
+// releaseLegalHold releases a LegalHold and removes all data associated with it
+func (p *Plugin) releaseLegalHold(w http.ResponseWriter, r *http.Request) {
+	legalholdID, err := RequireLegalHoldID(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Fetch the LegalHold
+	lh, err := p.KVStore.GetLegalHoldByID(legalholdID)
+	if err != nil {
+		p.API.LogError("Failed to release legal hold - retrieve legal hold from kvstore", err.Error())
+		http.Error(w, "failed to release legal hold", http.StatusInternalServerError)
+		return
+	}
+
+	// Remove the LegalHold files.
+	err = p.FileBackend.RemoveDirectory(lh.BasePath())
+	if err != nil {
+		p.API.LogError("Failed to release legal hold - failed to delete base directory", err.Error())
+		http.Error(w, "failed to release legal hold", http.StatusInternalServerError)
+		return
+	}
+
+	// Delete the LegalHold from the store.
+	err = p.KVStore.DeleteLegalHold(legalholdID)
+	if err != nil {
+		p.API.LogError("Failed to release legal hold - deleting legal hold from kvstore", err.Error())
+		http.Error(w, "failed to release legal hold", http.StatusInternalServerError)
+		return
+	}
+
+	b, jsonErr := json.Marshal(make(map[string]interface{}))
+	if jsonErr != nil {
+		http.Error(w, "Error encoding json", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(b)
+	if err != nil {
+		p.API.LogError("failed to write http response", err.Error())
+		return
+	}
+}
+
+func RequireLegalHoldID(r *http.Request) (string, error) {
+	props := mux.Vars(r)
+
+	legalholdID := props["legalhold_id"]
+
+	if !mattermostModel.IsValidId(legalholdID) {
+		return "", errors.New("a valid legal hold ID must be provided")
+	}
+
+	return legalholdID, nil
 }

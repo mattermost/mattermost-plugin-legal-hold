@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/gorilla/mux"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/kvstore"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 	"reflect"
@@ -48,6 +49,9 @@ type Plugin struct {
 
 	// legalHoldJob runs the legal hold jobs
 	legalHoldJob *jobs.LegalHoldJob
+
+	// router holds the HTTP router for the plugin's rest API
+	router *mux.Router
 }
 
 func (p *Plugin) OnActivate() error {

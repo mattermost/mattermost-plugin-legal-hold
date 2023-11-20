@@ -6,7 +6,8 @@ interface LegalHoldTableProps {
     legalHolds: LegalHold[];
     actions: {
         getMissingProfilesByIds: Function,
-    }
+    },
+    releaseLegalHold: Function,
 }
 
 
@@ -17,6 +18,7 @@ const LegalHoldTable = (props: LegalHoldTableProps) => {
         new Set(
             legalHolds
                 .map((lh) => lh.user_ids)
+                .filter((i) => i !== null)
                 .reduce((prev, cur) => prev.concat(cur), [])
                 .filter((i) => i !== null)
         )
@@ -36,7 +38,7 @@ const LegalHoldTable = (props: LegalHoldTableProps) => {
             <div
                 style={{
                     display: "grid",
-                    gridTemplateColumns: "auto auto auto auto auto auto"
+                    gridTemplateColumns: "auto auto auto auto auto auto auto"
                 }}
             >
                 <div style={{fontWeight: "bold"}}>Name</div>
@@ -45,8 +47,13 @@ const LegalHoldTable = (props: LegalHoldTableProps) => {
                 <div style={{fontWeight: "bold"}}>End Date</div>
                 <div style={{fontWeight: "bold"}}>Users</div>
                 <div/>
+                <div/>
                 {legalHolds.map((legalHold, index) => {
-                    return <LegalHoldRow legalHold={legalHold} key={index}/>
+                    return <LegalHoldRow
+                        legalHold={legalHold}
+                        key={index}
+                        releaseLegalHold={props.releaseLegalHold}
+                    />
                 })}
             </div>
         </div>

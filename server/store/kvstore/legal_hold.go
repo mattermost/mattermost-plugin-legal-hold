@@ -108,3 +108,10 @@ func (kvs KVStoreImpl) UpdateLegalHold(lh, oldValue model.LegalHold) (*model.Leg
 
 	return &savedLegalHold, nil
 }
+
+func (kvs KVStoreImpl) DeleteLegalHold(id string) error {
+	key := fmt.Sprintf("%s%s", legalHoldPrefix, id)
+
+	err := kvs.client.KV.Delete(key)
+	return err
+}

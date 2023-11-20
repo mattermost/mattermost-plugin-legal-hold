@@ -16,6 +16,11 @@ class APIClient {
         return this.doPost(url, data);
     }
 
+    releaseLegalHold = (id: string) => {
+        const url = `${this.url}/legalhold/${id}/release`;
+        return this.doPost(url, {});
+    }
+
     doGet = async (url: string, headers = {}) => {
         const options = {
             method: 'get',

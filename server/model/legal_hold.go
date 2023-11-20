@@ -58,6 +58,11 @@ func (lh *LegalHold) IsFinished() bool {
 	return lh.LastExecutionEndedAt >= lh.EndsAt
 }
 
+// BasePath returns the base file storage path for this legal hold.
+func (lh *LegalHold) BasePath() string {
+	return fmt.Sprintf("legal_hold/%s_(%s)", lh.Name, lh.ID)
+}
+
 type CreateLegalHold struct {
 	Name        string   `json:"name"`
 	DisplayName string   `json:"display_name"`

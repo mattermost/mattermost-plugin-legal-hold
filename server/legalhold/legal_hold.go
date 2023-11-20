@@ -254,6 +254,8 @@ func (ex *Execution) UpdateIndexes() error {
 
 // basePath returns the base file storage path for this Execution.
 func (ex *Execution) basePath() string {
+	// FIXME: Move onto the LegalHold object, but to do that the LegalHold object needs to be stored
+	//        in full in the LegalHold execution, which is a bit more involved.
 	return fmt.Sprintf("legal_hold/%s_(%s)", ex.LegalHoldName, ex.LegalHoldID)
 }
 
