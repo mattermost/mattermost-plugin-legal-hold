@@ -22,11 +22,9 @@ const PostExportBatchLimit = 10000
 // properties of the associated LegalHold as well as a start and end time for the period this
 // execution of the LegalHold relates to.
 type Execution struct {
-	LegalHoldID   string
-	LegalHoldName string
-	StartTime     int64
-	EndTime       int64
-	UserIDs       []string
+	LegalHold          model.LegalHold
+	ExecutionStartTime int64
+	ExecutionEndTime   int64
 
 	papi        plugin.API
 	store       *sqlstore.SQLStore
@@ -40,15 +38,13 @@ type Execution struct {
 // NewExecution creates a new Execution that is ready to use.
 func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQLStore, fileBackend filestore.FileBackend) Execution {
 	return Execution{
-		LegalHoldID:   legalHold.ID,
-		LegalHoldName: legalHold.Name,
-		StartTime:     utils.Max(legalHold.LastExecutionEndedAt, legalHold.StartsAt),
-		EndTime:       utils.Min(utils.Max(legalHold.LastExecutionEndedAt, legalHold.StartsAt)+legalHold.ExecutionLength, legalHold.EndsAt),
-		UserIDs:       legalHold.UserIDs,
-		store:         store,
-		fileBackend:   fileBackend,
-		index:         make(model.LegalHoldIndex),
-		papi:          papi,
+		LegalHold:          legalHold,
+		ExecutionStartTime: utils.Max(legalHold.LastExecutionEndedAt, legalHold.StartsAt),
+		ExecutionEndTime:   utils.Min(utils.Max(legalHold.LastExecutionEndedAt, legalHold.StartsAt)+legalHold.ExecutionLength, legalHold.EndsAt),
+		store:              store,
+		fileBackend:        fileBackend,
+		index:              make(model.LegalHoldIndex),
+		papi:               papi,
 	}
 }
 
@@ -69,19 +65,19 @@ func (ex *Execution) Execute() (int64, error) {
 		return 0, err
 	}
 
-	return ex.EndTime, nil
+	return ex.ExecutionEndTime, nil
 }
 
 // GetChannels populates the list of channels that the Execution needs to cover within the
 // internal state of the Execution struct.
 func (ex *Execution) GetChannels() error {
-	for _, userID := range ex.UserIDs {
+	for _, userID := range ex.LegalHold.UserIDs {
 		user, appErr := ex.papi.GetUser(userID)
 		if appErr != nil {
 			return appErr
 		}
 
-		channelIDs, err := ex.store.GetChannelIDsForUserDuring(userID, ex.StartTime, ex.EndTime)
+		channelIDs, err := ex.store.GetChannelIDsForUserDuring(userID, ex.ExecutionStartTime, ex.ExecutionEndTime)
 		if err != nil {
 			return err
 		}
@@ -97,8 +93,8 @@ func (ex *Execution) GetChannels() error {
 					Channels: []model.LegalHoldChannelMembership{
 						{
 							ChannelID: channelID,
-							StartTime: ex.StartTime,
-							EndTime:   ex.EndTime,
+							StartTime: ex.ExecutionStartTime,
+							EndTime:   ex.ExecutionEndTime,
 						},
 					},
 				}
@@ -108,8 +104,8 @@ func (ex *Execution) GetChannels() error {
 					Email:    user.Email,
 					Channels: append(idx.Channels, model.LegalHoldChannelMembership{
 						ChannelID: channelID,
-						StartTime: ex.StartTime,
-						EndTime:   ex.EndTime,
+						StartTime: ex.ExecutionStartTime,
+						EndTime:   ex.ExecutionEndTime,
 					}),
 				}
 			}
@@ -124,12 +120,12 @@ func (ex *Execution) GetChannels() error {
 // ExportData is the main function to run the batch data export for this Execution.
 func (ex *Execution) ExportData() error {
 	for _, channelID := range ex.channelIDs {
-		cursor := model.NewLegalHoldCursor(ex.StartTime)
+		cursor := model.NewLegalHoldCursor(ex.ExecutionStartTime)
 		for {
 			var posts []model.LegalHoldPost
 			var err error
 
-			posts, cursor, err = ex.store.GetPostsBatch(channelID, ex.EndTime, cursor, PostExportBatchLimit)
+			posts, cursor, err = ex.store.GetPostsBatch(channelID, ex.ExecutionEndTime, cursor, PostExportBatchLimit)
 			if err != nil {
 				return err
 			}
@@ -218,7 +214,7 @@ func (ex *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPos
 
 // UpdateIndexes updates the index files in the file backend in relation to this legal hold.
 func (ex *Execution) UpdateIndexes() error {
-	filePath := ex.channelsIndexPath()
+	filePath := ex.indexPath()
 
 	// Check if the channels index already exists in the file backend.
 	if exists, err := ex.fileBackend.FileExists(filePath); err != nil {
@@ -254,9 +250,7 @@ func (ex *Execution) UpdateIndexes() error {
 
 // basePath returns the base file storage path for this Execution.
 func (ex *Execution) basePath() string {
-	// FIXME: Move onto the LegalHold object, but to do that the LegalHold object needs to be stored
-	//        in full in the LegalHold execution, which is a bit more involved.
-	return fmt.Sprintf("legal_hold/%s_(%s)", ex.LegalHoldName, ex.LegalHoldID)
+	return ex.LegalHold.BasePath()
 }
 
 // channelPath returns the base file storage path for a given channel within
@@ -276,10 +270,9 @@ func (ex *Execution) messagesBatchPath(channelID string, batchCreateAt int64, ba
 	)
 }
 
-// channelsIndexPath returns the file path for the Channels Index
-// within this Execution.
-func (ex *Execution) channelsIndexPath() string {
-	return fmt.Sprintf("%s/channels_index.json", ex.basePath())
+// indexPath returns the file path for the Index file for this LegalHold.
+func (ex *Execution) indexPath() string {
+	return fmt.Sprintf("%s/index.json", ex.basePath())
 }
 
 // filePath returns the file path for a given file attachment within
