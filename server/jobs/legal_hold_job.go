@@ -196,7 +196,7 @@ func (j *LegalHoldJob) run() {
 			}
 
 			j.client.Log.Debug(fmt.Sprintf("Creating Legal Hold Execution for legal hold: %s", lh.ID))
-			lhe := legalhold.NewExecution(lh, j.sqlstore, j.filebackend)
+			lhe := legalhold.NewExecution(lh, j.papi, j.sqlstore, j.filebackend)
 
 			if end, err := lhe.Execute(); err != nil {
 				j.client.Log.Error("An error occurred executing the legal hold.", err)

@@ -77,7 +77,7 @@ func NewLegalHoldFromCreate(lhc CreateLegalHold) LegalHold {
 		StartsAt:             lhc.StartsAt,
 		EndsAt:               lhc.EndsAt,
 		LastExecutionEndedAt: 0,
-		ExecutionLength:      864000000,
+		ExecutionLength:      86400000,
 	}
 }
 
@@ -165,23 +165,29 @@ func LegalHoldPostHeader() []string {
 	}
 }
 
-type LegalHoldChannelIndex map[string][]LegalHoldChannelMembership
-
 type LegalHoldChannelMembership struct {
 	ChannelID string
 	StartTime int64
 	EndTime   int64
 }
 
-// Merge merges the new LegalHoldChannelIndex into this LegalHoldChannelIndex.
-func (lhci *LegalHoldChannelIndex) Merge(new *LegalHoldChannelIndex) {
-	for userID, newChannels := range *new {
-		if oldChannels, ok := (*lhci)[userID]; !ok {
-			(*lhci)[userID] = newChannels
+type LegalHoldIndexUser struct {
+	Username string
+	Email    string
+	Channels []LegalHoldChannelMembership
+}
+
+type LegalHoldIndex map[string]LegalHoldIndexUser
+
+// Merge merges the new LegalHoldIndex into this LegalHoldIndex.
+func (lhi *LegalHoldIndex) Merge(new *LegalHoldIndex) {
+	for userID, newUser := range *new {
+		if oldUser, ok := (*lhi)[userID]; !ok {
+			(*lhi)[userID] = newUser
 		} else {
 			var combinedChannels []LegalHoldChannelMembership
-			for _, newChannel := range newChannels {
-				if oldChannel, ok := getLegalHoldChannelMembership(oldChannels, newChannel.ChannelID); ok {
+			for _, newChannel := range newUser.Channels {
+				if oldChannel, ok := getLegalHoldChannelMembership(oldUser.Channels, newChannel.ChannelID); ok {
 					// Record for channel exists in both indexes.
 					combinedChannels = append(combinedChannels, oldChannel.Combine(newChannel))
 				} else {
@@ -190,14 +196,18 @@ func (lhci *LegalHoldChannelIndex) Merge(new *LegalHoldChannelIndex) {
 				}
 			}
 
-			for _, oldChannel := range oldChannels {
-				if _, ok := getLegalHoldChannelMembership(newChannels, oldChannel.ChannelID); !ok {
+			for _, oldChannel := range oldUser.Channels {
+				if _, ok := getLegalHoldChannelMembership(newUser.Channels, oldChannel.ChannelID); !ok {
 					// Record for channel only exists in old index.
 					combinedChannels = append(combinedChannels, oldChannel)
 				}
 			}
 
-			(*lhci)[userID] = combinedChannels
+			(*lhi)[userID] = LegalHoldIndexUser{
+				Username: newUser.Username,
+				Email:    newUser.Email,
+				Channels: combinedChannels,
+			}
 		}
 	}
 }

@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 	"strings"
 
 	"github.com/gocarina/gocsv"
+	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
 )
 
@@ -27,16 +28,17 @@ type Execution struct {
 	EndTime       int64
 	UserIDs       []string
 
+	papi        plugin.API
 	store       *sqlstore.SQLStore
 	fileBackend filestore.FileBackend
 
 	channelIDs []string
 
-	channelsIndex model.LegalHoldChannelIndex
+	index model.LegalHoldIndex
 }
 
 // NewExecution creates a new Execution that is ready to use.
-func NewExecution(legalHold model.LegalHold, store *sqlstore.SQLStore, fileBackend filestore.FileBackend) Execution {
+func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQLStore, fileBackend filestore.FileBackend) Execution {
 	return Execution{
 		LegalHoldID:   legalHold.ID,
 		LegalHoldName: legalHold.Name,
@@ -45,75 +47,89 @@ func NewExecution(legalHold model.LegalHold, store *sqlstore.SQLStore, fileBacke
 		UserIDs:       legalHold.UserIDs,
 		store:         store,
 		fileBackend:   fileBackend,
-		channelsIndex: make(model.LegalHoldChannelIndex),
+		index:         make(model.LegalHoldIndex),
+		papi:          papi,
 	}
 }
 
 // Execute executes the Execution.
-func (lhe *Execution) Execute() (int64, error) {
-	err := lhe.GetChannels()
+func (ex *Execution) Execute() (int64, error) {
+	err := ex.GetChannels()
 	if err != nil {
 		return 0, err
 	}
 
-	err = lhe.ExportData()
+	err = ex.ExportData()
 	if err != nil {
 		return 0, err
 	}
 
-	err = lhe.UpdateIndexes()
+	err = ex.UpdateIndexes()
 	if err != nil {
 		return 0, err
 	}
 
-	return lhe.EndTime, nil
+	return ex.EndTime, nil
 }
 
 // GetChannels populates the list of channels that the Execution needs to cover within the
 // internal state of the Execution struct.
-func (lhe *Execution) GetChannels() error {
-	for _, userID := range lhe.UserIDs {
-		channelIDs, err := lhe.store.GetChannelIDsForUserDuring(userID, lhe.StartTime, lhe.EndTime)
+func (ex *Execution) GetChannels() error {
+	for _, userID := range ex.UserIDs {
+		user, appErr := ex.papi.GetUser(userID)
+		if appErr != nil {
+			return appErr
+		}
+
+		channelIDs, err := ex.store.GetChannelIDsForUserDuring(userID, ex.StartTime, ex.EndTime)
 		if err != nil {
 			return err
 		}
 
-		lhe.channelIDs = append(lhe.channelIDs, channelIDs...)
+		ex.channelIDs = append(ex.channelIDs, channelIDs...)
 
 		// Add to channels index
 		for _, channelID := range channelIDs {
-			if idx, ok := lhe.channelsIndex[userID]; !ok {
-				lhe.channelsIndex[userID] = []model.LegalHoldChannelMembership{
-					{
-						ChannelID: channelID,
-						StartTime: lhe.StartTime,
-						EndTime:   lhe.EndTime,
+			if idx, ok := ex.index[userID]; !ok {
+				ex.index[userID] = model.LegalHoldIndexUser{
+					Username: user.Username,
+					Email:    user.Email,
+					Channels: []model.LegalHoldChannelMembership{
+						{
+							ChannelID: channelID,
+							StartTime: ex.StartTime,
+							EndTime:   ex.EndTime,
+						},
 					},
 				}
 			} else {
-				lhe.channelsIndex[userID] = append(idx, model.LegalHoldChannelMembership{
-					ChannelID: channelID,
-					StartTime: lhe.StartTime,
-					EndTime:   lhe.EndTime,
-				})
+				ex.index[userID] = model.LegalHoldIndexUser{
+					Username: user.Username,
+					Email:    user.Email,
+					Channels: append(idx.Channels, model.LegalHoldChannelMembership{
+						ChannelID: channelID,
+						StartTime: ex.StartTime,
+						EndTime:   ex.EndTime,
+					}),
+				}
 			}
 		}
 	}
 
-	lhe.channelIDs = utils.DeduplicateStringSlice(lhe.channelIDs)
+	ex.channelIDs = utils.DeduplicateStringSlice(ex.channelIDs)
 
 	return nil
 }
 
 // ExportData is the main function to run the batch data export for this Execution.
-func (lhe *Execution) ExportData() error {
-	for _, channelID := range lhe.channelIDs {
-		cursor := model.NewLegalHoldCursor(lhe.StartTime)
+func (ex *Execution) ExportData() error {
+	for _, channelID := range ex.channelIDs {
+		cursor := model.NewLegalHoldCursor(ex.StartTime)
 		for {
 			var posts []model.LegalHoldPost
 			var err error
 
-			posts, cursor, err = lhe.store.GetPostsBatch(channelID, lhe.EndTime, cursor, PostExportBatchLimit)
+			posts, cursor, err = ex.store.GetPostsBatch(channelID, ex.EndTime, cursor, PostExportBatchLimit)
 			if err != nil {
 				return err
 			}
@@ -122,7 +138,7 @@ func (lhe *Execution) ExportData() error {
 				break
 			}
 
-			err = lhe.WritePostsBatchToFile(channelID, posts)
+			err = ex.WritePostsBatchToFile(channelID, posts)
 			if err != nil {
 				return err
 			}
@@ -138,7 +154,7 @@ func (lhe *Execution) ExportData() error {
 				fileIDs = append(fileIDs, postFileIDs...)
 			}
 
-			err = lhe.ExportFiles(channelID, posts[0].PostCreateAt, posts[0].PostID, fileIDs)
+			err = ex.ExportFiles(channelID, posts[0].PostCreateAt, posts[0].PostID, fileIDs)
 			if err != nil {
 				return err
 			}
@@ -154,8 +170,8 @@ func (lhe *Execution) ExportData() error {
 
 // WritePostsBatchToFile writes a batch of posts from a channel to the appropriate file
 // in the file backend.
-func (lhe *Execution) WritePostsBatchToFile(channelID string, posts []model.LegalHoldPost) error {
-	path := lhe.messagesBatchPath(channelID, posts[0].PostCreateAt, posts[0].PostID)
+func (ex *Execution) WritePostsBatchToFile(channelID string, posts []model.LegalHoldPost) error {
+	path := ex.messagesBatchPath(channelID, posts[0].PostCreateAt, posts[0].PostID)
 
 	csvContent, err := gocsv.MarshalString(&posts)
 	if err != nil {
@@ -164,33 +180,33 @@ func (lhe *Execution) WritePostsBatchToFile(channelID string, posts []model.Lega
 
 	csvReader := strings.NewReader(csvContent)
 
-	_, err = lhe.fileBackend.WriteFile(csvReader, path)
+	_, err = ex.fileBackend.WriteFile(csvReader, path)
 
 	return err
 }
 
 // ExportFiles exports the file attachments with the provided FileIDs to the file backend.
-func (lhe *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPostID string, fileIDs []string) error {
+func (ex *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPostID string, fileIDs []string) error {
 	if len(fileIDs) == 0 {
 		return nil
 	}
 
 	// Batch get the FileInfos for the FileIDs.
-	fileInfos, err := lhe.store.GetFileInfosByIDs(fileIDs)
+	fileInfos, err := ex.store.GetFileInfosByIDs(fileIDs)
 	if err != nil {
 		return err
 	}
 
 	// Copy the files from one to another.
 	for _, fileInfo := range fileInfos {
-		path := lhe.filePath(
+		path := ex.filePath(
 			channelID,
 			batchCreateAt,
 			batchPostID,
 			fileInfo.ID,
 			fileInfo.Name,
 		)
-		err = lhe.fileBackend.CopyFile(fileInfo.Path, path)
+		err = ex.fileBackend.CopyFile(fileInfo.Path, path)
 		if err != nil {
 			return err
 		}
@@ -201,58 +217,58 @@ func (lhe *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPo
 }
 
 // UpdateIndexes updates the index files in the file backend in relation to this legal hold.
-func (lhe *Execution) UpdateIndexes() error {
-	filePath := lhe.channelsIndexPath()
+func (ex *Execution) UpdateIndexes() error {
+	filePath := ex.channelsIndexPath()
 
 	// Check if the channels index already exists in the file backend.
-	if exists, err := lhe.fileBackend.FileExists(filePath); err != nil {
+	if exists, err := ex.fileBackend.FileExists(filePath); err != nil {
 		return err
 	} else if exists {
 		// Index already exists. Need to read it and then merge with the new data.
-		readData, err := lhe.fileBackend.ReadFile(filePath)
+		readData, err := ex.fileBackend.ReadFile(filePath)
 		if err != nil {
 			return err
 		}
 
-		var existingIndex model.LegalHoldChannelIndex
+		var existingIndex model.LegalHoldIndex
 		err = json.Unmarshal(readData, &existingIndex)
 		if err != nil {
 			return err
 		}
 
-		existingIndex.Merge(&lhe.channelsIndex)
-		lhe.channelsIndex = existingIndex
+		existingIndex.Merge(&ex.index)
+		ex.index = existingIndex
 	}
 
 	// Write the index data out to the file backend.
-	data, err := json.MarshalIndent(lhe.channelsIndex, "", "  ")
+	data, err := json.MarshalIndent(ex.index, "", "  ")
 	if err != nil {
 		return err
 	}
 
 	reader := bytes.NewReader(data)
 
-	_, err = lhe.fileBackend.WriteFile(reader, filePath)
+	_, err = ex.fileBackend.WriteFile(reader, filePath)
 	return err
 }
 
 // basePath returns the base file storage path for this Execution.
-func (lhe *Execution) basePath() string {
-	return fmt.Sprintf("legal_hold/%s_(%s)", lhe.LegalHoldName, lhe.LegalHoldID)
+func (ex *Execution) basePath() string {
+	return fmt.Sprintf("legal_hold/%s_(%s)", ex.LegalHoldName, ex.LegalHoldID)
 }
 
 // channelPath returns the base file storage path for a given channel within
 // this Execution.
-func (lhe *Execution) channelPath(channelID string) string {
-	return fmt.Sprintf("%s/%s", lhe.basePath(), channelID)
+func (ex *Execution) channelPath(channelID string) string {
+	return fmt.Sprintf("%s/%s", ex.basePath(), channelID)
 }
 
 // messageBatchPath returns the file path for a given message batch
 // within this Execution.
-func (lhe *Execution) messagesBatchPath(channelID string, batchCreateAt int64, batchPostID string) string {
+func (ex *Execution) messagesBatchPath(channelID string, batchCreateAt int64, batchPostID string) string {
 	return fmt.Sprintf(
 		"%s/messages/messages-%d-%s.csv",
-		lhe.channelPath(channelID),
+		ex.channelPath(channelID),
 		batchCreateAt,
 		batchPostID,
 	)
@@ -260,16 +276,16 @@ func (lhe *Execution) messagesBatchPath(channelID string, batchCreateAt int64, b
 
 // channelsIndexPath returns the file path for the Channels Index
 // within this Execution.
-func (lhe *Execution) channelsIndexPath() string {
-	return fmt.Sprintf("%s/channels_index.json", lhe.basePath())
+func (ex *Execution) channelsIndexPath() string {
+	return fmt.Sprintf("%s/channels_index.json", ex.basePath())
 }
 
 // filePath returns the file path for a given file attachment within
 // this Execution.
-func (lhe *Execution) filePath(channelID string, batchCreateAt int64, batchPostID string, fileID string, fileName string) string {
+func (ex *Execution) filePath(channelID string, batchCreateAt int64, batchPostID string, fileID string, fileName string) string {
 	return fmt.Sprintf(
 		"%s/files/files-%d-%s/%s/%s",
-		lhe.channelPath(channelID),
+		ex.channelPath(channelID),
 		batchCreateAt,
 		batchPostID,
 		fileID,
