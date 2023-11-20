@@ -39,7 +39,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
             ends_at: (new Date(endsAt)).getTime(),
             starts_at: (new Date(startsAt)).getTime(),
             display_name: displayName,
-            name: displayName,
+            name: slugify(displayName),
         };
 
         props.createLegalHold(data).
@@ -119,6 +119,13 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
         </IntlProvider>
     );
 };
+
+const slugify = (data: string) => {
+    return data
+        .replace(/[^0-9a-zA-Z _-]/g, "")
+        .replace(/[ _]/g, "-")
+        .toLowerCase();
+}
 
 export default CreateLegalHoldForm;
 

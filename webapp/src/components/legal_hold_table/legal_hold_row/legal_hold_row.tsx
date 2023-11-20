@@ -28,8 +28,8 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
 
     return (
         <React.Fragment>
-            <div>{lh.name}</div>
             <div>{lh.display_name}</div>
+            <div>{lh.name}</div>
             <div>{startsAt}</div>
             <div>{endsAt}</div>
             <div>{usernames}</div>
