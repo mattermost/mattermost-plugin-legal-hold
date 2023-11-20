@@ -140,36 +140,6 @@ type LegalHoldPost struct {
 	IsBot bool `csv:"IsBot"`
 }
 
-// LegalHoldPostHeader returns the headers for a tabulated representation of LegalHoldPost structs.
-// It is based on the model.CompliancePostHeader function from Mattermost Server.
-func LegalHoldPostHeader() []string {
-	return []string{
-		"TeamName",
-		"TeamDisplayName",
-
-		"ChannelName",
-		"ChannelDisplayName",
-		"ChannelType",
-
-		"UserUsername",
-		"UserEmail",
-		"UserNickname",
-		"UserType",
-
-		"PostId",
-		"PostCreateAt",
-		"PostUpdateAt",
-		"PostDeleteAt",
-		"PostRootId",
-		"PostOriginalId",
-		"PostMessage",
-		"PostType",
-		"PostProps",
-		"PostHashtags",
-		"PostFileIds",
-	}
-}
-
 type LegalHoldChannelMembership struct {
 	ChannelID string
 	StartTime int64
