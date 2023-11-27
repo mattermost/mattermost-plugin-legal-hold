@@ -1,14 +1,16 @@
 import React from "react";
 import {useState} from "react";
 import UsersInput from "@/components/users_input";
-import {IntlProvider} from "react-intl";
 import {UserProfile} from 'mattermost-redux/types/users';
+import {Modal} from 'react-bootstrap';
 
 import SaveButton from "@/components/mattermost-webapp/save_button"
 import {CreateLegalHold} from "@/types";
 
 interface CreateLegalHoldFormProps {
     createLegalHold: (data: CreateLegalHold) => Promise<any>;
+    onExited: () => void;
+    visible: boolean;
 }
 
 const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
@@ -42,81 +44,96 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
             name: slugify(displayName),
         };
 
-        props.createLegalHold(data).
-            then(response => {
-                setDisplayName("");
-                setStartsAt("");
-                setEndsAt("");
-                setUsers([]);
-                setSaving(false);
+        props.createLegalHold(data).then(response => {
+            setDisplayName("");
+            setStartsAt("");
+            setEndsAt("");
+            setUsers([]);
+            setSaving(false);
+            props.onExited();
         }).catch(error => {
             setSaving(false);
         });
     };
 
     return (
-        <IntlProvider locale="en-US">
-            <div>
-                <h3>Create a New Legal Hold</h3>
-                <div style={{
-                    display: "grid",
-                    gridTemplateColumns: "20% auto",
-                }}>
-                    <div>
-                        Display Name:
-                    </div>
-                    <div>
-                        <input
-                            type={"text"}
-                            className="form-control"
-                            onChange={displayNameChanged}
-                            value={displayName}
-                        />
-                    </div>
-                    <div>
-                        Users:
-                    </div>
-                    <div>
-                        <UsersInput
-                            placeholder='@username1 @username2'
-                            users={users}
-                            onChange={setUsers}
-                        />
-                    </div>
-                    <div>
-                        Starting From:
-                    </div>
-                    <div>
-                        <input
-                            type={"date"}
-                            onChange={startsAtChanged}
-                            className="form-control"
-                            value={startsAt}
-                        />
-                    </div>
-                    <div>
-                        Ending At:
-                    </div>
-                    <div>
-                        <input
-                            type={"date"}
-                            onChange={endsAtChanged}
-                            className="form-control"
-                            value={endsAt}
-                        />
-                    </div>
-                    <div/>
-                    <div>
-                        <SaveButton
-                            onClick={saveClicked}
-                            saving={saving}
-                            disabled={false}
-                            savingMessage={"Creating Legal Hold..."}
-                        />
+        <Modal
+            dialogClassName='a11y__modal create-legal-hold-modal'
+            show={props.visible}
+            onHide={props.onExited}
+            onExited={props.onExited}
+            role='dialog'
+            aria-labelledby='createLegalHoldModalLabel'
+        >
+            <Modal.Header closeButton={true}>
+                <Modal.Title
+                    id='createLegalHoldModalLabel'
+                >
+                    Create a new legal hold
+                </Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+                <div>
+                    <div style={{
+                        display: "grid",
+                        gridTemplateColumns: "20% auto",
+                    }}>
+                        <div>
+                            Display Name:
+                        </div>
+                        <div>
+                            <input
+                                type={"text"}
+                                className="form-control"
+                                onChange={displayNameChanged}
+                                value={displayName}
+                            />
+                        </div>
+                        <div>
+                            Users:
+                        </div>
+                        <div>
+                            <UsersInput
+                                placeholder='@username1 @username2'
+                                users={users}
+                                onChange={setUsers}
+                            />
+                        </div>
+                        <div>
+                            Starting From:
+                        </div>
+                        <div>
+                            <input
+                                type={"date"}
+                                onChange={startsAtChanged}
+                                className="form-control"
+                                value={startsAt}
+                            />
+                        </div>
+                        <div>
+                            Ending At:
+                        </div>
+                        <div>
+                            <input
+                                type={"date"}
+                                onChange={endsAtChanged}
+                                className="form-control"
+                                value={endsAt}
+                            />
+                        </div>
+                        <div/>
+                        <div>
+                            <SaveButton
+                                onClick={saveClicked}
+                                saving={saving}
+                                disabled={false}
+                                savingMessage={"Creating Legal Hold..."}
+                            />
+                        </div>
                     </div>
                 </div>
-            </div>
-        </IntlProvider>
+            </Modal.Body>
+        </Modal>
     );
 };
 

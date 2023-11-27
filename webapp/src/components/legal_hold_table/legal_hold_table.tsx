@@ -34,7 +34,6 @@ const LegalHoldTable = (props: LegalHoldTableProps) => {
 
     return (
         <div>
-            <h3>Legal Holds</h3>
             <div
                 style={{
                     display: "grid",
