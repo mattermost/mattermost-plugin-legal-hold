@@ -21,7 +21,7 @@
     "bundle_path": "webapp/dist/main.js"
   },
   "settings_schema": {
-    "header": "Legal Hold",
+    "header": "This feature is intended to be a tool to assist in managing legal holds at your organization. The ultimate responsibility for the completeness and accuracy of data in compliance with legal requirements, including any data retained or omitted in relation to a legal proceeding, rests solely with the user. Mattermost software, materials, and information provided by Mattermost are not intended, and should not be taken, as legal advice. To learn more about how to configure legal hold for your Mattermost server, visit our documentation: https://mattermost.com/pl/legal-hold-documentation",
     "footer": "",
     "settings": [
       {

@@ -37,7 +37,7 @@ export default class UsersInput extends React.Component {
         if (option.username) {
             return (
                 <React.Fragment>
-                    { `@${option.username}`}
+                    {`@${option.username}`}
                 </React.Fragment>
             );
         }
@@ -82,14 +82,23 @@ export default class UsersInput extends React.Component {
                 value={this.props.users}
                 components={{DropdownIndicator: () => null, IndicatorSeparator: () => null}}
                 styles={customStyles}
+                menuPortalTarget={document.body}
+                menuPosition={'fixed'}
             />
         );
     }
 }
 
 const customStyles = {
-    control: (provided) => ({
-        ...provided,
-        minHeight: 40,
+    container: base => ({
+        ...base,
     }),
+    control: base => ({
+        ...base,
+        minHeight: "46px",
+    }),
+    menuPortal: base => ({
+        ...base,
+        zIndex: 9999,
+    })
 };
