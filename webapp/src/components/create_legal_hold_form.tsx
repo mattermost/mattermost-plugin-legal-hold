@@ -6,6 +6,7 @@ import {Modal} from 'react-bootstrap';
 
 import SaveButton from "@/components/mattermost-webapp/save_button"
 import {CreateLegalHold} from "@/types";
+import {GenericModal} from "@/components/mattermost-webapp/generic_modal/generic_modal";
 
 interface CreateLegalHoldFormProps {
     createLegalHold: (data: CreateLegalHold) => Promise<any>;
@@ -19,6 +20,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
     const [startsAt, setStartsAt] = useState("");
     const [endsAt, setEndsAt] = useState("");
     const [saving, setSaving] = useState(false);
+    const [serverError, setServerError] = useState("");
 
     const displayNameChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
         setDisplayName(e.target.value);
@@ -53,87 +55,81 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
             props.onExited();
         }).catch(error => {
             setSaving(false);
+            setServerError(error.toString());
         });
     };
 
+    // TODO: Implement validation.
+    const canCreate = true;
+
     return (
-        <Modal
-            dialogClassName='a11y__modal create-legal-hold-modal'
-            show={props.visible}
-            onHide={props.onExited}
+        <GenericModal
+            id='new-legal-hold-modal'
+            className='new-legal-hold-modal'
+            modalHeaderText="Create a new legal hold"
+            confirmButtonText="Create legal hold"
+            cancelButtonText="Cancel"
+            errorText={serverError}
+            isConfirmDisabled={!canCreate}
+            autoCloseOnConfirmButton={false}
+            compassDesign={true}
+            handleConfirm={saveClicked}
+            handleEnterKeyPress={saveClicked}
+            handleCancel={props.onExited}
             onExited={props.onExited}
-            role='dialog'
-            aria-labelledby='createLegalHoldModalLabel'
+            show={props.visible}
         >
-            <Modal.Header closeButton={true}>
-                <Modal.Title
-                    id='createLegalHoldModalLabel'
-                >
-                    Create a new legal hold
-                </Modal.Title>
-            </Modal.Header>
-            <Modal.Body>
-                <div>
-                    <div style={{
-                        display: "grid",
-                        gridTemplateColumns: "20% auto",
-                    }}>
-                        <div>
-                            Display Name:
-                        </div>
-                        <div>
-                            <input
-                                type={"text"}
-                                className="form-control"
-                                onChange={displayNameChanged}
-                                value={displayName}
-                            />
-                        </div>
-                        <div>
-                            Users:
-                        </div>
-                        <div>
-                            <UsersInput
-                                placeholder='@username1 @username2'
-                                users={users}
-                                onChange={setUsers}
-                            />
-                        </div>
-                        <div>
-                            Starting From:
-                        </div>
-                        <div>
-                            <input
-                                type={"date"}
-                                onChange={startsAtChanged}
-                                className="form-control"
-                                value={startsAt}
-                            />
-                        </div>
-                        <div>
-                            Ending At:
-                        </div>
-                        <div>
-                            <input
-                                type={"date"}
-                                onChange={endsAtChanged}
-                                className="form-control"
-                                value={endsAt}
-                            />
-                        </div>
-                        <div/>
-                        <div>
-                            <SaveButton
-                                onClick={saveClicked}
-                                saving={saving}
-                                disabled={false}
-                                savingMessage={"Creating Legal Hold..."}
-                            />
-                        </div>
+            <div>
+                <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "20% auto",
+                }}>
+                    <div>
+                        Display Name:
+                    </div>
+                    <div>
+                        <input
+                            type={"text"}
+                            className="form-control"
+                            onChange={displayNameChanged}
+                            value={displayName}
+                        />
+                    </div>
+                    <div>
+                        Users:
+                    </div>
+                    <div>
+                        <UsersInput
+                            placeholder='@username1 @username2'
+                            users={users}
+                            onChange={setUsers}
+                        />
+                    </div>
+                    <div>
+                        Starting From:
+                    </div>
+                    <div>
+                        <input
+                            type={"date"}
+                            onChange={startsAtChanged}
+                            className="form-control"
+                            value={startsAt}
+                        />
+                    </div>
+                    <div>
+                        Ending At:
+                    </div>
+                    <div>
+                        <input
+                            type={"date"}
+                            onChange={endsAtChanged}
+                            className="form-control"
+                            value={endsAt}
+                        />
                     </div>
                 </div>
-            </Modal.Body>
-        </Modal>
+            </div>
+        </GenericModal>
     );
 };
 
