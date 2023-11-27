@@ -90,6 +90,6 @@ export default class UsersInput extends React.Component {
 const customStyles = {
     control: (provided) => ({
         ...provided,
-        minHeight: 34,
+        minHeight: 40,
     }),
 };

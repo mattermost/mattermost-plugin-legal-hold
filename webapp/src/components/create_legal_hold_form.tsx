@@ -2,11 +2,12 @@ import React from "react";
 import {useState} from "react";
 import UsersInput from "@/components/users_input";
 import {UserProfile} from 'mattermost-redux/types/users';
-import {Modal} from 'react-bootstrap';
 
-import SaveButton from "@/components/mattermost-webapp/save_button"
 import {CreateLegalHold} from "@/types";
 import {GenericModal} from "@/components/mattermost-webapp/generic_modal/generic_modal";
+import Input from "@/components/mattermost-webapp/input/input";
+
+import './create_legal_hold_form.scss';
 
 interface CreateLegalHoldFormProps {
     createLegalHold: (data: CreateLegalHold) => Promise<any>;
@@ -34,7 +35,16 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
         setEndsAt(e.target.value);
     };
 
-    const saveClicked = () => {
+    const resetForm = () => {
+        setDisplayName("");
+        setStartsAt("");
+        setEndsAt("");
+        setUsers([]);
+        setSaving(false);
+        setServerError("");
+    };
+
+    const onSave = () => {
         if (saving) return;
         setSaving(true);
 
@@ -47,16 +57,17 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
         };
 
         props.createLegalHold(data).then(response => {
-            setDisplayName("");
-            setStartsAt("");
-            setEndsAt("");
-            setUsers([]);
-            setSaving(false);
+            resetForm();
             props.onExited();
         }).catch(error => {
             setSaving(false);
             setServerError(error.toString());
         });
+    };
+
+    const onCancel = () => {
+        resetForm();
+        props.onExited();
     };
 
     // TODO: Implement validation.
@@ -73,31 +84,33 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
             isConfirmDisabled={!canCreate}
             autoCloseOnConfirmButton={false}
             compassDesign={true}
-            handleConfirm={saveClicked}
-            handleEnterKeyPress={saveClicked}
-            handleCancel={props.onExited}
-            onExited={props.onExited}
+            handleConfirm={onSave}
+            handleEnterKeyPress={onSave}
+            handleCancel={onCancel}
+            onExited={onCancel}
             show={props.visible}
         >
             <div>
                 <div style={{
-                    display: "grid",
-                    gridTemplateColumns: "20% auto",
+                    display: "flex",
+                    flexDirection: "column",
+                    rowGap: "20px",
                 }}>
-                    <div>
-                        Display Name:
-                    </div>
-                    <div>
-                        <input
-                            type={"text"}
-                            className="form-control"
-                            onChange={displayNameChanged}
-                            value={displayName}
-                        />
-                    </div>
-                    <div>
-                        Users:
-                    </div>
+                    <Input
+                        type='text'
+                        autoComplete='off'
+                        autoFocus={false}
+                        required={true}
+                        name={"Name"}
+                        label={"Name"}
+                        placeholder={"New Legal Hold..."}
+                        limit={64}
+                        value={displayName}
+                        onChange={displayNameChanged}
+                        onBlur={displayNameChanged}
+                        containerClassName={'create-legal-hold-container'}
+                        inputClassName={'create-legal-hold-input'}
+                    />
                     <div>
                         <UsersInput
                             placeholder='@username1 @username2'
@@ -105,26 +118,41 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
                             onChange={setUsers}
                         />
                     </div>
-                    <div>
-                        Starting From:
-                    </div>
-                    <div>
-                        <input
-                            type={"date"}
-                            onChange={startsAtChanged}
-                            className="form-control"
+                    <div
+                        style={{
+                            display: "flex",
+                            columnGap: "20px",
+                        }}
+                    >
+                        <Input
+                            type='date'
+                            autoComplete='off'
+                            autoFocus={false}
+                            required={true}
+                            name={"Starting from"}
+                            label={"Starting from"}
+                            placeholder={"Starting from"}
+                            limit={64}
                             value={startsAt}
+                            onChange={startsAtChanged}
+                            onBlur={startsAtChanged}
+                            containerClassName={'create-legal-hold-container'}
+                            inputClassName={'create-legal-hold-input'}
                         />
-                    </div>
-                    <div>
-                        Ending At:
-                    </div>
-                    <div>
-                        <input
-                            type={"date"}
-                            onChange={endsAtChanged}
-                            className="form-control"
+                        <Input
+                            type='date'
+                            autoComplete='off'
+                            autoFocus={false}
+                            required={true}
+                            name={"Ending at"}
+                            label={"Ending at"}
+                            placeholder={"Ending at"}
+                            limit={64}
                             value={endsAt}
+                            onChange={endsAtChanged}
+                            onBlur={endsAtChanged}
+                            containerClassName={'create-legal-hold-container'}
+                            inputClassName={'create-legal-hold-input'}
                         />
                     </div>
                 </div>

@@ -6,6 +6,7 @@ import {IntlProvider} from "react-intl";
 import CreateLegalHoldForm from "@/components/create_legal_hold_form";
 import LegalHoldTable from "@/components/legal_hold_table";
 import CreateLegalHoldButton from "@/components/create_legal_hold_button";
+import LegalHoldIcon from '@/components/legal_hold_icon.svg';
 
 
 const LegalHoldsSetting = () => {
@@ -95,9 +96,26 @@ const LegalHoldsSetting = () => {
                 {legalHolds.length == 0 && (
                     <div style={{
                         display: "flex",
-                        margin: "100px",
+                        flexDirection: "column",
+                        marginTop: "60px",
+                        marginBottom: "60px",
                         justifyContent: "center",
+                        alignItems: "center",
                     }}>
+                        <LegalHoldIcon/>
+                        <p style={{
+                            fontSize: "20px",
+                            fontWeight: 700,
+                            marginBottom: 0,
+                        }}>
+                            No legal holds
+                        </p>
+                        <p style={{
+                            paddingTop: "5px",
+                            paddingBottom: "10px",
+                        }}>
+                            You have no legal holds at the moment
+                        </p>
                         <CreateLegalHoldButton
                             onClick={() => setShowCreateModal(true)}
                         />
