@@ -5,6 +5,7 @@ import {IntlProvider} from "react-intl";
 
 import CreateLegalHoldForm from "@/components/create_legal_hold_form";
 import LegalHoldTable from "@/components/legal_hold_table";
+import CreateLegalHoldButton from "@/components/create_legal_hold_button";
 
 
 const LegalHoldsSetting = () => {
@@ -70,37 +71,46 @@ const LegalHoldsSetting = () => {
                     borderRadius: "4px",
                     boxShadow: "0 2px 3px rgba(0, 0, 0, 0.08)",
                 }}>
-                <div
-                    style={{
-                        color: "#3f4350",
-                        fontFamily: "Metropolis",
-                        fontSize: "18px",
-                        fontWeight: "700",
-                        lineHeight: "24px",
-                    }}>
-                    Legal Holds
+                <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                }}>
+                    <div
+                        style={{
+                            color: "#3f4350",
+                            fontFamily: "Metropolis",
+                            fontSize: "18px",
+                            fontWeight: "700",
+                            lineHeight: "24px",
+                            flexGrow: 1,
+                        }}>
+                        Legal Holds
+                    </div>
+                    <CreateLegalHoldButton
+                        onClick={() => setShowCreateModal(true)}
+                    />
                 </div>
                 <hr/>
 
-                <div style={{
-                    display: "flex",
-                    margin: "100px",
-                    justifyContent: "center",
-                }}>
-                    <button
-                        type='submit'
-                        data-testid='create'
-                        id='createLegalHold'
-                        className='btn btn-primary'
-                        onClick={() => setShowCreateModal(true)}
-                    >Create new
-                    </button>
-                </div>
+                {legalHolds.length == 0 && (
+                    <div style={{
+                        display: "flex",
+                        margin: "100px",
+                        justifyContent: "center",
+                    }}>
+                        <CreateLegalHoldButton
+                            onClick={() => setShowCreateModal(true)}
+                        />
+                    </div>
+                )}
 
-                <LegalHoldTable
-                    legalHolds={legalHolds}
-                    releaseLegalHold={releaseLegalHold}
-                />
+                {legalHolds.length > 0 && (
+                    <LegalHoldTable
+                        legalHolds={legalHolds}
+                        releaseLegalHold={releaseLegalHold}
+                    />
+                )}
+
                 <CreateLegalHoldForm
                     createLegalHold={createLegalHold}
                     visible={showCreateModal}
