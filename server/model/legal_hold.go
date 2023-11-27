@@ -2,9 +2,11 @@ package model
 
 import (
 	"fmt"
-	"github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
+
 	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/pkg/errors"
+
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
 )
 
 // LegalHold represents one legal hold.
@@ -22,6 +24,11 @@ type LegalHold struct {
 	ExecutionLength      int64    `json:"execution_length"`
 }
 
+// IsValidForCreate checks whether the LegalHold contains data that is valid for
+// creation. If it is not valid, it returns an error describing the validation
+// failure. It does not guarantee that creation in the store will be successful,
+// as other issues such as non-unique ID value can still cause the LegalHold to
+// fail to save.
 func (lh *LegalHold) IsValidForCreate() error {
 	if !mattermostModel.IsValidId(lh.ID) {
 		return errors.New(fmt.Sprintf("LegalHold ID is not valid: %s", lh.ID))
@@ -35,11 +42,13 @@ func (lh *LegalHold) IsValidForCreate() error {
 		return errors.New("LegalHold name must be between 2 and 64 characters in length")
 	}
 
+	// FIXME: More validation required here.
+
 	return nil
 }
 
-// NeedsExecuting returns true if, at the time provided for "now", the Legal Hold is ready to
-// be executed, or false if it is not yet ready to executed.
+// NeedsExecuting returns true if, at the time provided in "now", the Legal Hold is ready to
+// be executed, or false if it is not yet ready to be executed.
 func (lh *LegalHold) NeedsExecuting(now int64) bool {
 	// Calculate the execution start time.
 	startTime := utils.Max(lh.LastExecutionEndedAt, lh.StartsAt)
@@ -52,7 +61,7 @@ func (lh *LegalHold) NeedsExecuting(now int64) bool {
 	return now > endTime
 }
 
-// IsFinished returns true if the legal hold has executed all the way to the end time or false
+// IsFinished returns true if the legal hold has executed all the way to its end time or false
 // if it has not.
 func (lh *LegalHold) IsFinished() bool {
 	return lh.LastExecutionEndedAt >= lh.EndsAt
@@ -63,6 +72,7 @@ func (lh *LegalHold) BasePath() string {
 	return fmt.Sprintf("legal_hold/%s_(%s)", lh.Name, lh.ID)
 }
 
+// CreateLegalHold holds the data that is specified in the API call to create a LegalHold.
 type CreateLegalHold struct {
 	Name        string   `json:"name"`
 	DisplayName string   `json:"display_name"`
@@ -71,8 +81,8 @@ type CreateLegalHold struct {
 	EndsAt      int64    `json:"ends_at"`
 }
 
-// NewLegalHoldFromCreate creates and populates a new LegalHold struct from
-// the provided CreateLegalHold struct.
+// NewLegalHoldFromCreate creates and populates a new LegalHold instance from
+// the provided CreateLegalHold instance.
 func NewLegalHoldFromCreate(lhc CreateLegalHold) LegalHold {
 	return LegalHold{
 		ID:                   mattermostModel.NewId(),
@@ -83,126 +93,5 @@ func NewLegalHoldFromCreate(lhc CreateLegalHold) LegalHold {
 		EndsAt:               lhc.EndsAt,
 		LastExecutionEndedAt: 0,
 		ExecutionLength:      86400000,
-	}
-}
-
-// LegalHoldCursor represents the state of a paginated LegalHold export query.
-// It is based on the model.ComplianceCursor struct from Mattermost Server.
-type LegalHoldCursor struct {
-	LastPostCreateAt int64
-	LastPostID       string
-	BatchNumber      uint
-	Completed        bool
-}
-
-// NewLegalHoldCursor creates a new LegalHoldCursor object with the provided startTime
-// that is initialized and ready to use.
-func NewLegalHoldCursor(startTime int64) LegalHoldCursor {
-	return LegalHoldCursor{
-		LastPostCreateAt: startTime,
-		LastPostID:       "00000000000000000000000000",
-		BatchNumber:      0,
-		Completed:        false,
-	}
-}
-
-// LegalHoldPost represents one post and its associated data as required for a legal hold record.
-// It is based on the model.CompliancePost struct from Mattermost Server.
-type LegalHoldPost struct {
-
-	// From Team
-	TeamName        string `csv:"TeamName"`
-	TeamDisplayName string `csv:"TeamDisplayName"`
-
-	// From Channel
-	ChannelName        string `csv:"ChannelName"`
-	ChannelDisplayName string `csv:"ChannelDisplayName"`
-	ChannelType        string `csv:"ChannelType"`
-
-	// From User
-	UserUsername string `csv:"UserUsername"`
-	UserEmail    string `csv:"UserEmail"`
-	UserNickname string `csv:"UserNickname"`
-
-	// From Post
-	PostID         string `csv:"PostId"`
-	PostCreateAt   int64  `csv:"PostCreateAt"`
-	PostUpdateAt   int64  `csv:"PostUpdateAt"`
-	PostDeleteAt   int64  `csv:"PostDeleteAt"`
-	PostRootID     string `csv:"PostRootId"`
-	PostOriginalID string `csv:"PostOriginalId"`
-	PostMessage    string `csv:"PostMessage"`
-	PostType       string `csv:"PostType"`
-	PostProps      string `csv:"PostProps"`
-	PostHashtags   string `csv:"PostHashtags"`
-	PostFileIDs    string `csv:"PostFileIds"`
-
-	IsBot bool `csv:"IsBot"`
-}
-
-type LegalHoldChannelMembership struct {
-	ChannelID string
-	StartTime int64
-	EndTime   int64
-}
-
-type LegalHoldIndexUser struct {
-	Username string
-	Email    string
-	Channels []LegalHoldChannelMembership
-}
-
-type LegalHoldIndex map[string]LegalHoldIndexUser
-
-// Merge merges the new LegalHoldIndex into this LegalHoldIndex.
-func (lhi *LegalHoldIndex) Merge(new *LegalHoldIndex) {
-	for userID, newUser := range *new {
-		if oldUser, ok := (*lhi)[userID]; !ok {
-			(*lhi)[userID] = newUser
-		} else {
-			var combinedChannels []LegalHoldChannelMembership
-			for _, newChannel := range newUser.Channels {
-				if oldChannel, ok := getLegalHoldChannelMembership(oldUser.Channels, newChannel.ChannelID); ok {
-					// Record for channel exists in both indexes.
-					combinedChannels = append(combinedChannels, oldChannel.Combine(newChannel))
-				} else {
-					// Record for channel only exists in new index.
-					combinedChannels = append(combinedChannels, newChannel)
-				}
-			}
-
-			for _, oldChannel := range oldUser.Channels {
-				if _, ok := getLegalHoldChannelMembership(newUser.Channels, oldChannel.ChannelID); !ok {
-					// Record for channel only exists in old index.
-					combinedChannels = append(combinedChannels, oldChannel)
-				}
-			}
-
-			(*lhi)[userID] = LegalHoldIndexUser{
-				Username: newUser.Username,
-				Email:    newUser.Email,
-				Channels: combinedChannels,
-			}
-		}
-	}
-}
-
-func getLegalHoldChannelMembership(channelMemberships []LegalHoldChannelMembership, channelID string) (LegalHoldChannelMembership, bool) {
-	for _, cm := range channelMemberships {
-		if cm.ChannelID == channelID {
-			return cm, true
-		}
-	}
-
-	return LegalHoldChannelMembership{}, false
-}
-
-// Combine combines the data from two LegalHoldChannelMembership structs and returns a new one
-// representing the combined result.
-func (lhcm LegalHoldChannelMembership) Combine(new LegalHoldChannelMembership) LegalHoldChannelMembership {
-	return LegalHoldChannelMembership{
-		ChannelID: lhcm.ChannelID,
-		StartTime: utils.Min(lhcm.StartTime, new.StartTime),
-		EndTime:   utils.Max(lhcm.EndTime, new.EndTime),
 	}
 }
