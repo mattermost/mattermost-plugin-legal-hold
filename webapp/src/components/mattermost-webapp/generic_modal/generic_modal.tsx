@@ -69,11 +69,9 @@ export class GenericModal extends React.PureComponent<Props, State> {
         };
     }
 
-
-
     onHide = () => {
         this.props.onExited();
-    }
+    };
 
     handleCancel = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
         event.preventDefault();
@@ -83,7 +81,7 @@ export class GenericModal extends React.PureComponent<Props, State> {
         if (this.props.handleCancel) {
             this.props.handleCancel();
         }
-    }
+    };
 
     handleConfirm = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
         event.preventDefault();
@@ -93,7 +91,7 @@ export class GenericModal extends React.PureComponent<Props, State> {
         if (this.props.handleConfirm) {
             this.props.handleConfirm();
         }
-    }
+    };
 
     private onEnterKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
         if (event.key === 'Enter') {
@@ -108,7 +106,7 @@ export class GenericModal extends React.PureComponent<Props, State> {
             }
         }
         this.props.handleKeydown?.(event);
-    }
+    };
 
     render() {
         let confirmButton;

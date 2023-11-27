@@ -23,7 +23,7 @@ export default class UsersInput extends React.Component {
         if (this.props.onChange) {
             this.props.onChange(value);
         }
-    }
+    };
 
     getOptionValue = (user) => {
         if (user.id) {
@@ -43,7 +43,7 @@ export default class UsersInput extends React.Component {
         }
 
         return option;
-    }
+    };
 
     debouncedSearchProfiles = debounce((term, callback) => {
         this.props.actions.searchProfiles(term).then(({data}) => {
@@ -90,15 +90,15 @@ export default class UsersInput extends React.Component {
 }
 
 const customStyles = {
-    container: base => ({
+    container: (base) => ({
         ...base,
     }),
-    control: base => ({
+    control: (base) => ({
         ...base,
-        minHeight: "46px",
+        minHeight: '46px',
     }),
-    menuPortal: base => ({
+    menuPortal: (base) => ({
         ...base,
         zIndex: 9999,
-    })
+    }),
 };

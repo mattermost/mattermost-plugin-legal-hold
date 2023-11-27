@@ -1,6 +1,8 @@
 import {Client4, ClientError} from '@mattermost/client';
+
+import {CreateLegalHold} from '@/types';
+
 import {manifest} from './manifest';
-import {CreateLegalHold} from "@/types";
 
 class APIClient {
     private readonly url = `/plugins/${manifest.id}/api/v1`;
@@ -14,12 +16,12 @@ class APIClient {
     createLegalHold = (data: CreateLegalHold) => {
         const url = `${this.url}/legalhold/create`;
         return this.doPost(url, data);
-    }
+    };
 
     releaseLegalHold = (id: string) => {
         const url = `${this.url}/legalhold/${id}/release`;
         return this.doPost(url, {});
-    }
+    };
 
     doGet = async (url: string, headers = {}) => {
         const options = {
@@ -63,7 +65,6 @@ class APIClient {
             url,
         });
     };
-
 }
 
 const Client = new APIClient();

@@ -1,11 +1,11 @@
-import React from "react";
-import {useState} from "react";
-import UsersInput from "@/components/users_input";
+import React, {useState} from 'react';
+
 import {UserProfile} from 'mattermost-redux/types/users';
 
-import {CreateLegalHold} from "@/types";
-import {GenericModal} from "@/components/mattermost-webapp/generic_modal/generic_modal";
-import Input from "@/components/mattermost-webapp/input/input";
+import UsersInput from '@/components/users_input';
+import {CreateLegalHold} from '@/types';
+import {GenericModal} from '@/components/mattermost-webapp/generic_modal/generic_modal';
+import Input from '@/components/mattermost-webapp/input/input';
 
 import './create_legal_hold_form.scss';
 
@@ -16,12 +16,12 @@ interface CreateLegalHoldFormProps {
 }
 
 const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
-    const [displayName, setDisplayName] = useState("");
+    const [displayName, setDisplayName] = useState('');
     const [users, setUsers] = useState(Array<UserProfile>());
-    const [startsAt, setStartsAt] = useState("");
-    const [endsAt, setEndsAt] = useState("");
+    const [startsAt, setStartsAt] = useState('');
+    const [endsAt, setEndsAt] = useState('');
     const [saving, setSaving] = useState(false);
-    const [serverError, setServerError] = useState("");
+    const [serverError, setServerError] = useState('');
 
     const displayNameChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
         setDisplayName(e.target.value);
@@ -36,16 +36,18 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
     };
 
     const resetForm = () => {
-        setDisplayName("");
-        setStartsAt("");
-        setEndsAt("");
+        setDisplayName('');
+        setStartsAt('');
+        setEndsAt('');
         setUsers([]);
         setSaving(false);
-        setServerError("");
+        setServerError('');
     };
 
     const onSave = () => {
-        if (saving) return;
+        if (saving) {
+            return;
+        }
         setSaving(true);
 
         const data = {
@@ -56,10 +58,10 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
             name: slugify(displayName),
         };
 
-        props.createLegalHold(data).then(response => {
+        props.createLegalHold(data).then((response) => {
             resetForm();
             props.onExited();
-        }).catch(error => {
+        }).catch((error) => {
             setSaving(false);
             setServerError(error.toString());
         });
@@ -77,9 +79,9 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
         <GenericModal
             id='new-legal-hold-modal'
             className='new-legal-hold-modal'
-            modalHeaderText="Create a new legal hold"
-            confirmButtonText="Create legal hold"
-            cancelButtonText="Cancel"
+            modalHeaderText='Create a new legal hold'
+            confirmButtonText='Create legal hold'
+            cancelButtonText='Cancel'
             errorText={serverError}
             isConfirmDisabled={!canCreate}
             autoCloseOnConfirmButton={false}
@@ -91,19 +93,21 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
             show={props.visible}
         >
             <div>
-                <div style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    rowGap: "20px",
-                }}>
+                <div
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        rowGap: '20px',
+                    }}
+                >
                     <Input
                         type='text'
                         autoComplete='off'
                         autoFocus={false}
                         required={true}
-                        name={"Name"}
-                        label={"Name"}
-                        placeholder={"New Legal Hold..."}
+                        name={'Name'}
+                        label={'Name'}
+                        placeholder={'New Legal Hold...'}
                         limit={64}
                         value={displayName}
                         onChange={displayNameChanged}
@@ -120,8 +124,8 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
                     </div>
                     <div
                         style={{
-                            display: "flex",
-                            columnGap: "20px",
+                            display: 'flex',
+                            columnGap: '20px',
                         }}
                     >
                         <Input
@@ -129,9 +133,9 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
                             autoComplete='off'
                             autoFocus={false}
                             required={true}
-                            name={"Starting from"}
-                            label={"Starting from"}
-                            placeholder={"Starting from"}
+                            name={'Starting from'}
+                            label={'Starting from'}
+                            placeholder={'Starting from'}
                             limit={64}
                             value={startsAt}
                             onChange={startsAtChanged}
@@ -144,9 +148,9 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
                             autoComplete='off'
                             autoFocus={false}
                             required={true}
-                            name={"Ending at"}
-                            label={"Ending at"}
-                            placeholder={"Ending at"}
+                            name={'Ending at'}
+                            label={'Ending at'}
+                            placeholder={'Ending at'}
                             limit={64}
                             value={endsAt}
                             onChange={endsAtChanged}
@@ -162,11 +166,11 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
 };
 
 const slugify = (data: string) => {
-    return data
-        .replace(/[^0-9a-zA-Z _-]/g, "")
-        .replace(/[ _]/g, "-")
-        .toLowerCase();
-}
+    return data.
+        replace(/[^0-9a-zA-Z _-]/g, '').
+        replace(/[ _]/g, '-').
+        toLowerCase();
+};
 
 export default CreateLegalHoldForm;
 

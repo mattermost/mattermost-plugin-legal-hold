@@ -48,6 +48,7 @@ const config = {
         rules: [
             {
                 test: /\.(js|jsx|ts|tsx)$/,
+
                 //exclude: /node_modules\/(?!(mattermost-webapp|@mattermost)\/).*/,
                 exclude: /node_modules/,
                 use: {

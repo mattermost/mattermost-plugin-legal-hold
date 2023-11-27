@@ -22,7 +22,7 @@ const OverlayTrigger = React.forwardRef((props: Props, ref?: React.Ref<OriginalO
     // The overlay is rendered outside of the regular React context, and our version react-bootstrap can't forward
     // that context itself, so we have to manually forward the react-intl context to this component's child.
     const OverlayWrapper = ({intl, ...overlayProps}: {intl: IntlShape}) => (
-        <IntlProvider locale="en-US">
+        <IntlProvider locale='en-US'>
             {React.cloneElement(overlay, overlayProps)}
         </IntlProvider>
     );

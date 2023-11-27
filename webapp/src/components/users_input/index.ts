@@ -3,7 +3,7 @@ import {AnyAction, bindActionCreators, Dispatch} from 'redux';
 
 import {
     getProfiles,
-    searchProfiles as reduxSearchProfiles
+    searchProfiles as reduxSearchProfiles,
 } from 'mattermost-redux/actions/users';
 
 import UsersInput from './users_input.jsx';

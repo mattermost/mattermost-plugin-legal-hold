@@ -1,5 +1,4 @@
-import React from "react";
-
+import React from 'react';
 
 interface CreateLegalHoldButtonProps {
     onClick: () => void;
@@ -13,9 +12,10 @@ const CreateLegalHoldButton = (props: CreateLegalHoldButtonProps) => {
             id='createLegalHold'
             className='btn btn-primary'
             onClick={props.onClick}
-        >Create new
+        >
+            {'Create new'}
         </button>
     );
-}
+};
 
 export default CreateLegalHoldButton;

@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 
 export interface PluginRegistry {
     registerPostTypeComponent(typeName: string, component: React.ElementType)
