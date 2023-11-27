@@ -29,12 +29,10 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
     return (
         <React.Fragment>
             <div>{lh.display_name}</div>
-            <div>{lh.name}</div>
             <div>{startsAt}</div>
             <div>{endsAt}</div>
-            <div>{usernames}</div>
-            <div><a href="#">Edit</a></div>
-            <div><a href="#" onClick={release}>Release</a></div>
+            <div>{props.users.length} users</div>
+            <div><a href="#">Edit</a> <a href="#">Download</a> <a href="#" onClick={release}>Release</a></div>
         </React.Fragment>
     );
 }
