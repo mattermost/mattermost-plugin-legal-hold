@@ -14,7 +14,7 @@ interface LegalHoldRowProps {
 const LegalHoldRow = (props: LegalHoldRowProps) => {
     const lh = props.legalHold;
     const startsAt = (new Date(lh.starts_at)).toLocaleDateString();
-    const endsAt = (new Date(lh.ends_at)).toLocaleDateString();
+    const endsAt = lh.ends_at != 0 ? (new Date(lh.ends_at)).toLocaleDateString() : "Never";
 
     const release = () => {
         props.releaseLegalHold(lh.id);

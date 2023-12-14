@@ -84,7 +84,6 @@ func (kvs KVStoreImpl) GetLegalHoldByID(id string) (*model.LegalHold, error) {
 }
 
 func (kvs KVStoreImpl) UpdateLegalHold(lh, oldValue model.LegalHold) (*model.LegalHold, error) {
-	// FIXME: Should validation function be different for update?
 	if err := lh.IsValidForCreate(); err != nil {
 		return nil, errors.Wrap(err, "LegalHold is not valid for create")
 	}

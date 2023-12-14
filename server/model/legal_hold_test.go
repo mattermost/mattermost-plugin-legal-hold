@@ -418,40 +418,82 @@ func TestModel_LegalHold_BasePath(t *testing.T) {
 }
 
 func TestModel_UpdateLegalHold_IsValid(t *testing.T) {
-	// Define test cases
 	testCases := []struct {
-		name    string
-		ulh     UpdateLegalHold
-		wantErr bool
+		name     string
+		ulh      UpdateLegalHold
+		expected string
 	}{
 		{
-			name:    "Valid",
-			ulh:     UpdateLegalHold{ID: model.NewId(), DisplayName: "name", UserIDs: []string{model.NewId()}, EndsAt: 1234567890},
-			wantErr: false,
+			name: "Valid",
+			ulh: UpdateLegalHold{
+				ID:          model.NewId(),
+				DisplayName: "TestName",
+				UserIDs:     []string{model.NewId()},
+				EndsAt:      0,
+			},
+			expected: "",
 		},
 		{
-			name:    "Invalid ID",
-			ulh:     UpdateLegalHold{ID: "", DisplayName: "name", UserIDs: []string{model.NewId()}, EndsAt: 1234567890},
-			wantErr: true,
+			name: "InvalidId",
+			ulh: UpdateLegalHold{
+				ID:          "abc",
+				DisplayName: "TestName",
+				UserIDs:     []string{model.NewId()},
+				EndsAt:      0,
+			},
+			expected: "LegalHold ID is not valid: abc",
 		},
 		{
-			name:    "Invalid display name length",
-			ulh:     UpdateLegalHold{ID: model.NewId(), DisplayName: "", UserIDs: []string{model.NewId()}, EndsAt: 1234567890},
-			wantErr: true,
+			name: "InvalidDisplayName",
+			ulh: UpdateLegalHold{
+				ID:          model.NewId(),
+				DisplayName: "T",
+				UserIDs:     []string{model.NewId()},
+				EndsAt:      0,
+			},
+			expected: "LegalHold display name must be between 2 and 64 characters in length",
 		},
 		{
-			name:    "Invalid display name length over limit",
-			ulh:     UpdateLegalHold{ID: model.NewId(), DisplayName: "ThisDisplayNameIsLongerThanTheMaximumLengthOfSixtyFourCharactersDuh", UserIDs: []string{model.NewId()}, EndsAt: 1234567890},
-			wantErr: true,
+			name: "EmptyUserIDs",
+			ulh: UpdateLegalHold{
+				ID:          model.NewId(),
+				DisplayName: "TestName",
+				UserIDs:     []string{},
+				EndsAt:      0,
+			},
+			expected: "LegalHold must include at least 1 user",
+		},
+		{
+			name: "InvalidUserIDs",
+			ulh: UpdateLegalHold{
+				ID:          model.NewId(),
+				DisplayName: "TestName",
+				UserIDs:     []string{"abc"},
+				EndsAt:      0,
+			},
+			expected: "LegalHold users must have valid IDs",
+		},
+		{
+			name: "NegativeEndsAt",
+			ulh: UpdateLegalHold{
+				ID:          model.NewId(),
+				DisplayName: "TestName",
+				UserIDs:     []string{model.NewId()},
+				EndsAt:      -1,
+			},
+			expected: "LegalHold must end at a valid time or zero",
 		},
 	}
 
-	// Run test cases
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			err := tc.ulh.IsValid()
-			if (err != nil) != tc.wantErr {
-				t.Errorf("UpdateLegalHold.IsValid() error = %v, wantErr %v", err, tc.wantErr)
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			err := testCase.ulh.IsValid()
+			if err != nil {
+				if err.Error() != testCase.expected {
+					t.Errorf("expected: %s, got: %s", testCase.expected, err.Error())
+				}
+			} else if testCase.expected != "" {
+				t.Errorf("expected: %s, got: nil", testCase.expected)
 			}
 		})
 	}

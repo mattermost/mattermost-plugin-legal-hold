@@ -72,8 +72,24 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
         props.onExited();
     };
 
-    // TODO: Implement validation.
-    const canCreate = true;
+    const canCreate = () => {
+        if (startsAt === '') {
+            return false;
+        }
+
+        if (endsAt !== '' && startsAt >= endsAt) {
+            return false;
+        }
+        if (displayName.length < 2 || displayName.length > 64) {
+            return false;
+        }
+
+        if (users.length < 1) {
+            return false;
+        }
+
+        return true;
+    };
 
     return (
         <GenericModal
@@ -83,7 +99,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
             confirmButtonText='Create legal hold'
             cancelButtonText='Cancel'
             errorText={serverError}
-            isConfirmDisabled={!canCreate}
+            isConfirmDisabled={!canCreate()}
             autoCloseOnConfirmButton={false}
             compassDesign={true}
             handleConfirm={onSave}
@@ -147,7 +163,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
                             type='date'
                             autoComplete='off'
                             autoFocus={false}
-                            required={true}
+                            required={false}
                             name={'Ending at'}
                             label={'Ending at'}
                             placeholder={'Ending at'}

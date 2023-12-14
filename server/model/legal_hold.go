@@ -168,7 +168,19 @@ func (ulh UpdateLegalHold) IsValid() error {
 		return errors.New("LegalHold display name must be between 2 and 64 characters in length")
 	}
 
-	// FIXME: More validation required here.
+	if ulh.UserIDs == nil || len(ulh.UserIDs) < 1 {
+		return errors.New("LegalHold must include at least 1 user")
+	}
+
+	for _, userID := range ulh.UserIDs {
+		if !mattermostModel.IsValidId(userID) {
+			return errors.New("LegalHold users must have valid IDs")
+		}
+	}
+
+	if ulh.EndsAt < 0 {
+		return errors.New("LegalHold must end at a valid time or zero")
+	}
 
 	return nil
 }

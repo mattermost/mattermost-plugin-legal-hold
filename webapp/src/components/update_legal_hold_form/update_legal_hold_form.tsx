@@ -97,8 +97,20 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
         props.onExited();
     };
 
-    // TODO: Implement validation.
-    const canUpdate = true;
+    const canUpdate = () => {
+        if (endsAt !== '' && startsAt >= endsAt) {
+            return false;
+        }
+        if (displayName.length < 2 || displayName.length > 64) {
+            return false;
+        }
+
+        if (users.length < 1) {
+            return false;
+        }
+
+        return true;
+    };
 
     if (!props.legalHold) {
         return <div></div>;
@@ -112,7 +124,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
             confirmButtonText='Update legal hold'
             cancelButtonText='Cancel'
             errorText={serverError}
-            isConfirmDisabled={!canUpdate}
+            isConfirmDisabled={!canUpdate()}
             autoCloseOnConfirmButton={false}
             compassDesign={true}
             handleConfirm={onSave}
