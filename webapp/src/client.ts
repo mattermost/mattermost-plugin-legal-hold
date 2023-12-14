@@ -8,6 +8,10 @@ class APIClient {
     private readonly url = `/plugins/${manifest.id}/api/v1`;
     private readonly client4 = new Client4();
 
+    downloadUrl = (id: string) => {
+        return `${this.url}/legalhold/${id}/download`;
+    }
+
     getLegalHolds = () => {
         const url = `${this.url}/legalhold/list`;
         return this.doGet(url);

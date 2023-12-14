@@ -1,10 +1,15 @@
 package main
 
 import (
+	"archive/zip"
+	"bufio"
 	"encoding/json"
+	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
+	"io"
 	"net/http"
+	"time"
 
 	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
@@ -36,6 +41,7 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 	router.HandleFunc("/api/v1/legalhold/create", p.createLegalHold)
 	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/release", p.releaseLegalHold)
 	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/update", p.updateLegalHold)
+	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/download", p.downloadLegalHold)
 
 	p.router = router
 	p.router.ServeHTTP(w, r)
@@ -200,6 +206,81 @@ func (p *Plugin) updateLegalHold(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write(b)
 	if err != nil {
 		p.API.LogError("failed to write http response", err.Error())
+		return
+	}
+}
+
+func (p *Plugin) downloadLegalHold(w http.ResponseWriter, r *http.Request) {
+	// Get the LegalHold.
+	legalholdID, err := RequireLegalHoldID(r)
+	if err != nil {
+		http.Error(w, "failed to parse LegalHold ID", http.StatusBadRequest)
+		p.Client.Log.Error(err.Error())
+		return
+	}
+
+	legalHold, err := p.KVStore.GetLegalHoldByID(legalholdID)
+	if err != nil {
+		http.Error(w, "failed to download legal hold", http.StatusInternalServerError)
+		p.Client.Log.Error(err.Error())
+		return
+	}
+
+	// Get the list of files to include in the download.
+	files, err := p.FileBackend.ListDirectoryRecursively(legalHold.BasePath())
+	if err != nil {
+		http.Error(w, "failed to download legal hold", http.StatusInternalServerError)
+		p.Client.Log.Error(err.Error())
+		return
+	}
+
+	// Write headers for the zip file.
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", "legalholddata.zip"))
+	w.WriteHeader(http.StatusOK)
+
+	// Write the files to the download on-the-fly.
+	zipWriter := zip.NewWriter(w)
+	for _, entry := range files {
+		header := &zip.FileHeader{
+			Name:     entry,
+			Method:   zip.Deflate, // deflate also works, but at a cost
+			Modified: time.Now(),
+		}
+
+		entryWriter, err := zipWriter.CreateHeader(header)
+		if err != nil {
+			http.Error(w, "failed to download legal hold", http.StatusInternalServerError)
+			p.Client.Log.Error(err.Error())
+			return
+		}
+
+		backendReader, err := p.FileBackend.Reader(entry)
+		if err != nil {
+			http.Error(w, "failed to download legal hold", http.StatusInternalServerError)
+			p.Client.Log.Error(err.Error())
+			return
+		}
+
+		fileReader := bufio.NewReader(backendReader)
+
+		_, err = io.Copy(entryWriter, fileReader)
+		if err != nil {
+			http.Error(w, "failed to download legal hold", http.StatusInternalServerError)
+			p.Client.Log.Error(err.Error())
+			return
+		}
+
+		if err = zipWriter.Flush(); err != nil {
+			http.Error(w, "failed to download legal hold", http.StatusInternalServerError)
+			p.Client.Log.Error(err.Error())
+			return
+		}
+	}
+
+	if err := zipWriter.Close(); err != nil {
+		http.Error(w, "failed to download legal hold", http.StatusInternalServerError)
+		p.Client.Log.Error(err.Error())
 		return
 	}
 }

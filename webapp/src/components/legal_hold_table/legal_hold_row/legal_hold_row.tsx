@@ -2,6 +2,7 @@ import React from 'react';
 import {UserProfile} from 'mattermost-redux/types/users';
 
 import {LegalHold} from '@/types';
+import Client from "@/client";
 
 interface LegalHoldRowProps {
     legalHold: LegalHold;
@@ -26,6 +27,8 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
         return 'loading...';
     });
 
+    const downloadUrl = Client.downloadUrl(lh.id);
+
     return (
         <React.Fragment>
             <div>{lh.display_name}</div>
@@ -40,7 +43,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     {'Edit'}
                 </a>
                 {' '}
-                <a href='#'>{'Download'}</a>
+                <a href={downloadUrl}>{'Download'}</a>
                 {' '}
                 <a
                     href='#'
