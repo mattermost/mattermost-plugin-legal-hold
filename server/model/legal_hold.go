@@ -26,6 +26,10 @@ type LegalHold struct {
 
 // DeepCopy creates a deep copy of the LegalHold.
 func (lh *LegalHold) DeepCopy() LegalHold {
+	if lh == nil {
+		return LegalHold{}
+	}
+
 	newLegalHold := LegalHold{
 		ID:                   lh.ID,
 		Name:                 lh.Name,
@@ -39,7 +43,10 @@ func (lh *LegalHold) DeepCopy() LegalHold {
 		ExecutionLength:      lh.ExecutionLength,
 	}
 
-	copy(lh.UserIDs, newLegalHold.UserIDs)
+	if len(lh.UserIDs) > 0 {
+		newLegalHold.UserIDs = make([]string, len(lh.UserIDs))
+		copy(lh.UserIDs, newLegalHold.UserIDs)
+	}
 
 	return newLegalHold
 }
@@ -74,21 +81,31 @@ func (lh *LegalHold) IsValidForCreate() error {
 // NeedsExecuting returns true if, at the time provided in "now", the Legal Hold is ready to
 // be executed, or false if it is not yet ready to be executed.
 func (lh *LegalHold) NeedsExecuting(now int64) bool {
-	// Calculate the execution start time.
-	startTime := utils.Max(lh.LastExecutionEndedAt, lh.StartsAt)
+	// The legal hold is only ready to be executed if the NextExecutionEndTime is
+	// in the past relative to the time "now".
+	return now > lh.NextExecutionEndTime()
+}
 
-	// Calculate the end time.
-	endTime := utils.Min(startTime+lh.ExecutionLength, lh.EndsAt)
+// NextExecutionStartTime returns the time at which the next execution of this
+// LegalHold should start.
+func (lh *LegalHold) NextExecutionStartTime() int64 {
+	return utils.Max(lh.LastExecutionEndedAt, lh.StartsAt)
+}
 
-	// The legal hold is only ready to be executed if the end time is in the past relative
-	// to the "now" time.
-	return now > endTime
+// NextExecutionEndTime returns th etime at which the next execution of this
+// LegalHold should end.
+func (lh *LegalHold) NextExecutionEndTime() int64 {
+	endTime := lh.NextExecutionStartTime() + lh.ExecutionLength
+	if lh.EndsAt > 0 {
+		endTime = utils.Min(endTime, lh.EndsAt)
+	}
+	return endTime
 }
 
 // IsFinished returns true if the legal hold has executed all the way to its end time or false
 // if it has not.
 func (lh *LegalHold) IsFinished() bool {
-	return lh.LastExecutionEndedAt >= lh.EndsAt
+	return lh.EndsAt != 0 && lh.LastExecutionEndedAt >= lh.EndsAt
 }
 
 // BasePath returns the base file storage path for this legal hold.

@@ -39,8 +39,8 @@ type Execution struct {
 func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQLStore, fileBackend filestore.FileBackend) Execution {
 	return Execution{
 		LegalHold:          legalHold,
-		ExecutionStartTime: utils.Max(legalHold.LastExecutionEndedAt, legalHold.StartsAt),
-		ExecutionEndTime:   utils.Min(utils.Max(legalHold.LastExecutionEndedAt, legalHold.StartsAt)+legalHold.ExecutionLength, legalHold.EndsAt),
+		ExecutionStartTime: legalHold.NextExecutionStartTime(),
+		ExecutionEndTime:   legalHold.NextExecutionEndTime(),
 		store:              store,
 		fileBackend:        fileBackend,
 		index:              make(model.LegalHoldIndex),

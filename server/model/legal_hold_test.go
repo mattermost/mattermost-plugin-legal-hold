@@ -1,6 +1,7 @@
 package model
 
 import (
+	"github.com/mattermost/mattermost/server/public/model"
 	"strings"
 	"testing"
 	"time"
@@ -8,6 +9,57 @@ import (
 	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestModel_LegalHold_DeepCopy(t *testing.T) {
+	testCases := []struct {
+		name string
+		lh   *LegalHold
+	}{
+		{
+			name: "Nil Legal Hold",
+			lh:   nil,
+		},
+		{
+			name: "Empty Legal Hold",
+			lh:   &LegalHold{},
+		},
+		{
+			name: "Legal Hold with Fields",
+			lh: &LegalHold{
+				ID:                   "Test ID",
+				Name:                 "Test Name",
+				DisplayName:          "Test Display Name",
+				CreateAt:             12345,
+				UpdateAt:             12355,
+				DeleteAt:             0,
+				UserIDs:              []string{"UserID1", "UserID2"},
+				StartsAt:             12360,
+				EndsAt:               12370,
+				LastExecutionEndedAt: 12365,
+				ExecutionLength:      30,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := tc.lh.DeepCopy()
+			if tc.lh != nil {
+				assert.Equal(t, *tc.lh, result)
+				result.ID = "Changed ID"
+				assert.NotEqual(t, *tc.lh, result)
+
+				if len(result.UserIDs) > 0 {
+					result.UserIDs[0] = "Changed ID"
+					assert.NotEqual(t, tc.lh.UserIDs[0], result.UserIDs[0])
+				}
+			} else {
+				emptyLH := LegalHold{}
+				assert.Equal(t, emptyLH, result)
+			}
+		})
+	}
+}
 
 func TestModel_LegalHold_IsValidForCreate(t *testing.T) {
 	tests := []struct {
@@ -128,6 +180,28 @@ func TestModel_LegalHold_NeedsExecuting(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			name: "No End time, execution would end in future",
+			now:  40,
+			lh: LegalHold{
+				LastExecutionEndedAt: 30,
+				StartsAt:             30,
+				ExecutionLength:      20,
+				EndsAt:               0,
+			},
+			want: false,
+		},
+		{
+			name: "No End time, execution would end in past",
+			now:  60,
+			lh: LegalHold{
+				LastExecutionEndedAt: 30,
+				StartsAt:             30,
+				ExecutionLength:      20,
+				EndsAt:               0,
+			},
+			want: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -138,7 +212,53 @@ func TestModel_LegalHold_NeedsExecuting(t *testing.T) {
 	}
 }
 
-func TestIsFinished(t *testing.T) {
+func TestModel_LegalHold_NextExecutionStartTime(t *testing.T) {
+	lh := LegalHold{
+		StartsAt:             10,
+		LastExecutionEndedAt: 20,
+	}
+	assert.Equal(t, int64(20), lh.NextExecutionStartTime())
+
+	lh = LegalHold{
+		StartsAt:             20,
+		LastExecutionEndedAt: 10,
+	}
+	assert.Equal(t, int64(20), lh.NextExecutionStartTime())
+
+	lh = LegalHold{
+		StartsAt:             10,
+		LastExecutionEndedAt: 10,
+	}
+	assert.Equal(t, int64(10), lh.NextExecutionStartTime())
+}
+
+func TestModel_LegalHold_NextExecutionEndTime(t *testing.T) {
+	lh := &LegalHold{
+		StartsAt:             1,
+		LastExecutionEndedAt: 10,
+		ExecutionLength:      5,
+		EndsAt:               20,
+	}
+
+	t.Run("NextExecutionEndTime before EndsAt", func(t *testing.T) {
+		expected := int64(15)
+		assert.Equal(t, expected, lh.NextExecutionEndTime())
+	})
+
+	lh.EndsAt = 12
+	t.Run("NextExecutionEndTime equals EndsAt", func(t *testing.T) {
+		expected := int64(12)
+		assert.Equal(t, expected, lh.NextExecutionEndTime())
+	})
+
+	lh.EndsAt = 0
+	t.Run("NextExecutionEndTime when no EndsAt defined", func(t *testing.T) {
+		expected := int64(15)
+		assert.Equal(t, expected, lh.NextExecutionEndTime())
+	})
+}
+
+func TestModel_LegalHold_IsFinished(t *testing.T) {
 	tests := []struct {
 		name               string
 		lastExecutionEnded int64
@@ -163,6 +283,12 @@ func TestIsFinished(t *testing.T) {
 			time.Date(2023, time.April, 13, 12, 0, 0, 0, time.UTC).UnixMilli(),
 			true,
 		},
+		{
+			"If EndsAt is zero then it is never finished.",
+			time.Date(2023, time.April, 13, 12, 0, 0, 0, time.UTC).UnixMilli(),
+			int64(0),
+			false,
+		},
 	}
 
 	for _, tc := range tests {
@@ -180,7 +306,7 @@ func TestIsFinished(t *testing.T) {
 	}
 }
 
-func TestBasePath(t *testing.T) {
+func TestModel_LegalHold_BasePath(t *testing.T) {
 	cases := []struct {
 		lh       *LegalHold
 		expected string
@@ -194,5 +320,45 @@ func TestBasePath(t *testing.T) {
 		if result != tc.expected {
 			t.Errorf("BasePath() = %s; expected %s", result, tc.expected)
 		}
+	}
+}
+
+func TestModel_UpdateLegalHold_IsValid(t *testing.T) {
+	// Define test cases
+	testCases := []struct {
+		name    string
+		ulh     UpdateLegalHold
+		wantErr bool
+	}{
+		{
+			name:    "Valid",
+			ulh:     UpdateLegalHold{ID: model.NewId(), DisplayName: "name", UserIDs: []string{model.NewId()}, EndsAt: 1234567890},
+			wantErr: false,
+		},
+		{
+			name:    "Invalid ID",
+			ulh:     UpdateLegalHold{ID: "", DisplayName: "name", UserIDs: []string{model.NewId()}, EndsAt: 1234567890},
+			wantErr: true,
+		},
+		{
+			name:    "Invalid display name length",
+			ulh:     UpdateLegalHold{ID: model.NewId(), DisplayName: "", UserIDs: []string{model.NewId()}, EndsAt: 1234567890},
+			wantErr: true,
+		},
+		{
+			name:    "Invalid display name length over limit",
+			ulh:     UpdateLegalHold{ID: model.NewId(), DisplayName: "ThisDisplayNameIsLongerThanTheMaximumLengthOfSixtyFourCharactersDuh", UserIDs: []string{model.NewId()}, EndsAt: 1234567890},
+			wantErr: true,
+		},
+	}
+
+	// Run test cases
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.ulh.IsValid()
+			if (err != nil) != tc.wantErr {
+				t.Errorf("UpdateLegalHold.IsValid() error = %v, wantErr %v", err, tc.wantErr)
+			}
+		})
 	}
 }
