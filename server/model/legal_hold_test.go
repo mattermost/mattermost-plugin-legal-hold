@@ -1,12 +1,12 @@
 package model
 
 import (
+	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost/server/public/model"
-	"strings"
+	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 
-	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,7 +31,6 @@ func TestModel_LegalHold_DeepCopy(t *testing.T) {
 				DisplayName:          "Test Display Name",
 				CreateAt:             12345,
 				UpdateAt:             12355,
-				DeleteAt:             0,
 				UserIDs:              []string{"UserID1", "UserID2"},
 				StartsAt:             12360,
 				EndsAt:               12370,
@@ -63,56 +62,151 @@ func TestModel_LegalHold_DeepCopy(t *testing.T) {
 
 func TestModel_LegalHold_IsValidForCreate(t *testing.T) {
 	tests := []struct {
-		name string
-		lh   LegalHold
-		err  bool
+		name    string
+		lh      *LegalHold
+		wantErr bool
 	}{
 		{
-			name: "invalid ID",
-			lh: LegalHold{
-				ID: "invalid",
+			name: "Valid",
+			lh: &LegalHold{
+				ID:          mattermostModel.NewId(),
+				Name:        "legalhold1",
+				DisplayName: "Test Legal Hold",
+				UserIDs:     []string{mattermostModel.NewId(), mattermostModel.NewId()},
+				StartsAt:    10,
+				EndsAt:      0,
 			},
-			err: true,
+			wantErr: false,
 		},
 		{
-			name: "invalid Name",
-			lh: LegalHold{
-				ID:   mattermostModel.NewId(),
-				Name: "a-s-d f",
+			name: "Invalid ID",
+			lh: &LegalHold{
+				ID:          "test ID",
+				Name:        "legalhold1",
+				DisplayName: "Invalid ID Test",
+				UserIDs:     []string{mattermostModel.NewId(), mattermostModel.NewId()},
+				StartsAt:    20,
+				EndsAt:      0,
 			},
-			err: true,
+			wantErr: true,
 		},
 		{
-			name: "name too short",
-			lh: LegalHold{
-				ID:   mattermostModel.NewId(),
-				Name: "a",
+			name: "Invalid Name",
+			lh: &LegalHold{
+				ID:          mattermostModel.NewId(),
+				Name:        "Invalid Name#",
+				DisplayName: "Invalid Name Test",
+				UserIDs:     []string{mattermostModel.NewId(), mattermostModel.NewId()},
+				StartsAt:    30,
+				EndsAt:      0,
 			},
-			err: true,
+			wantErr: true,
 		},
 		{
-			name: "name too long",
-			lh: LegalHold{
-				ID:   mattermostModel.NewId(),
-				Name: strings.Repeat("a", 65),
+			name: "Name length less than 2",
+			lh: &LegalHold{
+				ID:          mattermostModel.NewId(),
+				Name:        "l",
+				DisplayName: "Short Name Test",
+				UserIDs:     []string{mattermostModel.NewId(), mattermostModel.NewId()},
+				StartsAt:    40,
+				EndsAt:      0,
 			},
-			err: true,
+			wantErr: true,
 		},
 		{
-			name: "all valid",
-			lh: LegalHold{
-				ID:   mattermostModel.NewId(),
-				Name: "asdf-foo1",
+			name: "Name length greater than 64",
+			lh: &LegalHold{
+				ID:          mattermostModel.NewId(),
+				Name:        "longtestnamelongtestnamelongtestnamelongtestnamelongtestnamelongtestnamelongtestnamelongtestnamelongtestnamelongtestnamelongtestnamelongtestname",
+				DisplayName: "Long Name Test",
+				UserIDs:     []string{mattermostModel.NewId(), mattermostModel.NewId()},
+				StartsAt:    50,
+				EndsAt:      0,
 			},
-			err: false,
+			wantErr: true,
+		},
+		{
+			name: "DisplayName length less than 2",
+			lh: &LegalHold{
+				ID:          mattermostModel.NewId(),
+				Name:        "legalhold1",
+				DisplayName: "D",
+				UserIDs:     []string{mattermostModel.NewId(), mattermostModel.NewId()},
+				StartsAt:    60,
+				EndsAt:      0,
+			},
+			wantErr: true,
+		},
+		{
+			name: "DisplayName length greater than 64",
+			lh: &LegalHold{
+				ID:          mattermostModel.NewId(),
+				Name:        "legalhold1",
+				DisplayName: "LongDisplayNameTestLongDisplayNameTestLongDisplayNameTestLongDisplayNameTest123",
+				UserIDs:     []string{mattermostModel.NewId(), mattermostModel.NewId()},
+				StartsAt:    50,
+				EndsAt:      0,
+			},
+			wantErr: true,
+		},
+		{
+			name: "No UserID",
+			lh: &LegalHold{
+				ID:          mattermostModel.NewId(),
+				Name:        "legalhold1",
+				DisplayName: "No UserID Test",
+				UserIDs:     []string{},
+				StartsAt:    60,
+				EndsAt:      0,
+			},
+			wantErr: true,
+		},
+		{
+			name: "Invalid UserID",
+			lh: &LegalHold{
+				ID:          mattermostModel.NewId(),
+				Name:        "legalhold1",
+				DisplayName: "Invalid UserID Test",
+				UserIDs:     []string{mattermostModel.NewId(), "invalid user"},
+				StartsAt:    70,
+				EndsAt:      0,
+			},
+			wantErr: true,
+		},
+		{
+			name: "Invalid StartsAt",
+			lh: &LegalHold{
+				ID:          mattermostModel.NewId(),
+				Name:        "legalhold1",
+				DisplayName: "Invalid StartsAt Test",
+				UserIDs:     []string{mattermostModel.NewId(), mattermostModel.NewId()},
+				StartsAt:    0,
+				EndsAt:      0,
+			},
+			wantErr: true,
+		},
+		{
+			name: "Invalid EndsAt",
+			lh: &LegalHold{
+				ID:          mattermostModel.NewId(),
+				Name:        "legalhold1",
+				DisplayName: "Invalid EndsAt Test",
+				UserIDs:     []string{mattermostModel.NewId(), mattermostModel.NewId()},
+				StartsAt:    80,
+				EndsAt:      -1,
+			},
+			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.lh.IsValidForCreate()
-			if (err != nil) != tt.err {
-				t.Errorf("LegalHold.IsValidForCreate() error = %v, wantErr %v", err, tt.err)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}

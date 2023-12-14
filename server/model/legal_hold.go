@@ -16,7 +16,6 @@ type LegalHold struct {
 	DisplayName          string   `json:"display_name"`
 	CreateAt             int64    `json:"create_at"`
 	UpdateAt             int64    `json:"update_at"`
-	DeleteAt             int64    `json:"delete_at"`
 	UserIDs              []string `json:"user_ids"`
 	StartsAt             int64    `json:"starts_at"`
 	EndsAt               int64    `json:"ends_at"`
@@ -36,7 +35,6 @@ func (lh *LegalHold) DeepCopy() LegalHold {
 		DisplayName:          lh.DisplayName,
 		CreateAt:             lh.CreateAt,
 		UpdateAt:             lh.UpdateAt,
-		DeleteAt:             lh.DeleteAt,
 		StartsAt:             lh.StartsAt,
 		EndsAt:               lh.EndsAt,
 		LastExecutionEndedAt: lh.LastExecutionEndedAt,
@@ -73,7 +71,23 @@ func (lh *LegalHold) IsValidForCreate() error {
 		return errors.New("LegalHold display name must be between 2 and 64 characters in length")
 	}
 
-	// FIXME: More validation required here.
+	if lh.UserIDs == nil || len(lh.UserIDs) < 1 {
+		return errors.New("LegalHold must include at least 1 user")
+	}
+
+	for _, userID := range lh.UserIDs {
+		if !mattermostModel.IsValidId(userID) {
+			return errors.New("LegalHold users must have valid IDs")
+		}
+	}
+
+	if lh.StartsAt < 1 {
+		return errors.New("LegalHold must start at a valid time")
+	}
+
+	if lh.EndsAt < 0 {
+		return errors.New("LegalHold must end at a valid time or zero")
+	}
 
 	return nil
 }
