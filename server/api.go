@@ -16,7 +16,7 @@ const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
 // ServeHTTP demonstrates a plugin that handles HTTP requests by greeting the world.
 func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
-	// All HTTP endpoints of this plugin require a logged in user.
+	// All HTTP endpoints of this plugin require a logged-in user.
 	userID := r.Header.Get("Mattermost-User-ID")
 	if userID == "" {
 		http.Error(w, "Not authorized", http.StatusUnauthorized)
@@ -35,6 +35,7 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 	router.HandleFunc("/api/v1/legalhold/list", p.listLegalHolds)
 	router.HandleFunc("/api/v1/legalhold/create", p.createLegalHold)
 	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/release", p.releaseLegalHold)
+	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/update", p.updateLegalHold)
 
 	p.router = router
 	p.router.ServeHTTP(w, r)
@@ -129,6 +130,67 @@ func (p *Plugin) releaseLegalHold(w http.ResponseWriter, r *http.Request) {
 	}
 
 	b, jsonErr := json.Marshal(make(map[string]interface{}))
+	if jsonErr != nil {
+		http.Error(w, "Error encoding json", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(b)
+	if err != nil {
+		p.API.LogError("failed to write http response", err.Error())
+		return
+	}
+}
+
+// updateLegalHold updates the properties of a LegalHold
+func (p *Plugin) updateLegalHold(w http.ResponseWriter, r *http.Request) {
+	var updateLegalHold model.UpdateLegalHold
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, requestBodyMaxSizeBytes)).Decode(&updateLegalHold); err != nil {
+		http.Error(w, "failed to parse request body", http.StatusBadRequest)
+		p.Client.Log.Error(err.Error())
+		return
+	}
+
+	// Check that the LegalHold matches the ID in the URL parameter.
+	legalholdID, err := RequireLegalHoldID(r)
+	if err != nil {
+		http.Error(w, "failed to parse LegalHold ID", http.StatusBadRequest)
+		p.Client.Log.Error(err.Error())
+		return
+	}
+
+	if legalholdID != updateLegalHold.ID {
+		http.Error(w, "invalid LegalHold ID", http.StatusBadRequest)
+		p.Client.Log.Error(err.Error())
+		return
+	}
+
+	if err = updateLegalHold.IsValid(); err != nil {
+		http.Error(w, "LegalHold update data is not valid", http.StatusBadRequest)
+		p.Client.Log.Error(err.Error())
+		return
+	}
+
+	// Retrieve the legal hold we are modifying
+	originalLegalHold, err := p.KVStore.GetLegalHoldByID(legalholdID)
+	if err != nil {
+		http.Error(w, "failed to update legal hold", http.StatusInternalServerError)
+		p.Client.Log.Error(err.Error())
+		return
+	}
+
+	newLegalHold := originalLegalHold.DeepCopy()
+	newLegalHold.ApplyUpdates(updateLegalHold)
+
+	savedLegalHold, err := p.KVStore.UpdateLegalHold(newLegalHold, *originalLegalHold)
+	if err != nil {
+		http.Error(w, "failed to update legal hold", http.StatusInternalServerError)
+		p.Client.Log.Error(err.Error())
+		return
+	}
+
+	b, jsonErr := json.Marshal(savedLegalHold)
 	if jsonErr != nil {
 		http.Error(w, "Error encoding json", http.StatusInternalServerError)
 		return

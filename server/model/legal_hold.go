@@ -24,6 +24,26 @@ type LegalHold struct {
 	ExecutionLength      int64    `json:"execution_length"`
 }
 
+// DeepCopy creates a deep copy of the LegalHold.
+func (lh *LegalHold) DeepCopy() LegalHold {
+	newLegalHold := LegalHold{
+		ID:                   lh.ID,
+		Name:                 lh.Name,
+		DisplayName:          lh.DisplayName,
+		CreateAt:             lh.CreateAt,
+		UpdateAt:             lh.UpdateAt,
+		DeleteAt:             lh.DeleteAt,
+		StartsAt:             lh.StartsAt,
+		EndsAt:               lh.EndsAt,
+		LastExecutionEndedAt: lh.LastExecutionEndedAt,
+		ExecutionLength:      lh.ExecutionLength,
+	}
+
+	copy(lh.UserIDs, newLegalHold.UserIDs)
+
+	return newLegalHold
+}
+
 // IsValidForCreate checks whether the LegalHold contains data that is valid for
 // creation. If it is not valid, it returns an error describing the validation
 // failure. It does not guarantee that creation in the store will be successful,
@@ -40,6 +60,10 @@ func (lh *LegalHold) IsValidForCreate() error {
 
 	if len(lh.Name) > 64 || len(lh.Name) < 2 {
 		return errors.New("LegalHold name must be between 2 and 64 characters in length")
+	}
+
+	if len(lh.DisplayName) > 64 || len(lh.DisplayName) < 2 {
+		return errors.New("LegalHold display name must be between 2 and 64 characters in length")
 	}
 
 	// FIXME: More validation required here.
@@ -94,4 +118,32 @@ func NewLegalHoldFromCreate(lhc CreateLegalHold) LegalHold {
 		LastExecutionEndedAt: 0,
 		ExecutionLength:      86400000,
 	}
+}
+
+// UpdateLegalHold holds the data that is specified in teh API call to update a LegalHold.
+type UpdateLegalHold struct {
+	ID          string   `json:"id"`
+	DisplayName string   `json:"display_name"`
+	UserIDs     []string `json:"user_ids"`
+	EndsAt      int64    `json:"ends_at"`
+}
+
+func (ulh UpdateLegalHold) IsValid() error {
+	if !mattermostModel.IsValidId(ulh.ID) {
+		return errors.New(fmt.Sprintf("LegalHold ID is not valid: %s", ulh.ID))
+	}
+
+	if len(ulh.DisplayName) > 64 || len(ulh.DisplayName) < 2 {
+		return errors.New("LegalHold display name must be between 2 and 64 characters in length")
+	}
+
+	// FIXME: More validation required here.
+
+	return nil
+}
+
+func (lh *LegalHold) ApplyUpdates(updates UpdateLegalHold) {
+	lh.DisplayName = updates.DisplayName
+	lh.UserIDs = updates.UserIDs
+	lh.EndsAt = updates.EndsAt
 }

@@ -143,3 +143,7 @@ func TestSQLStore_LegalHold_GetChannelIDsForUserDuring(t *testing.T) {
 	require.NoError(t, err)
 	require.ElementsMatch(t, secondWindowChannelIDs, expectedTwo)
 }
+
+func TestSQLStore_LegalHold_GetFileInfosByIDs(t *testing.T) {
+	// TODO: Implement me!
+}

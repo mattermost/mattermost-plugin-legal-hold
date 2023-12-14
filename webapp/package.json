@@ -79,6 +79,7 @@
     "@mattermost/client": "9.1.0",
     "@mattermost/webapp": "github:mattermost/mattermost-webapp",
     "core-js": "3.22.8",
+    "dayjs": "1.11.10",
     "lodash": "4.17.21",
     "mattermost-redux": "5.33.1",
     "prop-types": "15.8.1",

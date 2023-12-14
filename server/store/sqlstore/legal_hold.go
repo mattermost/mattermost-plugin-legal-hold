@@ -2,8 +2,9 @@ package sqlstore
 
 import (
 	sq "github.com/Masterminds/squirrel"
-	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 	"github.com/pkg/errors"
+
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 )
 
 // GetPostsBatch fetches a batch of posts from the channel specified by channelID for a legal

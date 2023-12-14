@@ -139,3 +139,11 @@ func TestKVStore_GetAllLegalHolds(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, result, 0)
 }
+
+func TestKVStore_UpdateLegalHold(t *testing.T) {
+	// TODO: Implement me!
+}
+
+func TestKVStore_DeleteLegalHold(t *testing.T) {
+	// TODO: Implement me!
+}

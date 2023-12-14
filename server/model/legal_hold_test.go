@@ -179,3 +179,20 @@ func TestIsFinished(t *testing.T) {
 		})
 	}
 }
+
+func TestBasePath(t *testing.T) {
+	cases := []struct {
+		lh       *LegalHold
+		expected string
+	}{
+		{&LegalHold{Name: "testhold", ID: "1"}, "legal_hold/testhold_(1)"},
+		{&LegalHold{Name: "anotherhold", ID: "2"}, "legal_hold/anotherhold_(2)"},
+	}
+
+	for _, tc := range cases {
+		result := tc.lh.BasePath()
+		if result != tc.expected {
+			t.Errorf("BasePath() = %s; expected %s", result, tc.expected)
+		}
+	}
+}

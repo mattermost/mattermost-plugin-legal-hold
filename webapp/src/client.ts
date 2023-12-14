@@ -1,6 +1,6 @@
 import {Client4, ClientError} from '@mattermost/client';
 
-import {CreateLegalHold} from '@/types';
+import {CreateLegalHold, UpdateLegalHold} from '@/types';
 
 import {manifest} from './manifest';
 
@@ -22,6 +22,11 @@ class APIClient {
         const url = `${this.url}/legalhold/${id}/release`;
         return this.doPost(url, {});
     };
+
+    updateLegalHold = (id: string, data: UpdateLegalHold) => {
+        const url = `${this.url}/legalhold/${id}/update`;
+        return this.doPost(url, data);
+    }
 
     doGet = async (url: string, headers = {}) => {
         const options = {

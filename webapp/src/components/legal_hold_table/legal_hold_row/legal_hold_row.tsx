@@ -7,6 +7,7 @@ interface LegalHoldRowProps {
     legalHold: LegalHold;
     users: UserProfile[];
     releaseLegalHold: Function;
+    showUpdateModal: Function;
 }
 
 const LegalHoldRow = (props: LegalHoldRowProps) => {
@@ -32,7 +33,12 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
             <div>{endsAt}</div>
             <div>{props.users.length} {'users'}</div>
             <div>
-                <a href='#'>{'Edit'}</a>
+                <a
+                    href='#'
+                    onClick={() => props.showUpdateModal(lh)}
+                >
+                    {'Edit'}
+                </a>
                 {' '}
                 <a href='#'>{'Download'}</a>
                 {' '}

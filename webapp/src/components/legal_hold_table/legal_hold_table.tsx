@@ -9,6 +9,7 @@ interface LegalHoldTableProps {
         getMissingProfilesByIds: Function,
     },
     releaseLegalHold: Function,
+    showUpdateModal: Function,
 }
 
 const LegalHoldTable = (props: LegalHoldTableProps) => {
@@ -47,6 +48,7 @@ const LegalHoldTable = (props: LegalHoldTableProps) => {
                             legalHold={legalHold}
                             key={index}
                             releaseLegalHold={props.releaseLegalHold}
+                            showUpdateModal={props.showUpdateModal}
                         />
                     );
                 })}

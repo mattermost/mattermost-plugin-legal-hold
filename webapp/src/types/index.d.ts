@@ -14,3 +14,10 @@ export interface CreateLegalHold {
     ends_at: number;
     user_ids: Array<string>;
 }
+
+export interface UpdateLegalHold {
+    id: string;
+    display_name: string;
+    ends_at: number;
+    user_ids: Array<string>;
+}

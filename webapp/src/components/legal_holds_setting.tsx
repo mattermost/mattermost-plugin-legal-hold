@@ -3,21 +3,24 @@ import React, {useEffect, useState} from 'react';
 import {IntlProvider} from 'react-intl';
 
 import Client from '@/client';
-import {CreateLegalHold, LegalHold} from '@/types';
+import {CreateLegalHold, LegalHold, UpdateLegalHold} from '@/types';
 
 import CreateLegalHoldForm from '@/components/create_legal_hold_form';
 import LegalHoldTable from '@/components/legal_hold_table';
 import CreateLegalHoldButton from '@/components/create_legal_hold_button';
+
 import LegalHoldIcon from '@/components/legal_hold_icon.svg';
+import UpdateLegalHoldForm from "@/components/update_legal_hold_form";
 
 const LegalHoldsSetting = () => {
     const [legalHoldsFetched, setLegalHoldsFetched] = useState(false);
     const [legalHoldsFetching, setLegalHoldsFetching] = useState(false);
     const [legalHolds, setLegalHolds] = useState(Array<LegalHold>());
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showUpdateModal, setShowUpdateModal] = useState(false);
+    const [activeLegalHold, setActiveLegalHold] = useState<LegalHold|null>(null);
 
     const createLegalHold = async (data: CreateLegalHold) => {
-        console.warn('TODO: Create the Legal Hold');
         try {
             const response = await Client.createLegalHold(data);
             setLegalHoldsFetched(false);
@@ -39,9 +42,21 @@ const LegalHoldsSetting = () => {
         }
     };
 
-    const onCreateClicked = () => {
-
+    const updateLegalHold = async (data: UpdateLegalHold) => {
+        try {
+            const response = await Client.updateLegalHold(data.id, data);
+            setLegalHoldsFetched(false);
+            return response;
+        } catch (error) {
+            console.log(error);
+            throw error;
+        }
     };
+
+    const doShowUpdateModal = (legalHold: LegalHold) => {
+        setActiveLegalHold(legalHold);
+        setShowUpdateModal(true);
+    }
 
     useEffect(() => {
         const fetchLegalHolds = async () => {
@@ -137,6 +152,7 @@ const LegalHoldsSetting = () => {
                     <LegalHoldTable
                         legalHolds={legalHolds}
                         releaseLegalHold={releaseLegalHold}
+                        showUpdateModal={doShowUpdateModal}
                     />
                 )}
 
@@ -145,6 +161,14 @@ const LegalHoldsSetting = () => {
                     visible={showCreateModal}
                     onExited={() => setShowCreateModal(false)}
                 />
+
+                <UpdateLegalHoldForm
+                    updateLegalHold={updateLegalHold}
+                    visible={showUpdateModal}
+                    onExited={() => setShowUpdateModal(false)}
+                    legalHold={activeLegalHold}
+                />
+
             </div>
         </IntlProvider>
     );
