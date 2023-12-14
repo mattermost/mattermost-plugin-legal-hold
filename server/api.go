@@ -276,6 +276,10 @@ func (p *Plugin) downloadLegalHold(w http.ResponseWriter, r *http.Request) {
 			p.Client.Log.Error(err.Error())
 			return
 		}
+
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
 	}
 
 	if err := zipWriter.Close(); err != nil {
