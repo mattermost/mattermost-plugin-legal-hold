@@ -43,7 +43,7 @@ func (lh *LegalHold) DeepCopy() LegalHold {
 
 	if len(lh.UserIDs) > 0 {
 		newLegalHold.UserIDs = make([]string, len(lh.UserIDs))
-		copy(lh.UserIDs, newLegalHold.UserIDs)
+		copy(newLegalHold.UserIDs, lh.UserIDs)
 	}
 
 	return newLegalHold
