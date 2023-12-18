@@ -57,6 +57,7 @@ type Plugin struct {
 func (p *Plugin) OnActivate() error {
 	// Create plugin API client
 	p.Client = pluginapi.NewClient(p.API, p.Driver)
+	p.Client.Log.Debug("MM LH Plugin: OnActivate called")
 
 	// Setup direct store access
 	SQLStore, err := sqlstore.New(p.Client.Store, &p.Client.Log)
@@ -69,28 +70,12 @@ func (p *Plugin) OnActivate() error {
 
 	p.KVStore = kvstore.NewKVStore(p.Client)
 
-	// Setup direct filestore access
-	filesBackendSettings := p.Client.Configuration.GetConfig().FileSettings.ToFileBackendSettings(true, false)
-	filesBackend, err := filestore.NewFileBackend(filesBackendSettings)
-	if err != nil {
-		p.Client.Log.Error("unable to initialize the files storage", "err", err)
-		return errors.New("unable to initialize the files storage")
-	}
-	p.FileBackend = filesBackend
-	// FIXME: do we need to handle MM configuration changes?
-
 	// Create job manager
 	p.jobManager = jobs.NewJobManager(&p.Client.Log)
 
-	// Create job for legal hold execution
-	p.legalHoldJob, err = jobs.NewLegalHoldJob(LegalHoldJobID, p.API, p.Client, p.SQLStore, p.KVStore, p.FileBackend)
-	if err != nil {
-		return fmt.Errorf("cannot create legal hold job: %w", err)
+	if err = p.Reconfigure(); err != nil {
+		return err
 	}
-	if err := p.jobManager.AddJob(p.legalHoldJob); err != nil {
-		return fmt.Errorf("cannot add legal hold job: %w", err)
-	}
-	_ = p.jobManager.OnConfigurationChange(p.getConfiguration())
 
 	return nil
 }
@@ -146,6 +131,49 @@ func (p *Plugin) OnConfigurationChange() error {
 	}
 
 	p.setConfiguration(configuration)
+
+	return p.Reconfigure()
+}
+
+func (p *Plugin) Reconfigure() error {
+	// Don't do anything if the plugin isn't activated yet.
+	if p.Client == nil {
+		return nil
+	}
+
+	p.Client.Log.Debug("Plugin.Reconfigure() called")
+
+	if p.Client.Configuration.GetConfig() == nil {
+		p.Client.Log.Info("Client GetConfig() is nil")
+		return nil
+	}
+
+	// Reinitialise the filestore backend
+	filesBackendSettings := p.Client.Configuration.GetConfig().FileSettings.ToFileBackendSettings(true, false)
+	filesBackend, err := filestore.NewFileBackend(filesBackendSettings)
+	if err != nil {
+		p.Client.Log.Error("unable to initialize the files storage", "err", err)
+		return errors.New("unable to initialize the files storage")
+	}
+	p.FileBackend = filesBackend
+
+	// Remove old job if exists
+	if p.legalHoldJob != nil {
+		if err = p.jobManager.RemoveJob(LegalHoldJobID, 0); err != nil {
+			return err
+		}
+		p.Client.Log.Info("Stopped old job")
+	}
+
+	// Create new job
+	p.legalHoldJob, err = jobs.NewLegalHoldJob(LegalHoldJobID, p.API, p.Client, p.SQLStore, p.KVStore, p.FileBackend)
+	if err != nil {
+		return fmt.Errorf("cannot create legal hold job: %w", err)
+	}
+	if err := p.jobManager.AddJob(p.legalHoldJob); err != nil {
+		return fmt.Errorf("cannot add legal hold job: %w", err)
+	}
+	_ = p.jobManager.OnConfigurationChange(p.getConfiguration())
 
 	return nil
 }
