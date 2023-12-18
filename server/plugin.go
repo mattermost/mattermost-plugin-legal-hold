@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
+	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 	"github.com/pkg/errors"
@@ -149,7 +150,8 @@ func (p *Plugin) Reconfigure() error {
 	}
 
 	// Reinitialise the filestore backend
-	filesBackendSettings := p.Client.Configuration.GetConfig().FileSettings.ToFileBackendSettings(true, false)
+	// FIXME: Boolean flags shouldn't be hard coded.
+	filesBackendSettings := FixedFileSettingsToFileBackendSettings(p.Client.Configuration.GetUnsanitizedConfig().FileSettings, false, true)
 	filesBackend, err := filestore.NewFileBackend(filesBackendSettings)
 	if err != nil {
 		p.Client.Log.Error("unable to initialize the files storage", "err", err)
@@ -176,4 +178,44 @@ func (p *Plugin) Reconfigure() error {
 	_ = p.jobManager.OnConfigurationChange(p.getConfiguration())
 
 	return nil
+}
+
+func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings, enableComplianceFeature bool, skipVerify bool) filestore.FileBackendSettings {
+	if *fileSettings.DriverName == model.ImageDriverLocal {
+		return filestore.FileBackendSettings{
+			DriverName: *fileSettings.DriverName,
+			Directory:  *fileSettings.Directory,
+		}
+	}
+
+	amazonS3Bucket := ""
+	if fileSettings.AmazonS3Bucket != nil {
+		amazonS3Bucket = *fileSettings.AmazonS3Bucket
+	}
+
+	amazonS3PathPrefix := ""
+	if fileSettings.AmazonS3PathPrefix != nil {
+		amazonS3PathPrefix = *fileSettings.AmazonS3PathPrefix
+	}
+
+	amazonS3Region := ""
+	if fileSettings.AmazonS3Region != nil {
+		amazonS3Region = *fileSettings.AmazonS3Region
+	}
+
+	return filestore.FileBackendSettings{
+		DriverName:                         *fileSettings.DriverName,
+		AmazonS3AccessKeyId:                *fileSettings.AmazonS3AccessKeyId,
+		AmazonS3SecretAccessKey:            *fileSettings.AmazonS3SecretAccessKey,
+		AmazonS3Bucket:                     amazonS3Bucket,
+		AmazonS3PathPrefix:                 amazonS3PathPrefix,
+		AmazonS3Region:                     amazonS3Region,
+		AmazonS3Endpoint:                   *fileSettings.AmazonS3Endpoint,
+		AmazonS3SSL:                        fileSettings.AmazonS3SSL != nil && *fileSettings.AmazonS3SSL,
+		AmazonS3SignV2:                     fileSettings.AmazonS3SignV2 != nil && *fileSettings.AmazonS3SignV2,
+		AmazonS3SSE:                        fileSettings.AmazonS3SSE != nil && *fileSettings.AmazonS3SSE && enableComplianceFeature,
+		AmazonS3Trace:                      fileSettings.AmazonS3Trace != nil && *fileSettings.AmazonS3Trace,
+		AmazonS3RequestTimeoutMilliseconds: *fileSettings.AmazonS3RequestTimeoutMilliseconds,
+		SkipVerify:                         skipVerify,
+	}
 }
