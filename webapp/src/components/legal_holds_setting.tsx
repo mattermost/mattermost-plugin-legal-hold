@@ -11,6 +11,7 @@ import CreateLegalHoldButton from '@/components/create_legal_hold_button';
 
 import LegalHoldIcon from '@/components/legal_hold_icon.svg';
 import UpdateLegalHoldForm from "@/components/update_legal_hold_form";
+import ConfirmRelease from "@/components/confirm_release";
 
 const LegalHoldsSetting = () => {
     const [legalHoldsFetched, setLegalHoldsFetched] = useState(false);
@@ -18,6 +19,7 @@ const LegalHoldsSetting = () => {
     const [legalHolds, setLegalHolds] = useState(Array<LegalHold>());
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showUpdateModal, setShowUpdateModal] = useState(false);
+    const [showReleaseModal, setShowReleaseModal] = useState(false);
     const [activeLegalHold, setActiveLegalHold] = useState<LegalHold|null>(null);
 
     const createLegalHold = async (data: CreateLegalHold) => {
@@ -56,6 +58,11 @@ const LegalHoldsSetting = () => {
     const doShowUpdateModal = (legalHold: LegalHold) => {
         setActiveLegalHold(legalHold);
         setShowUpdateModal(true);
+    }
+
+    const doShowReleaseModal = (legalHold: LegalHold) => {
+        setActiveLegalHold(legalHold);
+        setShowReleaseModal(true);
     }
 
     useEffect(() => {
@@ -151,7 +158,7 @@ const LegalHoldsSetting = () => {
                 {legalHolds.length > 0 && (
                     <LegalHoldTable
                         legalHolds={legalHolds}
-                        releaseLegalHold={releaseLegalHold}
+                        releaseLegalHold={doShowReleaseModal}
                         showUpdateModal={doShowUpdateModal}
                     />
                 )}
@@ -167,6 +174,13 @@ const LegalHoldsSetting = () => {
                     visible={showUpdateModal}
                     onExited={() => setShowUpdateModal(false)}
                     legalHold={activeLegalHold}
+                />
+
+                <ConfirmRelease
+                    legalHold={activeLegalHold}
+                    releaseLegalHold={releaseLegalHold}
+                    onExited={() => setShowReleaseModal(false)}
+                    visible={showReleaseModal}
                 />
 
             </div>

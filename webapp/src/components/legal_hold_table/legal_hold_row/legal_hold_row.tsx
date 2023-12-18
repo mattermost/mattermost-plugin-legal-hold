@@ -17,7 +17,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
     const endsAt = lh.ends_at != 0 ? (new Date(lh.ends_at)).toLocaleDateString() : "Never";
 
     const release = () => {
-        props.releaseLegalHold(lh.id);
+        props.releaseLegalHold(lh);
     };
 
     const usernames = props.users.map((user) => {
