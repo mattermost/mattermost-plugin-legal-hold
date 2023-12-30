@@ -2,14 +2,15 @@ package cmd
 
 import (
 	"archive/zip"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/grundleborg/mattermost-legal-hold-processor/model"
+	"github.com/grundleborg/mattermost-legal-hold-processor/parse"
 )
 
 var rootCmd = &cobra.Command{
@@ -59,15 +60,24 @@ func Process(_ *cobra.Command, _ []string) {
 
 	// Create a list of legal holds.
 	fmt.Println("Identifying Legal Holds in output data...")
-	legalHolds, err := listLegalHolds(tempPath)
+	legalHolds, err := parse.ListLegalHolds(tempPath)
 	if err != nil {
 		fmt.Printf("Error while listing legal holds: %v\n", err)
 		os.Exit(1)
 	}
 	for _, hold := range legalHolds {
-		fmt.Printf("Legal Hold: %s (%s)\n", hold.name, hold.id)
+		fmt.Printf("- Legal Hold: %s (%s)\n", hold.Name, hold.ID)
 	}
 	fmt.Println()
+
+	// Process Each Legal Hold.
+	for _, hold := range legalHolds {
+		err = ProcessLegalHold(hold, outputPath)
+		if err != nil {
+			fmt.Printf("Error while processing legal hold: %v\n", err)
+			os.Exit(1)
+		}
+	}
 }
 
 // ExtractZip extracts all files from the specified zip archive and saves them to the given output path.
@@ -88,6 +98,25 @@ func ExtractZip(zipPath string, outputPath string) error {
 			return err
 		}
 	}
+	return nil
+}
+
+// ProcessLegalHold carries out the processing of a single legal hold within the extracted output data.
+func ProcessLegalHold(hold model.LegalHold, outputPath string) error {
+	fmt.Printf("Processing Legal Hold: %s\n", hold.Name)
+	fmt.Println()
+
+	channels, err := parse.ListChannels(hold)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Finding channels...")
+	for _, channel := range channels {
+		fmt.Printf("- Channel: %s\n", channel.ID)
+	}
+	fmt.Println()
+
 	return nil
 }
 
@@ -132,38 +161,4 @@ func extractItem(f *zip.File, outputPath string) error {
 		}
 	}
 	return nil
-}
-
-type LegalHold struct {
-	path string
-	name string
-	id   string
-}
-
-// listLegalHolds retrieves a list of LegalHold objects from the specified directory path
-// containing an unpacked legal hold export.
-func listLegalHolds(tempPath string) ([]LegalHold, error) {
-	legalHoldsPath := filepath.Join(tempPath, "legal_hold")
-
-	files, err := os.ReadDir(legalHoldsPath)
-	if err != nil {
-		return nil, err
-	}
-
-	var legalHolds []LegalHold
-	for _, file := range files {
-		if !file.IsDir() {
-			continue
-		}
-
-		nameID := strings.Split(file.Name(), "_(")
-		if len(nameID) != 2 || !strings.HasSuffix(nameID[1], ")") {
-			return nil, errors.New("directory name does not match pattern name_(id)")
-		}
-
-		id := strings.TrimSuffix(nameID[1], ")")
-		legalHolds = append(legalHolds, LegalHold{path: filepath.Join(legalHoldsPath, file.Name()), name: nameID[0], id: id})
-	}
-
-	return legalHolds, nil
 }
