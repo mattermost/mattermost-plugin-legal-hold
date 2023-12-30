@@ -3,6 +3,7 @@ package cmd
 import (
 	"archive/zip"
 	"fmt"
+	"github.com/grundleborg/mattermost-legal-hold-processor/view"
 	"io"
 	"os"
 	"path/filepath"
@@ -116,6 +117,17 @@ func ProcessLegalHold(hold model.LegalHold, outputPath string) error {
 		fmt.Printf("- Channel: %s\n", channel.ID)
 	}
 	fmt.Println()
+
+	for _, channel := range channels {
+		posts, err := parse.LoadPosts(channel)
+		if err != nil {
+			return err
+		}
+
+		if err = view.WriteChannel(hold, channel, posts, outputPath); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

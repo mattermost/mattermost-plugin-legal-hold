@@ -1,8 +1,8 @@
 package model
 
-// LegalHoldPost represents one post and its associated data as required for a legal hold record.
+// Post represents one post and its associated data as required for a legal hold record.
 // It must be kept in sync with model.LegalHoldPost from mattermost-plugin-legal-hold
-type LegalHoldPost struct {
+type Post struct {
 
 	// From Team
 	TeamName        string `csv:"TeamName"`

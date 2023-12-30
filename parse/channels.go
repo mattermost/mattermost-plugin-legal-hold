@@ -2,6 +2,7 @@ package parse
 
 import (
 	"os"
+	"path/filepath"
 
 	"github.com/grundleborg/mattermost-legal-hold-processor/model"
 )
@@ -16,7 +17,7 @@ func ListChannels(legalHold model.LegalHold) ([]model.Channel, error) {
 
 	for _, entry := range dirEntries {
 		if entry.IsDir() {
-			channels = append(channels, model.Channel{ID: entry.Name()})
+			channels = append(channels, model.Channel{ID: entry.Name(), Path: filepath.Join(legalHold.Path, entry.Name())})
 		}
 	}
 
