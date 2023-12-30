@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"archive/zip"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 )
@@ -36,4 +39,83 @@ func Process(cmd *cobra.Command, args []string) {
 	fmt.Println()
 	fmt.Println("Let's begin...")
 	fmt.Println()
+
+	// Extract the zip file
+	fmt.Println("Extracting data to temporary directory...")
+
+	tempPath := filepath.Join(outputPath, "temp")
+
+	err := os.MkdirAll(tempPath, 0755)
+	if err != nil {
+		fmt.Printf("Error while creating temporary directory: %v\n", err)
+	}
+
+	if err := ExtractZip(legalHoldData, tempPath); err != nil {
+		fmt.Printf("Error while extracting: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+// ExtractZip extracts all files from the specified zip archive and saves them to the given output path.
+func ExtractZip(zipPath string, outputPath string) error {
+	r, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err = r.Close(); err != nil {
+			fmt.Println(err.Error())
+		}
+	}()
+
+	for _, f := range r.File {
+		err = extractItem(f, outputPath)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// extractItem extracts a file from a zip archive and saves it to the specified output path.
+func extractItem(f *zip.File, outputPath string) error {
+	rc, err := f.Open()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err = rc.Close(); err != nil {
+			fmt.Println(err.Error())
+		}
+	}()
+
+	fpath := filepath.Join(outputPath, f.Name)
+	if f.FileInfo().IsDir() {
+		err := os.MkdirAll(fpath, 0644)
+		if err != nil {
+			return err
+		}
+	} else {
+		fdir := filepath.Dir(fpath)
+		err = os.MkdirAll(fdir, 0755)
+		if err != nil {
+			return err
+		}
+
+		file, err := os.Create(fpath)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err = file.Close(); err != nil {
+				fmt.Println(err.Error())
+			}
+		}()
+
+		_, err = io.Copy(file, rc)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
