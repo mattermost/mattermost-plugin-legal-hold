@@ -1,10 +1,94 @@
-<html>
+<html lang="en">
 <head>
+    <title>Channel: {{ .ChannelDisplayName }} ({{ .ChannelName }} | {{ .Channel.ID }})</title>
+    <style>
+        body {
+            background-color: #274466;
+            font-family: "Open Sans", sans-serif;
+            color: rgb(63, 67, 80);
+            padding: 20px;
+        }
+
+        .header {
+            background-color: white;
+            padding: 20px;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .header .left {
+
+        }
+
+        .header .right {
+            text-align: right;
+        }
+
+        .channel-display-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .channel-extra-info {
+            font-size: 14px;
+            color: rgba(63, 67, 80, 0.48);
+        }
+
+        .team-display-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: rgba(63, 67, 80, 0.64);
+        }
+
+        .team-extra-info {
+            font-size: 14px;
+            color: rgba(63, 67, 80, 0.48);
+        }
+
+        .posts {
+            display: grid;
+            grid-template-columns: max-content max-content auto;
+            grid-column-gap: 10px;
+            grid-row-gap: 10px;
+            padding: 20px;
+            background-color: white;
+            font-size: 14px;
+        }
+
+        .user {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .time {
+            font-size: 14px;
+            color: rgba(63, 67, 80, 0.48);
+        }
+
+        .post {
+
+        }
+    </style>
 </head>
 <body>
-<div>
+<div class="header">
+    <div class="left">
+        <div class="channel-display-name">{{ .ChannelDisplayName }}</div>
+        <div class="channel-extra-info">Name: {{ .ChannelName }} | ID: {{ .Channel.ID }}</div>
+    </div>
+    <div class="right">
+        <div class="team-display-name">Team: {{ .TeamDisplayName }}</div>
+        <div class="team-extra-info">Name: {{ .TeamName }}</div>
+    </div>
+</div>
+<div class="posts">
     {{ range .Posts}}
-        <p>{{ .PostMessage }}</p>
+    <div class="time">{{ .PrintCreateAt }}</div>
+    <div class="user">@{{ .UserUsername }}</div>
+    <div class="post">{{ .PostMessage }}</div>
     {{ end }}
 </div>
 </body>
