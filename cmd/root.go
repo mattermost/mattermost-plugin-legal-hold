@@ -107,8 +107,17 @@ func ProcessLegalHold(hold model.LegalHold, outputPath string) error {
 	fmt.Printf("Processing Legal Hold: %s\n", hold.Name)
 	fmt.Println()
 
+	index, err := parse.LoadIndex(hold)
+	if err != nil {
+		return err
+	}
+
 	channels, err := parse.ListChannels(hold)
 	if err != nil {
+		return err
+	}
+
+	if err = view.WriteIndexFile(hold, index, outputPath); err != nil {
 		return err
 	}
 

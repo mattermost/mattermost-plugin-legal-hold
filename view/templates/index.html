@@ -1,0 +1,43 @@
+<html lang="en">
+<head>
+    <title>Legal Hold Export: {{ .LegalHold.Name }}</title>
+    <style>
+        body {
+            background-color: #274466;
+            font-family: "Open Sans", sans-serif;
+            color: rgb(63, 67, 80);
+            padding: 20px;
+        }
+        .header {
+            background-color: white;
+            padding: 20px;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .legal-hold-display-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .channels {
+            padding: 20px;
+            background-color: white;
+            font-size: 14px;
+        }
+
+    </style>
+</head>
+<body>
+<div class="header">
+    <div class="legal-hold-display-name">Legal Hold: {{ .LegalHold.Name }}</div>
+</div>
+<div class="channels">
+    {{ range .Channels }}
+    <div class="channel"><a href="{{ . }}.html">{{ . }}</a></div>
+    {{ end }}
+</div>
+</body>
+</html>
