@@ -32,7 +32,7 @@ func WriteChannel(hold model.LegalHold, channel model.Channel, posts []*model.Po
 		data.TeamDisplayName = posts[0].TeamDisplayName
 	}
 
-	tmpl, err := template.ParseFiles("view/templates/channel.html")
+	tmpl, err := template.ParseFS(templates, "templates/channel.html")
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func WriteUserChannel(hold model.LegalHold, user model.User, channel model.Chann
 		data.TeamDisplayName = posts[0].TeamDisplayName
 	}
 
-	tmpl, err := template.ParseFiles("view/templates/user_channel.html")
+	tmpl, err := template.ParseFS(templates, "templates/user_channel.html")
 	if err != nil {
 		return err
 	}

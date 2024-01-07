@@ -35,7 +35,7 @@ func WriteIndexFile(legalHold model.LegalHold, legalHoldIndex model.LegalHoldInd
 		data.Users = append(data.Users, user)
 	}
 
-	tmpl, err := template.ParseFiles("view/templates/index.html")
+	tmpl, err := template.ParseFS(templates, "templates/index.html")
 	if err != nil {
 		return err
 	}
