@@ -8,6 +8,7 @@
             color: rgb(63, 67, 80);
             padding: 20px;
         }
+
         .header {
             background-color: white;
             padding: 20px;
@@ -22,10 +23,36 @@
             margin-bottom: 5px;
         }
 
+        .container {
+            display: grid;
+            grid-template-columns: 50% 50%;
+            grid-column-gap: 10px;
+            grid-row-gap: 10px;
+        }
+
         .channels {
             padding: 20px;
             background-color: white;
             font-size: 14px;
+        }
+
+        .users {
+            padding: 20px;
+            background-color: white;
+            font-size: 14px;
+        }
+
+        .user {
+
+        }
+
+        .user-title {
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .user-channels {
+            margin-left: 20px;
         }
 
     </style>
@@ -34,10 +61,25 @@
 <div class="header">
     <div class="legal-hold-display-name">Legal Hold: {{ .LegalHold.Name }}</div>
 </div>
-<div class="channels">
-    {{ range .Channels }}
-    <div class="channel"><a href="{{ . }}.html">{{ . }}</a></div>
-    {{ end }}
+<div class="container">
+    <div class="channels">
+        {{ range .Channels }}
+        <div class="channel"><a href="{{ . }}.html">{{ . }}</a></div>
+        {{ end }}
+    </div>
+    <div class="users">
+        {{ range .Users }}
+        {{ $user := . }}
+        <div class="user">
+            <div class="user-title">{{ .Username }} ({{ .Email }})</div>
+            <div class="user-channels">
+                {{ range .Channels }}
+                <div class="channel"><a href="{{ $user.ID }}_{{ . }}.html">{{ . }}</a></div>
+                {{ end }}
+            </div>
+        </div>
+        {{ end }}
+    </div>
 </div>
 </body>
 </html>

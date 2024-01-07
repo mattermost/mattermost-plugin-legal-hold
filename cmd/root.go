@@ -117,10 +117,6 @@ func ProcessLegalHold(hold model.LegalHold, outputPath string) error {
 		return err
 	}
 
-	if err = view.WriteIndexFile(hold, index, outputPath); err != nil {
-		return err
-	}
-
 	fmt.Println("Finding channels...")
 	for _, channel := range channels {
 		fmt.Printf("- Channel: %s\n", channel.ID)
@@ -155,6 +151,10 @@ func ProcessLegalHold(hold model.LegalHold, outputPath string) error {
 				return err
 			}
 		}
+	}
+
+	if err = view.WriteIndexFile(hold, index, outputPath); err != nil {
+		return err
 	}
 
 	return nil
