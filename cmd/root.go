@@ -138,6 +138,25 @@ func ProcessLegalHold(hold model.LegalHold, outputPath string) error {
 		}
 	}
 
+	// Load data per user.
+	var users []model.User
+	for userID, userIndex := range index {
+		user := model.NewUserFromIDAndIndex(userID, userIndex)
+		users = append(users, user)
+		channels = parse.ListChannelsFromChannelMemberships(userIndex.Channels, hold)
+
+		for _, channel := range channels {
+			posts, err := parse.LoadPosts(channel)
+			if err != nil {
+				return err
+			}
+
+			if err = view.WriteUserChannel(hold, user, channel, posts, outputPath); err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 

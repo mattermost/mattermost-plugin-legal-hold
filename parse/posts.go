@@ -12,7 +12,7 @@ import (
 	"github.com/grundleborg/mattermost-legal-hold-processor/model"
 )
 
-// LoadPosts creates a list of all posts in the provided channel.
+// LoadPosts creates a list of all posts in the provided channel within the given timestamp range.
 func LoadPosts(channel model.Channel) ([]*model.Post, error) {
 	var posts []*model.Post
 	messagesPath := filepath.Join(channel.Path, "messages")
@@ -62,7 +62,13 @@ func LoadPosts(channel model.Channel) ([]*model.Post, error) {
 			return nil, err
 		}
 
-		posts = append(posts, newPosts...)
+		// Filter newPosts based on CreateAt timestamp
+		for _, post := range newPosts {
+			// Checking if the post's CreateAt is within the range of lowerBound and upperBound.
+			if post.PostCreateAt >= channel.LowerBound && post.PostCreateAt <= channel.UpperBound {
+				posts = append(posts, post)
+			}
+		}
 	}
 
 	return posts, nil
