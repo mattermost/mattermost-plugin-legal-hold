@@ -3,27 +3,111 @@ package model
 import "github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
 
 // LegalHoldChannelMembership represents the membership of a channel by a user in the
-// LegalHoldIndex.
+// LegalHoldIndexUsers.
 type LegalHoldChannelMembership struct {
-	ChannelID string
-	StartTime int64
-	EndTime   int64
+	ChannelID string `json:"channel_id"`
+	StartTime int64  `json:"start_time"`
+	EndTime   int64  `json:"end_time"`
 }
 
-// LegalHoldIndexUser represents the data about one user in the LegalHoldIndex.
+// LegalHoldIndexUser represents the data about one user in the LegalHoldIndexUsers.
 type LegalHoldIndexUser struct {
-	Username string
-	Email    string
-	Channels []LegalHoldChannelMembership
+	Username string                       `json:"username"`
+	Email    string                       `json:"email"`
+	Channels []LegalHoldChannelMembership `json:"channels"`
 }
 
-// LegalHoldIndex maps to the contents of the index.json file in a legal hold export.
+// LegalHoldIndexUsers maps to the contents of the index.json file in a legal hold export.
 // It contains various pieces of metadata to help with the programmatic and manual processing of
 // the legal hold export.
-type LegalHoldIndex map[string]LegalHoldIndexUser
+type LegalHoldIndexUsers map[string]LegalHoldIndexUser
+
+type LegalHoldIndexDetails struct {
+	ID                   string `json:"id"`
+	Name                 string `json:"name"`
+	DisplayName          string `json:"display_name"`
+	StartsAt             int64  `json:"starts_at"`
+	LastExecutionEndedAt int64  `json:"last_execution_ended_at"`
+}
+
+type LegalHoldIndex struct {
+	Users     LegalHoldIndexUsers   `json:"users"`
+	LegalHold LegalHoldIndexDetails `json:"legal_hold"`
+	Teams     []*LegalHoldTeam      `json:"teams"`
+}
+
+type LegalHoldTeam struct {
+	ID          string              `json:"id"`
+	Name        string              `json:"name"`
+	DisplayName string              `json:"display_name"`
+	Channels    []*LegalHoldChannel `json:"channels"`
+}
+
+type LegalHoldChannel struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	DisplayName string `json:"display_name"`
+	Type        string `json:"type"`
+}
+
+func NewLegalHoldIndex() LegalHoldIndex {
+	return LegalHoldIndex{
+		Users:     make(LegalHoldIndexUsers),
+		LegalHold: LegalHoldIndexDetails{},
+		Teams:     make([]*LegalHoldTeam, 0),
+	}
+}
 
 // Merge merges the new LegalHoldIndex into this LegalHoldIndex.
 func (lhi *LegalHoldIndex) Merge(new *LegalHoldIndex) {
+	// To merge the LegalHold data we overwrite the old struct in full
+	// with the new one.
+	lhi.LegalHold = new.LegalHold
+
+	// Recursively merge the Teams (and their Channels) property, taking
+	// the newest version for the union of both lists.
+	for _, newTeam := range new.Teams {
+		found := false
+		for _, oldTeam := range lhi.Teams {
+			if newTeam.ID == oldTeam.ID {
+				oldTeam.Merge(newTeam)
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			lhi.Teams = append(lhi.Teams, newTeam)
+		}
+	}
+
+	lhi.Users.Merge(&new.Users)
+}
+
+// Merge merges the new LegalHoldTeam into this LegalHoldTeam.
+func (team *LegalHoldTeam) Merge(new *LegalHoldTeam) {
+	team.Name = new.Name
+	team.DisplayName = new.DisplayName
+
+	for _, newChannel := range new.Channels {
+		found := false
+		for _, oldChannel := range team.Channels {
+			if newChannel.ID == oldChannel.ID {
+				oldChannel.Name = newChannel.Name
+				oldChannel.DisplayName = newChannel.DisplayName
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			team.Channels = append(team.Channels, newChannel)
+		}
+	}
+}
+
+// Merge merges the new LegalHoldIndexUsers into this LegalHoldIndexUsers.
+func (lhi *LegalHoldIndexUsers) Merge(new *LegalHoldIndexUsers) {
 	for userID, newUser := range *new {
 		if oldUser, ok := (*lhi)[userID]; !ok {
 			(*lhi)[userID] = newUser

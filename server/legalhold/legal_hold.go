@@ -43,7 +43,7 @@ func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQ
 		ExecutionEndTime:   legalHold.NextExecutionEndTime(),
 		store:              store,
 		fileBackend:        fileBackend,
-		index:              make(model.LegalHoldIndex),
+		index:              model.NewLegalHoldIndex(),
 		papi:               papi,
 	}
 }
@@ -86,8 +86,8 @@ func (ex *Execution) GetChannels() error {
 
 		// Add to channels index
 		for _, channelID := range channelIDs {
-			if idx, ok := ex.index[userID]; !ok {
-				ex.index[userID] = model.LegalHoldIndexUser{
+			if idx, ok := ex.index.Users[userID]; !ok {
+				ex.index.Users[userID] = model.LegalHoldIndexUser{
 					Username: user.Username,
 					Email:    user.Email,
 					Channels: []model.LegalHoldChannelMembership{
@@ -99,7 +99,7 @@ func (ex *Execution) GetChannels() error {
 					},
 				}
 			} else {
-				ex.index[userID] = model.LegalHoldIndexUser{
+				ex.index.Users[userID] = model.LegalHoldIndexUser{
 					Username: user.Username,
 					Email:    user.Email,
 					Channels: append(idx.Channels, model.LegalHoldChannelMembership{
@@ -216,7 +216,53 @@ func (ex *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPos
 func (ex *Execution) UpdateIndexes() error {
 	filePath := ex.indexPath()
 
-	// Check if the channels index already exists in the file backend.
+	// Populate the metadata in the index.
+	ex.index.LegalHold.ID = ex.LegalHold.ID
+	ex.index.LegalHold.DisplayName = ex.LegalHold.DisplayName
+	ex.index.LegalHold.Name = ex.LegalHold.Name
+	ex.index.LegalHold.StartsAt = ex.LegalHold.StartsAt
+	ex.index.LegalHold.LastExecutionEndedAt = ex.ExecutionEndTime
+
+	if len(ex.channelIDs) > 0 {
+		metadata, err := ex.store.GetChannelMetadataForIDs(ex.channelIDs)
+		if err != nil {
+			return err
+		}
+
+		for _, m := range metadata {
+			foundTeam := false
+			for _, t := range ex.index.Teams {
+				if t.ID == m.TeamID {
+					foundTeam = true
+					t.Channels = append(t.Channels, &model.LegalHoldChannel{
+						ID:          m.ChannelID,
+						Name:        m.ChannelName,
+						DisplayName: m.ChannelDisplayName,
+						Type:        m.ChannelType,
+					})
+					break
+				}
+			}
+
+			if !foundTeam {
+				ex.index.Teams = append(ex.index.Teams, &model.LegalHoldTeam{
+					ID:          m.TeamID,
+					Name:        m.TeamName,
+					DisplayName: m.TeamDisplayName,
+					Channels: []*model.LegalHoldChannel{
+						{
+							ID:          m.ChannelID,
+							Name:        m.ChannelName,
+							DisplayName: m.ChannelDisplayName,
+							Type:        m.ChannelType,
+						},
+					},
+				})
+			}
+		}
+	}
+
+	// Check if the index already exists in the file backend.
 	if exists, err := ex.fileBackend.FileExists(filePath); err != nil {
 		return err
 	} else if exists {

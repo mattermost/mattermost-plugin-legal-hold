@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	sq "github.com/Masterminds/squirrel"
+	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
@@ -21,6 +22,7 @@ func (ss SQLStore) GetPostsBatch(channelID string, endTime int64, cursor model.L
 
 	query := `
 		SELECT
+		    COALESCE(Teams.Id, '00000000000000000000000000') AS TeamID,
 			COALESCE(Teams.Name, 'direct-messages') AS TeamName,
 			COALESCE(Teams.DisplayName, 'Direct Messages') AS TeamDisplayName,
 			Channels.Name AS ChannelName,
@@ -137,4 +139,46 @@ func (ss SQLStore) GetFileInfosByIDs(ids []string) ([]model.FileInfo, error) {
 	}
 
 	return fileInfos, nil
+}
+
+func (ss SQLStore) GetChannelMetadataForIDs(channelIDs []string) ([]model.ChannelMetadata, error) {
+	var data []model.ChannelMetadata
+
+	query := `
+		SELECT
+			COALESCE(Teams.Id, '00000000000000000000000000') AS TeamID,
+			COALESCE(Teams.Name, 'direct-messages') AS TeamName,
+			COALESCE(Teams.DisplayName, 'Direct Messages') AS TeamDisplayName,
+			Channels.Id as ChannelID,
+			Channels.Name AS ChannelName,
+			Channels.Type AS ChannelType,
+			CASE
+				WHEN Channels.Type = 'D' THEN
+					(
+						(select Users.Username from Users where Users.Id = split_part(Channels.Name, '__', 1))
+							|| ', ' ||
+						(select Users.Username from Users where Users.Id = split_part(Channels.Name, '__', 2))
+					)
+				ELSE
+					Channels.DisplayName
+				END
+				AS ChannelDisplayName
+		FROM
+			Channels
+		LEFT OUTER JOIN
+			Teams ON Teams.ID = Channels.TeamId
+		WHERE
+			Channels.Id IN (?)`
+
+	query, args, err := sqlx.In(query, channelIDs)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to get channel metadata")
+	}
+	query = ss.replica.Rebind(query)
+
+	if err := ss.replica.Select(&data, query, args...); err != nil {
+		return nil, errors.Wrap(err, "unable to get channel metadata")
+	}
+
+	return data, nil
 }
