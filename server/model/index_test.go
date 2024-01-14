@@ -8,7 +8,7 @@ import (
 )
 
 func TestMerge(t *testing.T) {
-	oldIndex := LegalHoldIndex{
+	oldIndex := LegalHoldIndexUsers{
 		"user1": {
 			Username: "oldUser",
 			Email:    "oldUser@example.com",
@@ -27,7 +27,7 @@ func TestMerge(t *testing.T) {
 		},
 	}
 
-	newIndex := LegalHoldIndex{
+	newIndex := LegalHoldIndexUsers{
 		"user1": {
 			Username: "newUser",
 			Email:    "newUser@example.com",
@@ -46,7 +46,7 @@ func TestMerge(t *testing.T) {
 		},
 	}
 
-	expectedIndexAfterMerge := LegalHoldIndex{
+	expectedIndexAfterMerge := LegalHoldIndexUsers{
 		"user1": {
 			Username: "newUser",
 			Email:    "newUser@example.com",
