@@ -72,7 +72,8 @@ func WriteIndexFile(legalHold model.LegalHold, legalHoldIndex model.LegalHoldInd
 		return err
 	}
 
-	file, err := os.Create(filepath.Join(outputPath, "index.html"))
+	path := filepath.Join(outputPath, "index.html")
+	file, err := os.Create(path)
 	if err != nil {
 		return err
 	}
@@ -81,6 +82,12 @@ func WriteIndexFile(legalHold model.LegalHold, legalHoldIndex model.LegalHoldInd
 			fmt.Printf("%v\n", err)
 		}
 	}()
+
+	path, err = filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Browse the HTML output at: %s\n\n", path)
 
 	return tmpl.Execute(file, data)
 }
