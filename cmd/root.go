@@ -112,6 +112,8 @@ func ProcessLegalHold(hold model.LegalHold, outputPath string) error {
 		return err
 	}
 
+	teamLookup, channelLookup, teamForChannelLookup := parse.CreateTeamAndChannelLookup(index)
+
 	channels, err := parse.ListChannels(hold)
 	if err != nil {
 		return err
@@ -129,7 +131,7 @@ func ProcessLegalHold(hold model.LegalHold, outputPath string) error {
 			return err
 		}
 
-		if err = view.WriteChannel(hold, channel, posts, outputPath); err != nil {
+		if err = view.WriteChannel(hold, channel, posts, teamForChannelLookup[channel.ID], channelLookup[channel.ID], outputPath); err != nil {
 			return err
 		}
 	}
@@ -147,13 +149,25 @@ func ProcessLegalHold(hold model.LegalHold, outputPath string) error {
 				return err
 			}
 
-			if err = view.WriteUserChannel(hold, user, channel, posts, outputPath); err != nil {
+			if err = view.WriteUserChannel(hold, user, channel, posts, teamForChannelLookup[channel.ID], channelLookup[channel.ID], outputPath); err != nil {
 				return err
 			}
 		}
+
+		allPosts := make(map[string][]*model.Post)
+		for _, channel := range channels {
+			posts, err := parse.LoadPosts(channel)
+			if err != nil {
+				return err
+			}
+			allPosts[channel.ID] = posts
+		}
+		if err = view.WriteUserAllChannels(hold, user, allPosts, teamForChannelLookup, channelLookup, outputPath); err != nil {
+			return err
+		}
 	}
 
-	if err = view.WriteIndexFile(hold, index, outputPath); err != nil {
+	if err = view.WriteIndexFile(hold, index, teamLookup, channelLookup, teamForChannelLookup, outputPath); err != nil {
 		return err
 	}
 

@@ -10,28 +10,17 @@ import (
 )
 
 // WriteChannel takes the data for the posts in a channel and writes out the page for that channel.
-func WriteChannel(hold model.LegalHold, channel model.Channel, posts []*model.Post, outputPath string) error {
+func WriteChannel(hold model.LegalHold, channel model.Channel, posts []*model.Post, teamData *model.LegalHoldTeam, channelData *model.LegalHoldChannel, outputPath string) error {
 	data := struct {
-		Hold               model.LegalHold
-		Channel            model.Channel
-		ChannelName        string
-		ChannelDisplayName string
-		TeamName           string
-		TeamDisplayName    string
-		TeamID             string
-		Posts              []*model.Post
+		Hold        model.LegalHold
+		TeamData    *model.LegalHoldTeam
+		ChannelData *model.LegalHoldChannel
+		Posts       []*model.Post
 	}{
-		Hold:    hold,
-		Channel: channel,
-		Posts:   posts,
-	}
-
-	if len(posts) > 0 {
-		data.ChannelName = posts[0].ChannelName
-		data.ChannelDisplayName = posts[0].ChannelDisplayName
-		data.TeamName = posts[0].TeamName
-		data.TeamDisplayName = posts[0].TeamDisplayName
-		data.TeamID = posts[0].TeamID
+		Hold:        hold,
+		TeamData:    teamData,
+		ChannelData: channelData,
+		Posts:       posts,
 	}
 
 	tmpl, err := template.ParseFS(templates, "templates/channel.html")
@@ -54,28 +43,19 @@ func WriteChannel(hold model.LegalHold, channel model.Channel, posts []*model.Po
 
 // WriteUserChannel takes the data for the posts in a channel during a user's
 // presence in that channel and writes out the page for that channel.
-func WriteUserChannel(hold model.LegalHold, user model.User, channel model.Channel, posts []*model.Post, outputPath string) error {
+func WriteUserChannel(hold model.LegalHold, user model.User, channel model.Channel, posts []*model.Post, teamData *model.LegalHoldTeam, channelData *model.LegalHoldChannel, outputPath string) error {
 	data := struct {
-		Hold               model.LegalHold
-		Channel            model.Channel
-		ChannelName        string
-		ChannelDisplayName string
-		TeamName           string
-		TeamDisplayName    string
-		Posts              []*model.Post
-		User               model.User
+		Hold        model.LegalHold
+		TeamData    *model.LegalHoldTeam
+		ChannelData *model.LegalHoldChannel
+		Posts       []*model.Post
+		User        model.User
 	}{
-		Hold:    hold,
-		Channel: channel,
-		Posts:   posts,
-		User:    user,
-	}
-
-	if len(posts) > 0 {
-		data.ChannelName = posts[0].ChannelName
-		data.ChannelDisplayName = posts[0].ChannelDisplayName
-		data.TeamName = posts[0].TeamName
-		data.TeamDisplayName = posts[0].TeamDisplayName
+		Hold:        hold,
+		TeamData:    teamData,
+		ChannelData: channelData,
+		Posts:       posts,
+		User:        user,
 	}
 
 	tmpl, err := template.ParseFS(templates, "templates/user_channel.html")
@@ -84,6 +64,49 @@ func WriteUserChannel(hold model.LegalHold, user model.User, channel model.Chann
 	}
 
 	file, err := os.Create(filepath.Join(outputPath, fmt.Sprintf("%s_%s.html", user.ID, channel.ID)))
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err = file.Close(); err != nil {
+			fmt.Printf("%v\n", err)
+		}
+	}()
+
+	return tmpl.Execute(file, data)
+}
+
+type ChannelData struct {
+	TeamData    *model.LegalHoldTeam
+	ChannelData *model.LegalHoldChannel
+	Posts       []*model.Post
+}
+
+// WriteUserAllChannels writes all data for all channels for a user in one go.
+func WriteUserAllChannels(hold model.LegalHold, user model.User, allPosts map[string][]*model.Post, teamForChannelLookup model.TeamForChannelLookup, channelLookup model.ChannelLookup, outputPath string) error {
+	data := struct {
+		Hold     model.LegalHold
+		User     model.User
+		Channels []ChannelData
+	}{
+		Hold: hold,
+		User: user,
+	}
+
+	for channelID, posts := range allPosts {
+		data.Channels = append(data.Channels, ChannelData{
+			TeamData:    teamForChannelLookup[channelID],
+			ChannelData: channelLookup[channelID],
+			Posts:       posts,
+		})
+	}
+
+	tmpl, err := template.ParseFS(templates, "templates/user.html")
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Create(filepath.Join(outputPath, fmt.Sprintf("%s.html", user.ID)))
 	if err != nil {
 		return err
 	}

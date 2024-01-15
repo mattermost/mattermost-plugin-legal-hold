@@ -1,7 +1,7 @@
 <html lang="en">
 <head>
-    <title>User {{ .User.Username }} (ID: {{ .User.ID }}) view of channel: {{ .ChannelDisplayName }} ({{ .ChannelName }}
-        | {{ .Channel.ID }})</title>
+    <title>User {{ .User.Username }} (ID: {{ .User.ID }}) view of channel: {{ .ChannelData.DisplayName }} ({{ .ChannelData.Name }}
+        | {{ .ChannelData.ID }})</title>
     <style>
         body {
             background-color: #274466;
@@ -77,12 +77,12 @@
 <body>
 <div class="header">
     <div class="left">
-        <div class="channel-display-name">{{ .ChannelDisplayName }} as seen by @{{ .User.Username }}</div>
-        <div class="channel-extra-info">Channel Name: {{ .ChannelName }} | Channel ID: {{ .Channel.ID }} | User Email: {{ .User.Email }} | User ID: {{ .User.ID }}</div>
+        <div class="channel-display-name">{{ .ChannelData.DisplayName }} as seen by @{{ .User.Username }}</div>
+        <div class="channel-extra-info">Channel Name: {{ .ChannelData.Name }} | Channel ID: {{ .ChannelData.ID }} | User Email: {{ .User.Email }} | User ID: {{ .User.ID }}</div>
     </div>
     <div class="right">
-        <div class="team-display-name">Team: {{ .TeamDisplayName }}</div>
-        <div class="team-extra-info">Name: {{ .TeamName }}</div>
+        <div class="team-display-name">Team: {{ .TeamData.DisplayName }}</div>
+        <div class="team-extra-info">Name: {{ .TeamData.Name }} | ID: {{ .TeamData.ID }}</div>
     </div>
 </div>
 <div class="posts">

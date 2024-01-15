@@ -6,30 +6,62 @@ import (
 	"html/template"
 	"os"
 	"path/filepath"
-	"slices"
 )
 
-func WriteIndexFile(legalHold model.LegalHold, legalHoldIndex model.LegalHoldIndex, outputPath string) error {
+type User struct {
+	User  model.User
+	Teams []*UserTeam
+}
+
+type UserTeam struct {
+	TeamData *model.LegalHoldTeam
+	Channels []*UserChannel
+}
+
+type UserChannel struct {
+	ChannelData *model.LegalHoldChannel
+}
+
+func WriteIndexFile(legalHold model.LegalHold, legalHoldIndex model.LegalHoldIndex, teamLookup model.TeamLookup, channelLookup model.ChannelLookup, teamForChannelLookup model.TeamForChannelLookup, outputPath string) error {
 	data := struct {
 		LegalHold *model.LegalHold
 		Index     *model.LegalHoldIndex
-		Channels  []string
-		Users     []model.UserWithChannels
+		Users     []User
 	}{
 		LegalHold: &legalHold,
 		Index:     &legalHoldIndex,
-		Channels:  []string{},
-		Users:     []model.UserWithChannels{},
+		Users:     []User{},
 	}
 
 	for userID, userIndex := range legalHoldIndex.Users {
-		user := model.NewUserWithChannelsFromIDAndIndex(userID, userIndex)
+		user := User{
+			User:  model.NewUserFromIDAndIndex(userID, userIndex),
+			Teams: []*UserTeam{},
+		}
 
 		for _, channelIndex := range userIndex.Channels {
-			if !slices.Contains(data.Channels, channelIndex.ChannelID) {
-				data.Channels = append(data.Channels, channelIndex.ChannelID)
+			team := teamForChannelLookup[channelIndex.ChannelID]
+
+			userTeam := &UserTeam{
+				TeamData: team,
 			}
-			user.Channels = append(user.Channels, channelIndex.ChannelID)
+
+			found := false
+			for _, t := range user.Teams {
+				if t.TeamData.ID == team.ID {
+					userTeam = t
+					found = true
+					break
+				}
+			}
+
+			userTeam.Channels = append(userTeam.Channels, &UserChannel{
+				ChannelData: channelLookup[channelIndex.ChannelID],
+			})
+
+			if !found {
+				user.Teams = append(user.Teams, userTeam)
+			}
 		}
 
 		data.Users = append(data.Users, user)

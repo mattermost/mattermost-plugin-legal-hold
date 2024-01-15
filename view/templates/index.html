@@ -25,7 +25,7 @@
 
         .container {
             display: grid;
-            grid-template-columns: 50% 50%;
+            grid-template-columns: 5fr 5fr;
             grid-column-gap: 10px;
             grid-row-gap: 10px;
         }
@@ -81,14 +81,17 @@
     </div>
     <div class="users">
         {{ range .Users }}
-        {{ $user := . }}
+        {{ $user := .User }}
         <div class="user">
-            <div class="user-title">{{ .Username }} ({{ .Email }}) <a href="{{ $user.ID }}.html">All Messages</a></div>
+            <div class="user-title">{{ $user.Username }} ({{ $user.Email }}) <a href="{{ $user.ID }}.html">All Messages</a></div>
+            {{ range .Teams }}
+            <div class="user-team">{{ .TeamData.DisplayName }}</div>
             <div class="user-channels">
                 {{ range .Channels }}
-                <div class="channel"><a href="{{ $user.ID }}_{{ . }}.html">{{ . }}</a></div>
+                <div class="channel"><a href="{{ $user.ID }}_{{ .ChannelData.ID }}.html">{{ .ChannelData.DisplayName }}</a></div>
                 {{ end }}
             </div>
+            {{ end }}
         </div>
         {{ end }}
     </div>

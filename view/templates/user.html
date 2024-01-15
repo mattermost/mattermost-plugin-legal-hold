@@ -1,6 +1,6 @@
 <html lang="en">
 <head>
-    <title>Channel: {{ .ChannelData.DisplayName }} ({{ .ChannelData.Name }} | {{ .ChannelData.ID }})</title>
+    <title>User {{ .User.Username }} (ID: {{ .User.ID }}) view of all channels.</title>
     <style>
         body {
             background-color: #274466;
@@ -12,6 +12,7 @@
         .header {
             background-color: white;
             padding: 20px;
+            margin-top: 5px;
             margin-bottom: 5px;
             display: flex;
             justify-content: space-between;
@@ -56,6 +57,7 @@
             padding: 20px;
             background-color: white;
             font-size: 14px;
+            margin-bottom: 20px;
         }
 
         .user {
@@ -74,10 +76,14 @@
     </style>
 </head>
 <body>
+{{ $user := .User }}
+{{ range .Channels }}
 <div class="header">
     <div class="left">
-        <div class="channel-display-name">{{ .ChannelData.DisplayName }}</div>
-        <div class="channel-extra-info">Name: {{ .ChannelData.Name }} | ID: {{ .ChannelData.ID }}</div>
+        <div class="channel-display-name">{{ .ChannelData.DisplayName }} as seen by @{{ $user.Username }}</div>
+        <div class="channel-extra-info">Channel Name: {{ .ChannelData.Name }} | Channel ID: {{ .ChannelData.ID }} | User
+            Email: {{ $user.Email }} | User ID: {{ $user.ID }}
+        </div>
     </div>
     <div class="right">
         <div class="team-display-name">Team: {{ .TeamData.DisplayName }}</div>
@@ -91,5 +97,6 @@
     <div class="post">{{ .PostMessage }}</div>
     {{ end }}
 </div>
+{{ end }}
 </body>
 </html>

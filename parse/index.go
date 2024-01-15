@@ -30,3 +30,18 @@ func LoadIndex(legalHold model.LegalHold) (model.LegalHoldIndex, error) {
 
 	return index, nil
 }
+
+func CreateTeamAndChannelLookup(index model.LegalHoldIndex) (model.TeamLookup, model.ChannelLookup, model.TeamForChannelLookup) {
+	teamLookup := make(model.TeamLookup)
+	channelLookup := make(model.ChannelLookup)
+	teamForChannelLookup := make(model.TeamForChannelLookup)
+	for _, team := range index.Teams {
+		teamLookup[team.ID] = team
+		for _, channel := range team.Channels {
+			channelLookup[channel.ID] = channel
+			teamForChannelLookup[channel.ID] = team
+		}
+	}
+
+	return teamLookup, channelLookup, teamForChannelLookup
+}
