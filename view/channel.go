@@ -18,6 +18,7 @@ func WriteChannel(hold model.LegalHold, channel model.Channel, posts []*model.Po
 		ChannelDisplayName string
 		TeamName           string
 		TeamDisplayName    string
+		TeamID             string
 		Posts              []*model.Post
 	}{
 		Hold:    hold,
@@ -30,6 +31,7 @@ func WriteChannel(hold model.LegalHold, channel model.Channel, posts []*model.Po
 		data.ChannelDisplayName = posts[0].ChannelDisplayName
 		data.TeamName = posts[0].TeamName
 		data.TeamDisplayName = posts[0].TeamDisplayName
+		data.TeamID = posts[0].TeamID
 	}
 
 	tmpl, err := template.ParseFS(templates, "templates/channel.html")

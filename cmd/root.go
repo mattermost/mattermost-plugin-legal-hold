@@ -136,7 +136,7 @@ func ProcessLegalHold(hold model.LegalHold, outputPath string) error {
 
 	// Load data per user.
 	var users []model.User
-	for userID, userIndex := range index {
+	for userID, userIndex := range index.Users {
 		user := model.NewUserFromIDAndIndex(userID, userIndex)
 		users = append(users, user)
 		channels = parse.ListChannelsFromChannelMemberships(userIndex.Channels, hold)

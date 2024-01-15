@@ -7,6 +7,7 @@ import "time"
 type Post struct {
 
 	// From Team
+	TeamID          string `csv:"TeamId"`
 	TeamName        string `csv:"TeamName"`
 	TeamDisplayName string `csv:"TeamDisplayName"`
 

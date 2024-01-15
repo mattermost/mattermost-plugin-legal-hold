@@ -22,7 +22,7 @@ func WriteIndexFile(legalHold model.LegalHold, legalHoldIndex model.LegalHoldInd
 		Users:     []model.UserWithChannels{},
 	}
 
-	for userID, userIndex := range legalHoldIndex {
+	for userID, userIndex := range legalHoldIndex.Users {
 		user := model.NewUserWithChannelsFromIDAndIndex(userID, userIndex)
 
 		for _, channelIndex := range userIndex.Channels {

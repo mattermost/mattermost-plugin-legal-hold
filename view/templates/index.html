@@ -1,6 +1,6 @@
 <html lang="en">
 <head>
-    <title>Legal Hold Export: {{ .LegalHold.Name }}</title>
+    <title>Legal Hold Export: {{ .Index.LegalHold.DisplayName }} ({{.Index.LegalHold.ID }})</title>
     <style>
         body {
             background-color: #274466;
@@ -36,6 +36,14 @@
             font-size: 14px;
         }
 
+        .channels-team {
+            font-weight: bold;
+        }
+
+        .channel {
+            padding-left: 20px;
+        }
+
         .users {
             padding: 20px;
             background-color: white;
@@ -59,19 +67,23 @@
 </head>
 <body>
 <div class="header">
-    <div class="legal-hold-display-name">Legal Hold: {{ .LegalHold.Name }}</div>
+    <div class="legal-hold-display-name">Legal Hold: {{ .Index.LegalHold.DisplayName }} ({{.Index.LegalHold.ID }})</div>
 </div>
 <div class="container">
+
     <div class="channels">
+        {{ range .Index.Teams }}
+        <div class="channels-team">{{ .DisplayName }}</div>
         {{ range .Channels }}
-        <div class="channel"><a href="{{ . }}.html">{{ . }}</a></div>
+        <div class="channel"><a href="{{ .ID }}.html">{{ .DisplayName }}</a></div>
+        {{ end }}
         {{ end }}
     </div>
     <div class="users">
         {{ range .Users }}
         {{ $user := . }}
         <div class="user">
-            <div class="user-title">{{ .Username }} ({{ .Email }})</div>
+            <div class="user-title">{{ .Username }} ({{ .Email }}) <a href="{{ $user.ID }}.html">All Messages</a></div>
             <div class="user-channels">
                 {{ range .Channels }}
                 <div class="channel"><a href="{{ $user.ID }}_{{ . }}.html">{{ . }}</a></div>
