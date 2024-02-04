@@ -3,18 +3,18 @@ package legalhold
 import (
 	"database/sql"
 	"fmt"
-	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 	"os"
 	"os/exec"
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 	"github.com/mattermost/mattermost-server/v6/store/storetest"
 	"github.com/mattermost/mattermost-server/v6/testlib"
+	"github.com/stretchr/testify/require"
+
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 )
 
 type TestHelper struct {
@@ -278,7 +278,7 @@ func (th *TestHelper) CreateReactions(posts []*model.Post, userID string) ([]*mo
 	return reactions, nil
 }
 
-// storeWrapper is a wrapper for MainHelper that implements SQLStoreSource interface.
+// storeWrapper is a wrapper for MainHelper that implements Source interface.
 type storeWrapper struct {
 	mainHelper *testlib.MainHelper
 }

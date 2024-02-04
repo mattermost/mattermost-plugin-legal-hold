@@ -5,14 +5,14 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"time"
 
+	"github.com/gorilla/mux"
 	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
+	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 )
@@ -20,7 +20,7 @@ import (
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
 // ServeHTTP demonstrates a plugin that handles HTTP requests by greeting the world.
-func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Request) {
 	// All HTTP endpoints of this plugin require a logged-in user.
 	userID := r.Header.Get("Mattermost-User-ID")
 	if userID == "" {
@@ -48,7 +48,7 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 }
 
 // listLegalHolds serves a list of all LegalHold objects
-func (p *Plugin) listLegalHolds(w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) listLegalHolds(w http.ResponseWriter, _ *http.Request) {
 	legalHolds, err := p.KVStore.GetAllLegalHolds()
 	if err != nil {
 		http.Error(w, "an error occurred fetching the legal holds", http.StatusInternalServerError)
@@ -168,7 +168,7 @@ func (p *Plugin) updateLegalHold(w http.ResponseWriter, r *http.Request) {
 
 	if legalholdID != updateLegalHold.ID {
 		http.Error(w, "invalid LegalHold ID", http.StatusBadRequest)
-		p.Client.Log.Error(err.Error())
+		p.Client.Log.Error("legal hold ID specified in request parameters does not match legal hold ID")
 		return
 	}
 

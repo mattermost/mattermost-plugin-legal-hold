@@ -1,13 +1,13 @@
 package model
 
 import (
-	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
-	"github.com/mattermost/mattermost/server/public/model"
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 
+	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestModel_LegalHold_DeepCopy(t *testing.T) {

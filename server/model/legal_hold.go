@@ -56,11 +56,11 @@ func (lh *LegalHold) DeepCopy() LegalHold {
 // fail to save.
 func (lh *LegalHold) IsValidForCreate() error {
 	if !mattermostModel.IsValidId(lh.ID) {
-		return errors.New(fmt.Sprintf("LegalHold ID is not valid: %s", lh.ID))
+		return fmt.Errorf("LegalHold ID is not valid: %s", lh.ID)
 	}
 
 	if !mattermostModel.IsValidAlphaNumHyphenUnderscore(lh.Name, true) {
-		return errors.New(fmt.Sprintf("LegalHold Name is not valid: %s", lh.Name))
+		return fmt.Errorf("LegalHold Name is not valid: %s", lh.Name)
 	}
 
 	if len(lh.Name) > 64 || len(lh.Name) < 2 {
@@ -151,7 +151,7 @@ func NewLegalHoldFromCreate(lhc CreateLegalHold) LegalHold {
 	}
 }
 
-// UpdateLegalHold holds the data that is specified in teh API call to update a LegalHold.
+// UpdateLegalHold holds the data that is specified in the API call to update a LegalHold.
 type UpdateLegalHold struct {
 	ID          string   `json:"id"`
 	DisplayName string   `json:"display_name"`
@@ -161,7 +161,7 @@ type UpdateLegalHold struct {
 
 func (ulh UpdateLegalHold) IsValid() error {
 	if !mattermostModel.IsValidId(ulh.ID) {
-		return errors.New(fmt.Sprintf("LegalHold ID is not valid: %s", ulh.ID))
+		return fmt.Errorf("LegalHold ID is not valid: %s", ulh.ID)
 	}
 
 	if len(ulh.DisplayName) > 64 || len(ulh.DisplayName) < 2 {

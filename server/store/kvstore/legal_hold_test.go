@@ -33,8 +33,8 @@ func TestKVStore_CreateLegalHold(t *testing.T) {
 		mock.AnythingOfType("[]uint8"),
 		mock.AnythingOfType("model.PluginKVSetOptions"),
 	).Run(func(args mock.Arguments) {
-		marshalled := args.Get(1).([]uint8)
-		api.On("KVGet", mock.AnythingOfType("string")).Return(marshalled, nil).Once()
+		marshaled := args.Get(1).([]uint8)
+		api.On("KVGet", mock.AnythingOfType("string")).Return(marshaled, nil).Once()
 	}).Return(true, nil).Once()
 
 	lh2, err := kvstore.CreateLegalHold(lh1)
@@ -70,11 +70,11 @@ func TestKVStore_GetLegalHoldById(t *testing.T) {
 		ID:   mattermostModel.NewId(),
 		Name: "legal-hold-1",
 	}
-	marshalled, err := json.Marshal(lh1)
+	marshaled, err := json.Marshal(lh1)
 	require.NoError(t, err)
 
 	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, lh1.ID)).
-		Return(marshalled, nil)
+		Return(marshaled, nil)
 
 	// Test getting a valid legal hold
 	lh2, err := kvstore.GetLegalHoldByID(lh1.ID)
@@ -109,10 +109,10 @@ func TestKVStore_GetAllLegalHolds(t *testing.T) {
 
 	lhs := []model.LegalHold{lh1, lh2}
 
-	marshalled1, err := json.Marshal(lh1)
+	marshaled1, err := json.Marshal(lh1)
 	require.NoError(t, err)
 
-	marshalled2, err := json.Marshal(lh2)
+	marshaled2, err := json.Marshal(lh2)
 	require.NoError(t, err)
 
 	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).
@@ -122,8 +122,8 @@ func TestKVStore_GetAllLegalHolds(t *testing.T) {
 		}, nil).
 		Once()
 
-	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, lh1.ID)).Return(marshalled1, nil)
-	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, lh2.ID)).Return(marshalled2, nil)
+	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, lh1.ID)).Return(marshaled1, nil)
+	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, lh2.ID)).Return(marshaled2, nil)
 
 	// Test with some data
 	result, err := kvstore.GetAllLegalHolds()
@@ -142,8 +142,10 @@ func TestKVStore_GetAllLegalHolds(t *testing.T) {
 
 func TestKVStore_UpdateLegalHold(t *testing.T) {
 	// TODO: Implement me!
+	_ = t
 }
 
 func TestKVStore_DeleteLegalHold(t *testing.T) {
 	// TODO: Implement me!
+	_ = t
 }

@@ -232,7 +232,7 @@ func (th *TestHelper) CreateReactions(posts []*model.Post, userID string) ([]*mo
 	return reactions, nil
 }
 
-// storeWrapper is a wrapper for MainHelper that implements SQLStoreSource interface.
+// storeWrapper is a wrapper for MainHelper that implements Source interface.
 type storeWrapper struct {
 	mainHelper *testlib.MainHelper
 }

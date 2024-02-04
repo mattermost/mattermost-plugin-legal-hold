@@ -14,17 +14,17 @@ const (
 	legalHoldPrefix = "kvstore_legal_hold_"
 )
 
-type KVStoreImpl struct {
+type Impl struct {
 	client *pluginapi.Client
 }
 
 func NewKVStore(client *pluginapi.Client) KVStore {
-	return KVStoreImpl{
+	return Impl{
 		client: client,
 	}
 }
 
-func (kvs KVStoreImpl) CreateLegalHold(lh model.LegalHold) (*model.LegalHold, error) {
+func (kvs Impl) CreateLegalHold(lh model.LegalHold) (*model.LegalHold, error) {
 	if err := lh.IsValidForCreate(); err != nil {
 		return nil, errors.Wrap(err, "LegalHold is not valid for create")
 	}
@@ -38,7 +38,7 @@ func (kvs KVStoreImpl) CreateLegalHold(lh model.LegalHold) (*model.LegalHold, er
 	if !saved && err != nil {
 		return nil, errors.Wrap(err, "database error occurred creating legal hold")
 	} else if !saved && err == nil {
-		return nil, errors.New("could not create legal hold as a legal hold with that ID already eixsts.")
+		return nil, errors.New("could not create legal hold as a legal hold with that ID already exists")
 	}
 
 	var savedLegalHold model.LegalHold
@@ -50,7 +50,7 @@ func (kvs KVStoreImpl) CreateLegalHold(lh model.LegalHold) (*model.LegalHold, er
 	return &savedLegalHold, nil
 }
 
-func (kvs KVStoreImpl) GetAllLegalHolds() ([]model.LegalHold, error) {
+func (kvs Impl) GetAllLegalHolds() ([]model.LegalHold, error) {
 	keys, err := kvs.client.KV.ListKeys(
 		0, 1000000000,
 		pluginapi.WithPrefix(legalHoldPrefix))
@@ -72,7 +72,7 @@ func (kvs KVStoreImpl) GetAllLegalHolds() ([]model.LegalHold, error) {
 	return legalHolds, nil
 }
 
-func (kvs KVStoreImpl) GetLegalHoldByID(id string) (*model.LegalHold, error) {
+func (kvs Impl) GetLegalHoldByID(id string) (*model.LegalHold, error) {
 	key := fmt.Sprintf("%s%s", legalHoldPrefix, id)
 
 	var legalHold model.LegalHold
@@ -83,7 +83,7 @@ func (kvs KVStoreImpl) GetLegalHoldByID(id string) (*model.LegalHold, error) {
 	return &legalHold, nil
 }
 
-func (kvs KVStoreImpl) UpdateLegalHold(lh, oldValue model.LegalHold) (*model.LegalHold, error) {
+func (kvs Impl) UpdateLegalHold(lh, oldValue model.LegalHold) (*model.LegalHold, error) {
 	if err := lh.IsValidForCreate(); err != nil {
 		return nil, errors.Wrap(err, "LegalHold is not valid for create")
 	}
@@ -108,7 +108,7 @@ func (kvs KVStoreImpl) UpdateLegalHold(lh, oldValue model.LegalHold) (*model.Leg
 	return &savedLegalHold, nil
 }
 
-func (kvs KVStoreImpl) DeleteLegalHold(id string) error {
+func (kvs Impl) DeleteLegalHold(id string) error {
 	key := fmt.Sprintf("%s%s", legalHoldPrefix, id)
 
 	err := kvs.client.KV.Delete(key)

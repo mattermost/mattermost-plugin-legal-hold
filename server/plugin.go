@@ -2,12 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/kvstore"
-	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 	"reflect"
 	"sync"
 
+	"github.com/gorilla/mux"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
@@ -16,6 +14,8 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/config"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/jobs"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/kvstore"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 )
 
 const (
@@ -74,11 +74,7 @@ func (p *Plugin) OnActivate() error {
 	// Create job manager
 	p.jobManager = jobs.NewJobManager(&p.Client.Log)
 
-	if err = p.Reconfigure(); err != nil {
-		return err
-	}
-
-	return nil
+	return p.Reconfigure()
 }
 
 // getConfiguration retrieves the active Configuration under lock, making it safe to use

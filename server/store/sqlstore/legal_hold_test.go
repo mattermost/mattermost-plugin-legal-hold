@@ -146,4 +146,5 @@ func TestSQLStore_LegalHold_GetChannelIDsForUserDuring(t *testing.T) {
 
 func TestSQLStore_LegalHold_GetFileInfosByIDs(t *testing.T) {
 	// TODO: Implement me!
+	_ = t
 }

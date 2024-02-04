@@ -9,7 +9,7 @@ import (
 	"github.com/mattermost/mattermost-server/v6/model"
 )
 
-type SQLStoreSource interface {
+type Source interface {
 	GetMasterDB() (*sql.DB, error)
 	GetReplicaDB() (*sql.DB, error)
 	DriverName() string
@@ -23,7 +23,7 @@ type Logger interface {
 }
 
 type SQLStore struct {
-	src            SQLStoreSource
+	src            Source
 	master         *sqlx.DB
 	replica        *sqlx.DB
 	masterBuilder  sq.StatementBuilderType
@@ -32,7 +32,7 @@ type SQLStore struct {
 }
 
 // New constructs a new instance of SQLStore.
-func New(src SQLStoreSource, logger Logger) (*SQLStore, error) {
+func New(src Source, logger Logger) (*SQLStore, error) {
 	var master, replica *sqlx.DB
 
 	masterDB, err := src.GetMasterDB()
