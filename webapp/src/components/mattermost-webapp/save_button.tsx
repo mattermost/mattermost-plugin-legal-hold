@@ -17,6 +17,7 @@ type Props = {
     extraClasses?: string;
 }
 
+// eslint-disable-next-line react/prefer-stateless-function
 export default class SaveButton extends React.PureComponent<Props> {
     public static defaultProps: Partial<Props> = {
         btnClass: '',

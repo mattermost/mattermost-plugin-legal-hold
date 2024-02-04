@@ -79,7 +79,7 @@ const Input = React.forwardRef((
     const [customInputLabel, setCustomInputLabel] = useState<CustomMessageInputType>(null);
 
     useEffect(() => {
-        if (customMessage === undefined || customMessage === null) {
+        if (customMessage === undefined || customMessage === null) { // eslint-disable-line no-undefined
             if (customInputLabel !== null) {
                 // edge-use case: a consumer of this component may have its input updated
                 // from more than one place, such as by a network fetching data after load
@@ -89,7 +89,7 @@ const Input = React.forwardRef((
             return;
         }
 
-        if (customMessage !== undefined && customMessage !== null && Boolean(customMessage.value)) {
+        if (customMessage !== undefined && customMessage !== null && Boolean(customMessage.value)) { // eslint-disable-line no-undefined
             setCustomInputLabel(customMessage);
         }
     }, [customMessage]);
@@ -183,7 +183,7 @@ const Input = React.forwardRef((
                         name={name}
                         disabled={disabled}
                         {...otherProps}
-                        maxLength={limit ? undefined : maxLength}
+                        maxLength={limit ? undefined : maxLength} // eslint-disable-line no-undefined
                         onFocus={handleOnFocus}
                         onBlur={handleOnBlur}
                         onChange={handleOnChange}

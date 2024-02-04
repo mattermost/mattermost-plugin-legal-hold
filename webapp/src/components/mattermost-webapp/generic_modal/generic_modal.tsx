@@ -169,12 +169,13 @@ export class GenericModal extends React.PureComponent<Props, State> {
             </div>
         );
 
+        // eslint-disable-next-line no-undefined
         return (
             <Modal
                 id={this.props.id}
                 role='dialog'
                 aria-label={this.props.ariaLabel}
-                aria-labelledby={this.props.ariaLabel ? undefined : 'genericModalLabel'}
+                aria-labelledby={this.props.ariaLabel ? undefined : 'genericModalLabel'} // eslint-disable-line no-undefined
                 dialogClassName={classNames('a11y__modal GenericModal', {GenericModal__compassDesign: this.props.compassDesign}, this.props.className)}
                 show={this.props.show}
                 restoreFocus={true}

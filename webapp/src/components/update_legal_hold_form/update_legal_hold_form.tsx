@@ -19,7 +19,7 @@ interface UpdateLegalHoldFormProps {
 }
 
 const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
-    const [id, setId] = useState("");
+    const [id, setId] = useState('');
     const [displayName, setDisplayName] = useState('');
     const [users, setUsers] = useState(Array<UserProfile>());
     const [startsAt, setStartsAt] = useState('');
@@ -46,8 +46,8 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
     // Populate initial form field values when the Legal Hold being edited changes.
     useEffect(() => {
         if (props.legalHold) {
-            if (props.legalHold.id == id) {
-                return
+            if (props.legalHold.id === id) {
+                return;
             }
 
             setId(props.legalHold.id);
@@ -55,13 +55,13 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
             setUsers(props.users);
 
             if (props.legalHold.starts_at) {
-                const startsAt = dayjs(props.legalHold.starts_at).format('YYYY-MM-DD');
-                setStartsAt(startsAt);
+                const startsAtString = dayjs(props.legalHold.starts_at).format('YYYY-MM-DD');
+                setStartsAt(startsAtString);
             }
 
             if (props.legalHold.ends_at) {
-                const endsAt = dayjs(props.legalHold.ends_at).format('YYYY-MM-DD');
-                setEndsAt(endsAt);
+                const endsAtString = dayjs(props.legalHold.ends_at).format('YYYY-MM-DD');
+                setEndsAt(endsAtString);
             }
         }
     }, [props.legalHold, props.users]);
@@ -73,7 +73,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
         setSaving(true);
 
         if (!props.legalHold) {
-            return
+            return;
         }
 
         const data = {
@@ -113,7 +113,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
     };
 
     if (!props.legalHold) {
-        return <div></div>;
+        return <div/>;
     }
 
     return (

@@ -2,10 +2,8 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import {OverlayTrigger as OriginalOverlayTrigger} from 'react-bootstrap'; // eslint-disable-line no-restricted-imports
-import type {OverlayTriggerProps} from 'react-bootstrap';
-import {IntlProvider, IntlContext} from 'react-intl';
-import type {IntlShape} from 'react-intl';
+import {OverlayTrigger as OriginalOverlayTrigger, type OverlayTriggerProps} from 'react-bootstrap'; // eslint-disable-line no-restricted-imports
+import {IntlProvider, IntlContext, type IntlShape} from 'react-intl';
 
 export type BaseOverlayTrigger = typeof OriginalOverlayTrigger & {
     hide: () => void;

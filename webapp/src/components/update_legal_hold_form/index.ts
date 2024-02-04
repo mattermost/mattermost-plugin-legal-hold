@@ -3,10 +3,11 @@ import {AnyAction, bindActionCreators, Dispatch} from 'redux';
 
 import {getMissingProfilesByIds} from 'mattermost-redux/actions/users';
 
-import {LegalHold} from "@/types";
-import {GlobalState} from "mattermost-redux/types/store";
-import {getUser} from "mattermost-redux/selectors/entities/users";
-import UpdateLegalHoldForm from "@/components/update_legal_hold_form/update_legal_hold_form";
+import {GlobalState} from 'mattermost-redux/types/store';
+import {getUser} from 'mattermost-redux/selectors/entities/users';
+
+import {LegalHold} from '@/types';
+import UpdateLegalHoldForm from '@/components/update_legal_hold_form/update_legal_hold_form';
 
 type OwnProps = {
     legalHold: LegalHold;

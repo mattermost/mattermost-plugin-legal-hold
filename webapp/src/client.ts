@@ -10,7 +10,7 @@ class APIClient {
 
     downloadUrl = (id: string) => {
         return `${this.url}/legalhold/${id}/download`;
-    }
+    };
 
     getLegalHolds = () => {
         const url = `${this.url}/legalhold/list`;
@@ -30,7 +30,7 @@ class APIClient {
     updateLegalHold = (id: string, data: UpdateLegalHold) => {
         const url = `${this.url}/legalhold/${id}/update`;
         return this.doPost(url, data);
-    }
+    };
 
     doGet = async (url: string, headers = {}) => {
         const options = {

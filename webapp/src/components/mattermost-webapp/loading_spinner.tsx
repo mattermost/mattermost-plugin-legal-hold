@@ -10,6 +10,7 @@ type Props = {
     style?: React.CSSProperties;
 }
 
+// eslint-disable-next-line react/prefer-stateless-function
 export default class LoadingSpinner extends React.PureComponent<Props> {
     public static defaultProps: Props = {
         text: null,

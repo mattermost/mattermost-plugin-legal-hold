@@ -10,8 +10,8 @@ import LegalHoldTable from '@/components/legal_hold_table';
 import CreateLegalHoldButton from '@/components/create_legal_hold_button';
 
 import LegalHoldIcon from '@/components/legal_hold_icon.svg';
-import UpdateLegalHoldForm from "@/components/update_legal_hold_form";
-import ConfirmRelease from "@/components/confirm_release";
+import UpdateLegalHoldForm from '@/components/update_legal_hold_form';
+import ConfirmRelease from '@/components/confirm_release';
 
 const LegalHoldsSetting = () => {
     const [legalHoldsFetched, setLegalHoldsFetched] = useState(false);
@@ -28,7 +28,7 @@ const LegalHoldsSetting = () => {
             setLegalHoldsFetched(false);
             return response;
         } catch (error) {
-            console.log(error);
+            console.log(error); //eslint-disable-line no-console
             throw error;
         }
     };
@@ -39,7 +39,7 @@ const LegalHoldsSetting = () => {
             setLegalHoldsFetched(false);
             return response;
         } catch (error) {
-            console.log(error);
+            console.log(error); //eslint-disable-line no-console
             throw error;
         }
     };
@@ -50,7 +50,7 @@ const LegalHoldsSetting = () => {
             setLegalHoldsFetched(false);
             return response;
         } catch (error) {
-            console.log(error);
+            console.log(error); //eslint-disable-line no-console
             throw error;
         }
     };
@@ -58,12 +58,12 @@ const LegalHoldsSetting = () => {
     const doShowUpdateModal = (legalHold: LegalHold) => {
         setActiveLegalHold(legalHold);
         setShowUpdateModal(true);
-    }
+    };
 
     const doShowReleaseModal = (legalHold: LegalHold) => {
         setActiveLegalHold(legalHold);
         setShowReleaseModal(true);
-    }
+    };
 
     useEffect(() => {
         const fetchLegalHolds = async () => {
@@ -76,12 +76,12 @@ const LegalHoldsSetting = () => {
             } catch (error) {
                 setLegalHoldsFetching(false);
                 setLegalHoldsFetched(true);
-                console.error(error);
+                console.error(error); //eslint-disable-line no-console
             }
         };
 
         if (!legalHoldsFetched && !legalHoldsFetching) {
-            fetchLegalHolds().catch(console.error);
+            fetchLegalHolds().catch(console.error); //eslint-disable-line no-console
         }
     });
 
@@ -112,7 +112,7 @@ const LegalHoldsSetting = () => {
                             flexGrow: 1,
                         }}
                     >
-                        Legal Holds
+                        {'Legal Holds'}
                     </div>
                     <CreateLegalHoldButton
                         onClick={() => setShowCreateModal(true)}
@@ -120,7 +120,7 @@ const LegalHoldsSetting = () => {
                 </div>
                 <hr/>
 
-                {legalHolds.length == 0 && (
+                {legalHolds.length === 0 && (
                     <div
                         style={{
                             display: 'flex',
@@ -139,7 +139,7 @@ const LegalHoldsSetting = () => {
                                 marginBottom: 0,
                             }}
                         >
-                            No legal holds
+                            {'No legal holds'}
                         </p>
                         <p
                             style={{
@@ -147,7 +147,7 @@ const LegalHoldsSetting = () => {
                                 paddingBottom: '10px',
                             }}
                         >
-                            You have no legal holds at the moment
+                            {'You have no legal holds at the moment'}
                         </p>
                         <CreateLegalHoldButton
                             onClick={() => setShowCreateModal(true)}

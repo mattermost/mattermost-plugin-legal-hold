@@ -51,8 +51,7 @@ const ConfirmRelease = (props: ConfirmReleaseProps) => {
             show={props.visible}
         >
             <div>
-                Are you sure you want to release this legal hold? All data
-                associated with it will immediately be deleted and cannot be recovered.
+                {'Are you sure you want to release this legal hold? All data associated with it will immediately be deleted and cannot be recovered.'}
             </div>
         </GenericModal>
     );
