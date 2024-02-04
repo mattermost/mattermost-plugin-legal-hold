@@ -141,6 +141,9 @@ func (ss SQLStore) GetFileInfosByIDs(ids []string) ([]model.FileInfo, error) {
 	return fileInfos, nil
 }
 
+// GetChannelMetadataForIDs receives a list of channelIDs and returns the ChannelMetadata for each
+// of the identified channels. ChannelMetadata is all the additional data that is needed to populate
+// the Legal Hold index file with information about the channel.
 func (ss SQLStore) GetChannelMetadataForIDs(channelIDs []string) ([]model.ChannelMetadata, error) {
 	var data []model.ChannelMetadata
 
