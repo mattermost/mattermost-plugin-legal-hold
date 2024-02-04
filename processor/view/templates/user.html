@@ -1,0 +1,102 @@
+<html lang="en">
+<head>
+    <title>User {{ .User.Username }} (ID: {{ .User.ID }}) view of all channels.</title>
+    <style>
+        body {
+            background-color: #274466;
+            font-family: "Open Sans", sans-serif;
+            color: rgb(63, 67, 80);
+            padding: 20px;
+        }
+
+        .header {
+            background-color: white;
+            padding: 20px;
+            margin-top: 5px;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .header .left {
+
+        }
+
+        .header .right {
+            text-align: right;
+        }
+
+        .channel-display-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .channel-extra-info {
+            font-size: 14px;
+            color: rgba(63, 67, 80, 0.48);
+        }
+
+        .team-display-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: rgba(63, 67, 80, 0.64);
+        }
+
+        .team-extra-info {
+            font-size: 14px;
+            color: rgba(63, 67, 80, 0.48);
+        }
+
+        .posts {
+            display: grid;
+            grid-template-columns: max-content max-content auto;
+            grid-column-gap: 10px;
+            grid-row-gap: 10px;
+            padding: 20px;
+            background-color: white;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .user {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .time {
+            font-size: 14px;
+            color: rgba(63, 67, 80, 0.48);
+        }
+
+        .post {
+
+        }
+    </style>
+</head>
+<body>
+{{ $user := .User }}
+{{ range .Channels }}
+<div class="header">
+    <div class="left">
+        <div class="channel-display-name">{{ .ChannelData.DisplayName }} as seen by @{{ $user.Username }}</div>
+        <div class="channel-extra-info">Channel Name: {{ .ChannelData.Name }} | Channel ID: {{ .ChannelData.ID }} | User
+            Email: {{ $user.Email }} | User ID: {{ $user.ID }}
+        </div>
+    </div>
+    <div class="right">
+        <div class="team-display-name">Team: {{ .TeamData.DisplayName }}</div>
+        <div class="team-extra-info">Name: {{ .TeamData.Name }} | ID: {{ .TeamData.ID }}</div>
+    </div>
+</div>
+<div class="posts">
+    {{ range .Posts}}
+    <div class="time">{{ .PrintCreateAt }}</div>
+    <div class="user">@{{ .UserUsername }}</div>
+    <div class="post">{{ .PostMessage }}</div>
+    {{ end }}
+</div>
+{{ end }}
+</body>
+</html>
