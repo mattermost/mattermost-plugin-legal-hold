@@ -1,5 +1,6 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
+// @ts-nocheck
 
 import React from 'react';
 import classNames from 'classnames';

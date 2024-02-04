@@ -14,7 +14,7 @@ interface UpdateLegalHoldFormProps {
     updateLegalHold: (data: UpdateLegalHold) => Promise<any>;
     onExited: () => void;
     visible: boolean;
-    legalHold: LegalHold|null;
+    legalHold: LegalHold | null;
     users: Array<UserProfile>;
 }
 
@@ -169,22 +169,20 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
                             columnGap: '20px',
                         }}
                     >
-                        <div>
-                            <Input
-                                type='date'
-                                autoComplete='off'
-                                autoFocus={false}
-                                required={true}
-                                name={'Starting at'}
-                                label={'Starting at'}
-                                placeholder={'Starting at'}
-                                limit={64}
-                                value={startsAt}
-                                containerClassName={'create-legal-hold-container'}
-                                inputClassName={'create-legal-hold-input'}
-                                disabled={true}
-                            />
-                        </div>
+                        <Input
+                            type='date'
+                            autoComplete='off'
+                            autoFocus={false}
+                            required={true}
+                            name={'Starting at'}
+                            label={'Starting at'}
+                            placeholder={'Starting at'}
+                            limit={64}
+                            value={startsAt}
+                            containerClassName={'create-legal-hold-container'}
+                            inputClassName={'create-legal-hold-input'}
+                            disabled={true}
+                        />
                         <Input
                             type='date'
                             autoComplete='off'

@@ -10,7 +10,7 @@ import Input from '@/components/mattermost-webapp/input/input';
 import './create_legal_hold_form.scss';
 
 interface ConfirmReleaseProps {
-    legalHold: LegalHold;
+    legalHold: LegalHold | null;
     releaseLegalHold: (id: string) => Promise<any>;
     onExited: () => void;
     visible: boolean;
@@ -21,6 +21,10 @@ const ConfirmRelease = (props: ConfirmReleaseProps) => {
     const [serverError, setServerError] = useState('');
 
     const release = () => {
+        if (!props.legalHold) {
+            return;
+        }
+
         setSaving(true);
         props.releaseLegalHold(props.legalHold.id).then((response) => {
             props.onExited();
@@ -33,6 +37,24 @@ const ConfirmRelease = (props: ConfirmReleaseProps) => {
     const onCancel = () => {
         props.onExited();
     };
+
+    const createMessage = (lh: LegalHold|null) => {
+        if (lh) {
+            return (
+                <React.Fragment>
+                    {'Are you sure you want to release the legal hold '}
+                    <strong>{'"'}{lh.display_name}{'"'}</strong>
+                    {'? All data associated with it will immediately be deleted and cannot be recovered.'}
+                </React.Fragment>
+            );
+        }
+
+        return (
+            <React.Fragment/>
+        );
+    };
+
+    const message = createMessage(props.legalHold);
 
     return (
         <GenericModal
@@ -49,9 +71,10 @@ const ConfirmRelease = (props: ConfirmReleaseProps) => {
             handleCancel={onCancel}
             onExited={onCancel}
             show={props.visible}
+            isDeleteModal={true}
         >
             <div>
-                {'Are you sure you want to release this legal hold? All data associated with it will immediately be deleted and cannot be recovered.'}
+                {message}
             </div>
         </GenericModal>
     );

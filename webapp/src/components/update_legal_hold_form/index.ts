@@ -10,7 +10,7 @@ import {LegalHold} from '@/types';
 import UpdateLegalHoldForm from '@/components/update_legal_hold_form/update_legal_hold_form';
 
 type OwnProps = {
-    legalHold: LegalHold;
+    legalHold: LegalHold|null;
 }
 
 function makeMapStateToProps() {

@@ -101,4 +101,8 @@ const customStyles = {
         ...base,
         zIndex: 9999,
     }),
+    multiValue: (base) => ({
+        ...base,
+        borderRadius: '50px',
+    }),
 };

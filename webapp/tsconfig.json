@@ -29,7 +29,8 @@
   },
   "include": [
     "src",
-    "tests"
+    "tests",
+    "custom.d.ts"
   ],
   "exclude": [
     "dist",
