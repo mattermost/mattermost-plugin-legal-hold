@@ -4,6 +4,10 @@ import {UserProfile} from 'mattermost-redux/types/users';
 import {LegalHold} from '@/types';
 import Client from '@/client';
 
+import Tooltip from '@/components/mattermost-webapp/tooltip';
+
+import OverlayTrigger from '@/components/mattermost-webapp/overlay_trigger';
+
 import DownloadIcon from './download-outline_F0B8F.svg';
 import EditIcon from './pencil-outline_F0CB6.svg';
 
@@ -44,39 +48,57 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     alignItems: 'center',
                 }}
             >
-                <a
-                    href='#'
-                    onClick={() => props.showUpdateModal(lh)}
-                    style={{
-                        marginRight: '10px',
-                        height: '24px',
-                    }}
+                <OverlayTrigger
+                    delayShow={300}
+                    placement='top'
+                    overlay={(
+                        <Tooltip id={'UpdateLegalHoldTooltip'}>
+                            {'Update Legal Hold'}
+                        </Tooltip>
+                    )}
                 >
-                    <span
+                    <a
+                        href='#'
+                        onClick={() => props.showUpdateModal(lh)}
                         style={{
-                            fill: 'rgba(0, 0, 0, 0.5)',
+                            marginRight: '10px',
+                            height: '24px',
                         }}
                     >
-                        <EditIcon/>
-                    </span>
-                </a>
-                {' '}
-                <a
-                    href={downloadUrl}
-                    style={{
-                        marginRight: '10px',
-                        height: '24px',
-                    }}
+                        <span
+                            style={{
+                                fill: 'rgba(0, 0, 0, 0.5)',
+                            }}
+                        >
+                            <EditIcon/>
+                        </span>
+                    </a>
+                </OverlayTrigger>
+                <OverlayTrigger
+                    delayShow={300}
+                    placement='top'
+                    overlay={(
+                        <Tooltip id={'DownloadLegalHoldTooltip'}>
+                            {'Download Legal Hold'}
+                        </Tooltip>
+                    )}
                 >
-                    <span
+                    <a
+                        href={downloadUrl}
                         style={{
-                            fill: 'rgba(0, 0, 0, 0.5)',
+                            marginRight: '20px',
+                            height: '24px',
                         }}
                     >
-                        <DownloadIcon/>
-                    </span>
-                </a>
-                {' '}
+                        <span
+                            style={{
+                                fill: 'rgba(0, 0, 0, 0.5)',
+                            }}
+                        >
+                            <DownloadIcon/>
+                        </span>
+                    </a>
+                </OverlayTrigger>
                 <a
                     href='#'
                     onClick={release}

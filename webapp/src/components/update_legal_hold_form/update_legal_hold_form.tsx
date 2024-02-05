@@ -120,7 +120,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
         <GenericModal
             id='edit-legal-hold-modal'
             className='edit-legal-hold-modal'
-            modalHeaderText='Update new legal hold'
+            modalHeaderText='Update legal hold'
             confirmButtonText='Update legal hold'
             cancelButtonText='Cancel'
             errorText={serverError}
