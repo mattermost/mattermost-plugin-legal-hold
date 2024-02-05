@@ -4,6 +4,9 @@ import {UserProfile} from 'mattermost-redux/types/users';
 import {LegalHold} from '@/types';
 import Client from '@/client';
 
+import DownloadIcon from './download-outline_F0B8F.svg';
+import EditIcon from './pencil-outline_F0CB6.svg';
+
 interface LegalHoldRowProps {
     legalHold: LegalHold;
     users: UserProfile[];
@@ -35,19 +38,45 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
             <div>{startsAt}</div>
             <div>{endsAt}</div>
             <div>{props.users.length} {'users'}</div>
-            <div>
+            <div
+                style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                }}
+            >
                 <a
                     href='#'
                     onClick={() => props.showUpdateModal(lh)}
+                    style={{
+                        marginRight: "10px",
+                        height: "24px",
+                    }}
                 >
-                    {'Edit'}
+                    <span style={{
+                        fill: "rgba(0, 0, 0, 0.5)",
+                    }}>
+                        <EditIcon/>
+                    </span>
                 </a>
                 {' '}
-                <a href={downloadUrl}>{'Download'}</a>
+                <a
+                    href={downloadUrl}
+                    style={{
+                        marginRight: "10px",
+                        height: "24px",
+                    }}
+                >
+                    <span style={{
+                        fill: "rgba(0, 0, 0, 0.5)",
+                    }}>
+                        <DownloadIcon/>
+                    </span>
+                </a>
                 {' '}
                 <a
                     href='#'
                     onClick={release}
+                    className={"btn btn-danger"}
                 >{'Release'}</a>
             </div>
         </React.Fragment>
