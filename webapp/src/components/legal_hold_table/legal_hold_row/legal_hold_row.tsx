@@ -40,21 +40,23 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
             <div>{props.users.length} {'users'}</div>
             <div
                 style={{
-                    display: "inline-flex",
-                    alignItems: "center",
+                    display: 'inline-flex',
+                    alignItems: 'center',
                 }}
             >
                 <a
                     href='#'
                     onClick={() => props.showUpdateModal(lh)}
                     style={{
-                        marginRight: "10px",
-                        height: "24px",
+                        marginRight: '10px',
+                        height: '24px',
                     }}
                 >
-                    <span style={{
-                        fill: "rgba(0, 0, 0, 0.5)",
-                    }}>
+                    <span
+                        style={{
+                            fill: 'rgba(0, 0, 0, 0.5)',
+                        }}
+                    >
                         <EditIcon/>
                     </span>
                 </a>
@@ -62,13 +64,15 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                 <a
                     href={downloadUrl}
                     style={{
-                        marginRight: "10px",
-                        height: "24px",
+                        marginRight: '10px',
+                        height: '24px',
                     }}
                 >
-                    <span style={{
-                        fill: "rgba(0, 0, 0, 0.5)",
-                    }}>
+                    <span
+                        style={{
+                            fill: 'rgba(0, 0, 0, 0.5)',
+                        }}
+                    >
                         <DownloadIcon/>
                     </span>
                 </a>
@@ -76,7 +80,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                 <a
                     href='#'
                     onClick={release}
-                    className={"btn btn-danger"}
+                    className={'btn btn-danger'}
                 >{'Release'}</a>
             </div>
         </React.Fragment>

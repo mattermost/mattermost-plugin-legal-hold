@@ -35,7 +35,7 @@ const LegalHoldTable = (props: LegalHoldTableProps) => {
                     gridTemplateColumns: 'auto auto auto auto auto',
                     columnGap: '10px',
                     rowGap: '10px',
-                    alignItems: "center",
+                    alignItems: 'center',
                 }}
             >
                 <div style={{fontWeight: 'bold'}}>{'Name'}</div>
