@@ -25,7 +25,6 @@ func NewLegalHoldCursor(startTime int64) LegalHoldCursor {
 type LegalHoldPost struct {
 
 	// From Team
-	TeamID          string `csv:"TeamId"`
 	TeamName        string `csv:"TeamName"`
 	TeamDisplayName string `csv:"TeamDisplayName"`
 

@@ -22,11 +22,20 @@ func (ss SQLStore) GetPostsBatch(channelID string, endTime int64, cursor model.L
 
 	query := `
 		SELECT
-		    COALESCE(Teams.Id, '00000000000000000000000000') AS TeamID,
 			COALESCE(Teams.Name, 'direct-messages') AS TeamName,
 			COALESCE(Teams.DisplayName, 'Direct Messages') AS TeamDisplayName,
 			Channels.Name AS ChannelName,
-			Channels.DisplayName AS ChannelDisplayName,
+			CASE
+				WHEN Channels.Type = 'D' THEN
+					(
+						(select Users.Username from Users where Users.Id = split_part(Channels.Name, '__', 1))
+							|| ', ' ||
+						(select Users.Username from Users where Users.Id = split_part(Channels.Name, '__', 2))
+					)
+				ELSE
+					Channels.DisplayName
+				END
+				AS ChannelDisplayName,
 			Channels.Type AS ChannelType,
 			Users.Username AS UserUsername,
 			Users.Email AS UserEmail,
