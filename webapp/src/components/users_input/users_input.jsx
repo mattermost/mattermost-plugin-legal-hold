@@ -34,6 +34,14 @@ export default class UsersInput extends React.Component {
     };
 
     formatOptionLabel = (option) => {
+        if (option.first_name && option.last_name && option.username) {
+            return (
+                <React.Fragment>
+                    {`@${option.username} (${option.first_name} ${option.last_name})`}
+                </React.Fragment>
+            );
+        }
+
         if (option.username) {
             return (
                 <React.Fragment>
