@@ -14,16 +14,18 @@ const (
 
 type LegalHoldJobSettings struct {
 	EnableLegalHoldJobs bool
+	TimeOfDay           time.Time
 }
 
 func (s *LegalHoldJobSettings) Clone() *LegalHoldJobSettings {
 	return &LegalHoldJobSettings{
 		EnableLegalHoldJobs: s.EnableLegalHoldJobs,
+		TimeOfDay:           s.TimeOfDay,
 	}
 }
 
 func (s *LegalHoldJobSettings) String() string {
-	return fmt.Sprintf("enabled=%T", s.EnableLegalHoldJobs)
+	return fmt.Sprintf("enabled=%T, tod=%s", s.EnableLegalHoldJobs, s.TimeOfDay.Format(TimeOfDayLayout))
 }
 
 func parseLegaHoldJobSettings(cfg *config.Configuration) (*LegalHoldJobSettings, error) {
@@ -33,14 +35,20 @@ func parseLegaHoldJobSettings(cfg *config.Configuration) (*LegalHoldJobSettings,
 		}, nil
 	}
 
+	tod, err := time.Parse(TimeOfDayLayout, cfg.TimeOfDay)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse `Time of day`: %w", err)
+	}
+
 	return &LegalHoldJobSettings{
 		EnableLegalHoldJobs: true,
+		TimeOfDay:           tod,
 	}, nil
 }
 
-func (s *LegalHoldJobSettings) CalcNext(last time.Time) time.Time {
-	// TODO: Make this configurable. Channel Archiver provides example code for how to do this.
-	timeOfDay := time.Date(2009, 11, 17, 8, 16, 0, 0, time.UTC)
-	// return time.Date(last.Year(), last.Month(), last.Day()+1, timeOfDay.Hour(), timeOfDay.Minute(), timeOfDay.Second(), 0, timeOfDay.Location())
-	return time.Date(last.Year(), last.Month(), last.Day(), last.Hour(), last.Minute()+2, timeOfDay.Second(), 0, last.Location())
+func (s *LegalHoldJobSettings) CalcNext(last time.Time, timeOfDay time.Time) time.Time {
+	originalLocation := timeOfDay.Location()
+	last = last.In(originalLocation)
+	next := time.Date(last.Year(), last.Month(), last.Day()+1, timeOfDay.Hour(), timeOfDay.Minute(), timeOfDay.Second(), 0, timeOfDay.Location())
+	return next.In(originalLocation)
 }

@@ -56,6 +56,7 @@ func (j *LegalHoldJob) OnConfigurationChange(cfg *config.Configuration) error {
 	j.client.Log.Debug("LegalHoldJob: Configuration Changed")
 	settings, err := parseLegaHoldJobSettings(cfg)
 	if err != nil {
+		j.client.Log.Error(fmt.Sprintf("LegalHoldJob: Error parsing job settings: %v", err.Error()))
 		return err
 	}
 
@@ -139,7 +140,7 @@ func (j *LegalHoldJob) nextWaitInterval(now time.Time, metaData cluster.JobMetad
 		lastFinished = now.AddDate(-1, 0, 0)
 	}
 
-	next := settings.CalcNext(lastFinished)
+	next := settings.CalcNext(lastFinished, settings.TimeOfDay)
 	delta := next.Sub(now)
 
 	j.client.Log.Debug("Legal Hold Job next run scheduled", "last", lastFinished.Format(FullLayout), "next", next.Format(FullLayout), "wait", delta.String())

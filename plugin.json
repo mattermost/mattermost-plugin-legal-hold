@@ -25,6 +25,13 @@
     "footer": "",
     "settings": [
       {
+        "key": "TimeOfDay",
+        "display_name": "Time of day:",
+        "type": "text",
+        "help_text": "Time of day to run the Legal Hold task, in the form 'HH:MM ±HHMM' (e.g. '3:00am -0700').  Use +0000 for UTC.",
+        "default": "1:00am -0700"
+      },
+      {
         "key": "LegalHoldsSettings",
         "display_name": "Legal Holds:",
         "type": "custom"

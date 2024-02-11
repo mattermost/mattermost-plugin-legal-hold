@@ -12,6 +12,7 @@ package config
 // If you add non-reference types to your Configuration struct, be sure to rewrite Clone as a deep
 // copy appropriate for your types.
 type Configuration struct {
+	TimeOfDay string
 }
 
 // Clone shallow copies the Configuration. Your implementation may require a deep copy if
