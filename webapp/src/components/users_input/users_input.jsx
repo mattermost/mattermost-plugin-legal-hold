@@ -73,6 +73,10 @@ export default class UsersInput extends React.Component {
         }
     };
 
+    keyDownHandler = e => {
+        if (e.key === "Enter") e.stopPropagation();
+    };
+
     render() {
         return (
             <AsyncSelect
@@ -92,6 +96,7 @@ export default class UsersInput extends React.Component {
                 styles={customStyles}
                 menuPortalTarget={document.body}
                 menuPosition={'fixed'}
+                onKeyDown={this.keyDownHandler}
             />
         );
     }
