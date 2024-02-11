@@ -41,6 +41,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
         setUsers([]);
         setSaving(false);
         setServerError('');
+        setId('');
     };
 
     // Populate initial form field values when the Legal Hold being edited changes.
@@ -64,7 +65,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
                 setEndsAt(endsAtString);
             }
         }
-    }, [props.legalHold, props.users]);
+    }, [props.legalHold, props.users, props.visible]);
 
     const onSave = () => {
         if (saving) {
