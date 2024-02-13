@@ -2,8 +2,11 @@ package legalhold
 
 import (
 	"bytes"
+	"crypto/sha512"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/gocarina/gocsv"
@@ -177,6 +180,18 @@ func (ex *Execution) WritePostsBatchToFile(channelID string, posts []model.Legal
 	csvReader := strings.NewReader(csvContent)
 
 	_, err = ex.fileBackend.WriteFile(csvReader, path)
+	if err != nil {
+		return err
+	}
+
+	hashReader := strings.NewReader(csvContent)
+
+	h, err := hash(ex.LegalHold.Secret, hashReader)
+	if err != nil {
+		return err
+	}
+
+	err = ex.WriteFileHash(path, h)
 
 	return err
 }
@@ -206,9 +221,20 @@ func (ex *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPos
 		if err != nil {
 			return err
 		}
+
+		hashReader, err := ex.fileBackend.Reader(fileInfo.Path)
+		if err != nil {
+			return err
+		}
+
+		h, err := hash(ex.LegalHold.Secret, hashReader)
+		if err != nil {
+			return err
+		}
+
+		err = ex.WriteFileHash(fileInfo.Path, h)
 	}
 
-	// Write the
 	return nil
 }
 
@@ -291,7 +317,53 @@ func (ex *Execution) UpdateIndexes() error {
 	reader := bytes.NewReader(data)
 
 	_, err = ex.fileBackend.WriteFile(reader, filePath)
+	if err != nil {
+		return err
+	}
+
+	hashReader := bytes.NewReader(data)
+	if err != nil {
+		return err
+	}
+
+	h, err := hash(ex.LegalHold.Secret, hashReader)
+	if err != nil {
+		return err
+	}
+
+	err = ex.WriteFileHash(filePath, h)
+
 	return err
+}
+
+func (ex *Execution) WriteFileHash(path, hash string) error {
+	hashesFilePath := fmt.Sprintf("%s/hashes.csv", ex.basePath())
+
+	var buf bytes.Buffer
+	writer := csv.NewWriter(&buf)
+	err := writer.Write([]string{path, hash})
+	if err != nil {
+		return err
+	}
+	writer.Flush()
+
+	lineReader := bytes.NewReader(buf.Bytes())
+
+	if exists, err := ex.fileBackend.FileExists(hashesFilePath); err != nil {
+		return err
+	} else if !exists {
+		_, err = ex.fileBackend.WriteFile(lineReader, hashesFilePath)
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err = ex.fileBackend.AppendFile(lineReader, hashesFilePath)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // basePath returns the base file storage path for this Execution.
@@ -332,4 +404,20 @@ func (ex *Execution) filePath(channelID string, batchCreateAt int64, batchPostID
 		fileID,
 		fileName,
 	)
+}
+
+func hash(secret string, reader io.Reader) (string, error) {
+	hasher := sha512.New()
+
+	_, err := hasher.Write([]byte(secret))
+	if err != nil {
+		return "", err
+	}
+
+	_, err = io.Copy(hasher, reader)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hasher.Sum(nil)), nil
 }

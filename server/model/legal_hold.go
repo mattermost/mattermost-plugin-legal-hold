@@ -21,6 +21,7 @@ type LegalHold struct {
 	EndsAt               int64    `json:"ends_at"`
 	LastExecutionEndedAt int64    `json:"last_execution_ended_at"`
 	ExecutionLength      int64    `json:"execution_length"`
+	Secret               string   `json:"secret"`
 }
 
 // DeepCopy creates a deep copy of the LegalHold.
@@ -39,6 +40,7 @@ func (lh *LegalHold) DeepCopy() LegalHold {
 		EndsAt:               lh.EndsAt,
 		LastExecutionEndedAt: lh.LastExecutionEndedAt,
 		ExecutionLength:      lh.ExecutionLength,
+		Secret:               lh.Secret,
 	}
 
 	if len(lh.UserIDs) > 0 {

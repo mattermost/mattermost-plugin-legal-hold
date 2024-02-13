@@ -31,6 +31,7 @@ func (kvs Impl) CreateLegalHold(lh model.LegalHold) (*model.LegalHold, error) {
 
 	lh.CreateAt = mattermostModel.GetMillis()
 	lh.UpdateAt = lh.CreateAt
+	lh.Secret = mattermostModel.NewId()
 
 	key := fmt.Sprintf("%s%s", legalHoldPrefix, lh.ID)
 
