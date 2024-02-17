@@ -3,15 +3,15 @@ package cmd
 import (
 	"archive/zip"
 	"fmt"
-	"github.com/grundleborg/mattermost-legal-hold-processor/view"
 	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
 
-	"github.com/grundleborg/mattermost-legal-hold-processor/model"
-	"github.com/grundleborg/mattermost-legal-hold-processor/parse"
+	"github.com/mattermost/mattermost-plugin-legal-hold/processor/model"
+	"github.com/mattermost/mattermost-plugin-legal-hold/processor/parse"
+	"github.com/mattermost/mattermost-plugin-legal-hold/processor/view"
 )
 
 var rootCmd = &cobra.Command{
@@ -125,13 +125,28 @@ func ProcessLegalHold(hold model.LegalHold, outputPath string) error {
 	}
 	fmt.Println()
 
+	// Build a FileID to file path lookup table.
+	originalFileLookup, err := parse.ProcessFiles(hold)
+	if err != nil {
+		return err
+	}
+
+	// Move all attachments into position in the output folders.
+	fileLookup, err := view.MoveFiles(originalFileLookup, outputPath)
+	if err != nil {
+		return err
+	}
+
 	for _, channel := range channels {
 		posts, err := parse.LoadPosts(channel)
 		if err != nil {
 			return err
 		}
 
-		if err = view.WriteChannel(hold, channel, posts, teamForChannelLookup[channel.ID], channelLookup[channel.ID], outputPath); err != nil {
+		// Augment posts with the path to the file attachments using the fileID LUT.
+		postsWithFiles := parse.AddFilesToPosts(posts, fileLookup)
+
+		if err = view.WriteChannel(hold, channel, postsWithFiles, teamForChannelLookup[channel.ID], channelLookup[channel.ID], outputPath); err != nil {
 			return err
 		}
 	}
@@ -149,18 +164,23 @@ func ProcessLegalHold(hold model.LegalHold, outputPath string) error {
 				return err
 			}
 
-			if err = view.WriteUserChannel(hold, user, channel, posts, teamForChannelLookup[channel.ID], channelLookup[channel.ID], outputPath); err != nil {
+			postsWithFiles := parse.AddFilesToPosts(posts, fileLookup)
+
+			if err = view.WriteUserChannel(hold, user, channel, postsWithFiles, teamForChannelLookup[channel.ID], channelLookup[channel.ID], outputPath); err != nil {
 				return err
 			}
 		}
 
-		allPosts := make(map[string][]*model.Post)
+		allPosts := make(map[string][]*model.PostWithFiles)
 		for _, channel := range channels {
 			posts, err := parse.LoadPosts(channel)
 			if err != nil {
 				return err
 			}
-			allPosts[channel.ID] = posts
+
+			postsWithFiles := parse.AddFilesToPosts(posts, fileLookup)
+
+			allPosts[channel.ID] = postsWithFiles
 		}
 		if err = view.WriteUserAllChannels(hold, user, allPosts, teamForChannelLookup, channelLookup, outputPath); err != nil {
 			return err

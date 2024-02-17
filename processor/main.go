@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/grundleborg/mattermost-legal-hold-processor/cmd"
+	"github.com/mattermost/mattermost-plugin-legal-hold/processor/cmd"
 )
 
 func main() {

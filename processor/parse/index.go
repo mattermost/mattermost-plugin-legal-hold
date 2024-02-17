@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/grundleborg/mattermost-legal-hold-processor/model"
+	"github.com/mattermost/mattermost-plugin-legal-hold/processor/model"
 )
 
 func LoadIndex(legalHold model.LegalHold) (model.LegalHoldIndex, error) {

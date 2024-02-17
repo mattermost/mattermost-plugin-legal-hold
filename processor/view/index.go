@@ -2,10 +2,11 @@ package view
 
 import (
 	"fmt"
-	"github.com/grundleborg/mattermost-legal-hold-processor/model"
 	"html/template"
 	"os"
 	"path/filepath"
+
+	"github.com/mattermost/mattermost-plugin-legal-hold/processor/model"
 )
 
 type User struct {

@@ -1,4 +1,4 @@
-module github.com/grundleborg/mattermost-legal-hold-processor
+module github.com/mattermost/mattermost-plugin-legal-hold/processor
 
 go 1.21
 

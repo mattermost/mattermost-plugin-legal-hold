@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/grundleborg/mattermost-legal-hold-processor/model"
+	"github.com/mattermost/mattermost-plugin-legal-hold/processor/model"
 )
 
 // ListLegalHolds retrieves a list of LegalHold objects from the specified directory path

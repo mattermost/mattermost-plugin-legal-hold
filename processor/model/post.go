@@ -42,3 +42,8 @@ func (p Post) PrintCreateAt() string {
 	t := time.Unix(0, p.PostCreateAt*int64(time.Millisecond))
 	return t.Format("15:04 on 2006-01-02")
 }
+
+type PostWithFiles struct {
+	*Post
+	Files []string
+}

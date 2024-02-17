@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/grundleborg/mattermost-legal-hold-processor/model"
+	"github.com/mattermost/mattermost-plugin-legal-hold/processor/model"
 )
 
 // ListChannels retrieves a list of model.Channel objects from the specified LegalHold.

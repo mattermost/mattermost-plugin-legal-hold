@@ -6,16 +6,16 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/grundleborg/mattermost-legal-hold-processor/model"
+	"github.com/mattermost/mattermost-plugin-legal-hold/processor/model"
 )
 
 // WriteChannel takes the data for the posts in a channel and writes out the page for that channel.
-func WriteChannel(hold model.LegalHold, channel model.Channel, posts []*model.Post, teamData *model.LegalHoldTeam, channelData *model.LegalHoldChannel, outputPath string) error {
+func WriteChannel(hold model.LegalHold, channel model.Channel, posts []*model.PostWithFiles, teamData *model.LegalHoldTeam, channelData *model.LegalHoldChannel, outputPath string) error {
 	data := struct {
 		Hold        model.LegalHold
 		TeamData    *model.LegalHoldTeam
 		ChannelData *model.LegalHoldChannel
-		Posts       []*model.Post
+		Posts       []*model.PostWithFiles
 	}{
 		Hold:        hold,
 		TeamData:    teamData,
@@ -43,12 +43,12 @@ func WriteChannel(hold model.LegalHold, channel model.Channel, posts []*model.Po
 
 // WriteUserChannel takes the data for the posts in a channel during a user's
 // presence in that channel and writes out the page for that channel.
-func WriteUserChannel(hold model.LegalHold, user model.User, channel model.Channel, posts []*model.Post, teamData *model.LegalHoldTeam, channelData *model.LegalHoldChannel, outputPath string) error {
+func WriteUserChannel(hold model.LegalHold, user model.User, channel model.Channel, posts []*model.PostWithFiles, teamData *model.LegalHoldTeam, channelData *model.LegalHoldChannel, outputPath string) error {
 	data := struct {
 		Hold        model.LegalHold
 		TeamData    *model.LegalHoldTeam
 		ChannelData *model.LegalHoldChannel
-		Posts       []*model.Post
+		Posts       []*model.PostWithFiles
 		User        model.User
 	}{
 		Hold:        hold,
@@ -79,11 +79,11 @@ func WriteUserChannel(hold model.LegalHold, user model.User, channel model.Chann
 type ChannelData struct {
 	TeamData    *model.LegalHoldTeam
 	ChannelData *model.LegalHoldChannel
-	Posts       []*model.Post
+	Posts       []*model.PostWithFiles
 }
 
 // WriteUserAllChannels writes all data for all channels for a user in one go.
-func WriteUserAllChannels(hold model.LegalHold, user model.User, allPosts map[string][]*model.Post, teamForChannelLookup model.TeamForChannelLookup, channelLookup model.ChannelLookup, outputPath string) error {
+func WriteUserAllChannels(hold model.LegalHold, user model.User, allPosts map[string][]*model.PostWithFiles, teamForChannelLookup model.TeamForChannelLookup, channelLookup model.ChannelLookup, outputPath string) error {
 	data := struct {
 		Hold     model.LegalHold
 		User     model.User

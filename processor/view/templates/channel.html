@@ -88,7 +88,17 @@
     {{ range .Posts}}
     <div class="time">{{ .PrintCreateAt }}</div>
     <div class="user">@{{ .UserUsername }}</div>
-    <div class="post">{{ .PostMessage }}</div>
+    <div class="post">
+        {{ .PostMessage }}
+        {{ if gt (len .Files)  0 }}
+        <div class="files">
+            {{ range .Files }}
+                <div class="file"><a href="{{ . }}">File Attachment</a></div>
+            {{ end }}
+        </div>
+        {{ end }}
+    </div>
+
     {{ end }}
 </div>
 </body>
