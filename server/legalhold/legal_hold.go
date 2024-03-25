@@ -35,7 +35,8 @@ type Execution struct {
 
 	channelIDs []string
 
-	index model.LegalHoldIndex
+	index  model.LegalHoldIndex
+	hashes map[string]string
 }
 
 // NewExecution creates a new Execution that is ready to use.
@@ -48,6 +49,7 @@ func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQ
 		fileBackend:        fileBackend,
 		index:              model.NewLegalHoldIndex(),
 		papi:               papi,
+		hashes:             make(map[string]string),
 	}
 }
 
@@ -64,6 +66,11 @@ func (ex *Execution) Execute() (int64, error) {
 	}
 
 	err = ex.UpdateIndexes()
+	if err != nil {
+		return 0, err
+	}
+
+	err = ex.WriteFileHashes()
 	if err != nil {
 		return 0, err
 	}
@@ -337,27 +344,54 @@ func (ex *Execution) UpdateIndexes() error {
 }
 
 func (ex *Execution) WriteFileHash(path, hash string) error {
+	ex.hashes[path] = hash
+	return nil
+}
+
+func (ex *Execution) WriteFileHashes() error {
 	hashesFilePath := fmt.Sprintf("%s/hashes.csv", ex.basePath())
-
-	var buf bytes.Buffer
-	writer := csv.NewWriter(&buf)
-	err := writer.Write([]string{path, hash})
-	if err != nil {
-		return err
-	}
-	writer.Flush()
-
-	lineReader := bytes.NewReader(buf.Bytes())
 
 	if exists, err := ex.fileBackend.FileExists(hashesFilePath); err != nil {
 		return err
 	} else if !exists {
+		var buf bytes.Buffer
+		writer := csv.NewWriter(&buf)
+		for path, hash := range ex.hashes {
+			err := writer.Write([]string{path, hash})
+			if err != nil {
+				return err
+			}
+		}
+		writer.Flush()
+
+		lineReader := bytes.NewReader(buf.Bytes())
+
 		_, err = ex.fileBackend.WriteFile(lineReader, hashesFilePath)
 		if err != nil {
 			return err
 		}
 	} else {
-		_, err = ex.fileBackend.AppendFile(lineReader, hashesFilePath)
+		//_, err = ex.fileBackend.AppendFile(lineReader, hashesFilePath)
+		var buf bytes.Buffer
+		data, err := ex.fileBackend.ReadFile(hashesFilePath)
+		if err != nil {
+			return err
+		}
+
+		buf.Write(data)
+
+		writer := csv.NewWriter(&buf)
+		for path, hash := range ex.hashes {
+			err := writer.Write([]string{path, hash})
+			if err != nil {
+				return err
+			}
+		}
+		writer.Flush()
+
+		lineReader := bytes.NewReader(buf.Bytes())
+
+		_, err = ex.fileBackend.WriteFile(lineReader, hashesFilePath)
 		if err != nil {
 			return err
 		}

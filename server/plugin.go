@@ -60,6 +60,11 @@ func (p *Plugin) OnActivate() error {
 	p.Client = pluginapi.NewClient(p.API, p.Driver)
 	p.Client.Log.Debug("MM LH Plugin: OnActivate called")
 
+	err := p.Client.KV.Delete("cron_legal_hold_job")
+	if err != nil {
+		return err
+	}
+
 	// Setup direct store access
 	SQLStore, err := sqlstore.New(p.Client.Store, &p.Client.Log)
 	if err != nil {
