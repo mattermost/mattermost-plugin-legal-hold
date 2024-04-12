@@ -240,6 +240,9 @@ func (ex *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPos
 		}
 
 		err = ex.WriteFileHash(fileInfo.Path, h)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -329,9 +332,6 @@ func (ex *Execution) UpdateIndexes() error {
 	}
 
 	hashReader := bytes.NewReader(data)
-	if err != nil {
-		return err
-	}
 
 	h, err := hash(ex.LegalHold.Secret, hashReader)
 	if err != nil {
@@ -357,9 +357,9 @@ func (ex *Execution) WriteFileHashes() error {
 		var buf bytes.Buffer
 		writer := csv.NewWriter(&buf)
 		for path, hash := range ex.hashes {
-			err := writer.Write([]string{path, hash})
-			if err != nil {
-				return err
+			err2 := writer.Write([]string{path, hash})
+			if err2 != nil {
+				return err2
 			}
 		}
 		writer.Flush()
@@ -371,7 +371,6 @@ func (ex *Execution) WriteFileHashes() error {
 			return err
 		}
 	} else {
-		//_, err = ex.fileBackend.AppendFile(lineReader, hashesFilePath)
 		var buf bytes.Buffer
 		data, err := ex.fileBackend.ReadFile(hashesFilePath)
 		if err != nil {
@@ -382,9 +381,9 @@ func (ex *Execution) WriteFileHashes() error {
 
 		writer := csv.NewWriter(&buf)
 		for path, hash := range ex.hashes {
-			err := writer.Write([]string{path, hash})
-			if err != nil {
-				return err
+			err2 := writer.Write([]string{path, hash})
+			if err2 != nil {
+				return err2
 			}
 		}
 		writer.Flush()

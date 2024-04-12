@@ -100,7 +100,6 @@ func TestLegalHold_Hash(t *testing.T) {
 						tc.input, tc.expectedOutput, result)
 				}
 			}
-
 		})
 	}
 }
