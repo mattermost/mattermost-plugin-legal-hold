@@ -49,6 +49,8 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                 }}
             >
                 <OverlayTrigger
+
+                    // @ts-ignore
                     delayShow={300}
                     placement='top'
                     overlay={(
@@ -75,6 +77,8 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     </a>
                 </OverlayTrigger>
                 <OverlayTrigger
+
+                    // @ts-ignore
                     delayShow={300}
                     placement='top'
                     overlay={(

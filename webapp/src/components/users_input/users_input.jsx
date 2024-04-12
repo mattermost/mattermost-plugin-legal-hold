@@ -73,8 +73,10 @@ export default class UsersInput extends React.Component {
         }
     };
 
-    keyDownHandler = e => {
-        if (e.key === "Enter") e.stopPropagation();
+    keyDownHandler = (e) => {
+        if (e.key === 'Enter') {
+            e.stopPropagation();
+        }
     };
 
     render() {
