@@ -1,6 +1,7 @@
 package parse
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -20,6 +21,11 @@ func LoadPosts(channel model.Channel) ([]*model.Post, error) {
 
 	fmt.Printf("Reading posts in channel: %s\n", channel.ID)
 	fmt.Println()
+
+	_, err := os.Stat(messagesPath)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
 
 	// Get all files in the messages directory
 	files, err := os.ReadDir(messagesPath)

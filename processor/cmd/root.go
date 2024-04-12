@@ -143,6 +143,10 @@ func ProcessLegalHold(hold model.LegalHold, outputPath string) error {
 			return err
 		}
 
+		if posts == nil {
+			continue
+		}
+
 		// Augment posts with the path to the file attachments using the fileID LUT.
 		postsWithFiles := parse.AddFilesToPosts(posts, fileLookup)
 

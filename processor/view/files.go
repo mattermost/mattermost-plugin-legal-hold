@@ -1,6 +1,7 @@
 package view
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -11,6 +12,7 @@ func MoveFiles(originalFileLookup model.FileLookup, outputPath string) (model.Fi
 	fileLookup := make(model.FileLookup)
 
 	for id, path := range originalFileLookup {
+		fmt.Printf("Moving file %s at %s\n", id, path)
 		// Check if input file path exists
 		if _, err := os.Stat(path); os.IsNotExist(err) {
 			// File has already been moved.
@@ -20,6 +22,7 @@ func MoveFiles(originalFileLookup model.FileLookup, outputPath string) (model.Fi
 		}
 
 		outputDirectory := filepath.Join(outputPath, "files", id)
+		fmt.Printf("output dir: %s\n", outputDirectory)
 
 		// Create outputDirectory if it doesn't exist
 		if _, err := os.Stat(outputDirectory); os.IsNotExist(err) {
@@ -39,8 +42,9 @@ func MoveFiles(originalFileLookup model.FileLookup, outputPath string) (model.Fi
 		}
 
 		// Add it's new path to the new lookup
-		fileLookup[id] = destination
+		fileLookup[id] = filepath.Join("files", id, filepath.Base(path))
+		fmt.Printf("Destination: %s\n", destination)
 	}
 
-	return originalFileLookup, nil
+	return fileLookup, nil
 }

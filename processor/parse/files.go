@@ -50,7 +50,7 @@ func processFilesInChannel(path string) (model.FileLookup, error) {
 		// Immediate parent directory name is the FileID
 		if !d.IsDir() {
 			fileID := filepath.Base(filepath.Dir(filePath))
-			fileLookup[fileID] = filepath.Join("files", fileID, filepath.Base(filePath))
+			fileLookup[fileID] = filepath.Join(filePath)
 		}
 
 		return nil
