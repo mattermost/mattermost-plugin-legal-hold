@@ -1,2 +1,4 @@
 mattermost-legal-hold-processor
 dist/
+processor
+processor-*
