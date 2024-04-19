@@ -226,7 +226,9 @@ func (ex *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPos
 		)
 		err = ex.fileBackend.CopyFile(fileInfo.Path, path)
 		if err != nil {
-			return err
+			ex.papi.LogError(fmt.Sprintf("Failed to find file attachment to copy %s", fileInfo.Path))
+			// Continue anyway so the job doesn't get completely stuck.
+			return nil
 		}
 
 		hashReader, err := ex.fileBackend.Reader(fileInfo.Path)
