@@ -3,6 +3,7 @@ package sqlstore
 import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
+	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
@@ -20,6 +21,22 @@ func (ss SQLStore) GetPostsBatch(channelID string, endTime int64, cursor model.L
 	args = append(args, cursor.LastPostCreateAt, cursor.LastPostCreateAt, cursor.LastPostID, endTime)
 	args = append(args, channelID, limit)
 
+	dm_display_name := `
+						(select Users.Username from Users where Users.Id = split_part(Channels.Name, '__', 1))
+							|| ', ' ||
+						(select Users.Username from Users where Users.Id = split_part(Channels.Name, '__', 2))
+						`
+
+	if ss.src.DriverName() == mattermostModel.DatabaseDriverMysql {
+		dm_display_name = `
+						concat(
+							(select Users.Username from Users where Users.Id = substring_index(Channels.Name, '__', 1)),
+							', ',
+							(select Users.Username from Users where Users.Id = substring_index(Channels.Name, '__', -1))
+						)
+						`
+	}
+
 	query := `
 		SELECT
 			COALESCE(Teams.Name, 'direct-messages') AS TeamName,
@@ -28,9 +45,7 @@ func (ss SQLStore) GetPostsBatch(channelID string, endTime int64, cursor model.L
 			CASE
 				WHEN Channels.Type = 'D' THEN
 					(
-						(select Users.Username from Users where Users.Id = split_part(Channels.Name, '__', 1))
-							|| ', ' ||
-						(select Users.Username from Users where Users.Id = split_part(Channels.Name, '__', 2))
+						` + dm_display_name + `
 					)
 				ELSE
 					Channels.DisplayName
