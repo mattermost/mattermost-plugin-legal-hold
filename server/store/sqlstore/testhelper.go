@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 	"github.com/mattermost/mattermost-server/v6/store/storetest"
 	"github.com/mattermost/mattermost-server/v6/testlib"
 )
@@ -22,7 +23,8 @@ type TestHelper struct {
 	mainHelper *testlib.MainHelper
 	restoreEnv map[string]string
 
-	Store *SQLStore
+	Store       *SQLStore
+	FileBackend filestore.FileBackend
 
 	Team1    *model.Team
 	Team2    *model.Team
@@ -83,6 +85,22 @@ func SetupHelper(t *testing.T) *TestHelper {
 	store, err := New(storeWrapper{th.mainHelper}, &testLogger{t})
 	require.NoError(t, err, "could not create store")
 	th.Store = store
+
+	fileBackendSettings := filestore.FileBackendSettings{
+		DriverName:                         "amazons3",
+		AmazonS3AccessKeyId:                "minioaccesskey",
+		AmazonS3SecretAccessKey:            "miniosecretkey",
+		AmazonS3Bucket:                     "mattermost-test",
+		AmazonS3Region:                     "",
+		AmazonS3Endpoint:                   "localhost:9000",
+		AmazonS3PathPrefix:                 "",
+		AmazonS3SSL:                        false,
+		AmazonS3SSE:                        false,
+		AmazonS3RequestTimeoutMilliseconds: 5000,
+	}
+	fileBackend, err := filestore.NewFileBackend(fileBackendSettings)
+	require.NoError(t, err)
+	th.FileBackend = fileBackend
 
 	return th
 }
@@ -223,6 +241,48 @@ func (th *TestHelper) CreatePosts(num int, userID string, channelID string) ([]*
 			Message:   fmt.Sprintf("test post %d of %d", i, num),
 		}
 		post, err := th.mainHelper.Store.Post().Save(post)
+		if err != nil {
+			return nil, err
+		}
+		posts = append(posts, post)
+	}
+	return posts, nil
+}
+
+func (th *TestHelper) CreatePostsWithAttachments(num int, userID string, channelID string) ([]*model.Post, error) {
+	var posts []*model.Post
+	for i := 0; i < num; i++ {
+		text := "This is a test uploaded file."
+		reader := strings.NewReader(text)
+		size, err := th.FileBackend.WriteFile(reader, "tests/file_upload_test.txt")
+		if err != nil {
+			return nil, err
+		}
+
+		fileInfo := &model.FileInfo{
+			Id:        model.NewId(),
+			CreateAt:  model.GetMillis(),
+			UpdateAt:  model.GetMillis(),
+			CreatorId: userID,
+			Name:      "file_upload_test.txt",
+			Path:      "tests/file_upload_test.txt",
+			MimeType:  "text/plain",
+			Size:      size,
+		}
+
+		fileInfo, err = th.mainHelper.Store.FileInfo().Save(fileInfo)
+		if err != nil {
+			return nil, err
+		}
+
+		post := &model.Post{
+			UserId:    userID,
+			ChannelId: channelID,
+			Type:      model.PostTypeDefault,
+			Message:   fmt.Sprintf("test post %d of %d", i, num),
+			FileIds:   []string{fileInfo.Id},
+		}
+		post, err = th.mainHelper.Store.Post().Save(post)
 		if err != nil {
 			return nil, err
 		}

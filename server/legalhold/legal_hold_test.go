@@ -4,14 +4,16 @@ import (
 	"bytes"
 	"testing"
 
-	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/stretchr/testify/require"
 
+	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
+
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 )
 
 func TestApp_LegalHoldExecution_Execute(t *testing.T) {
-	th := SetupHelper(t).SetupBasic(t)
+	th := sqlstore.SetupHelper(t).SetupBasic(t)
 	defer th.TearDown()
 
 	const channelCount = 10
