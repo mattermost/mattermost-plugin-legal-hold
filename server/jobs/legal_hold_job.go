@@ -148,6 +148,10 @@ func (j *LegalHoldJob) nextWaitInterval(now time.Time, metaData cluster.JobMetad
 	return delta
 }
 
+func (j *LegalHoldJob) RunFromAPI() {
+	j.processAllLegalHolds()
+}
+
 func (j *LegalHoldJob) run() {
 	j.client.Log.Info("Running Legal Hold Job")
 	exitSignal := make(chan struct{})
@@ -177,6 +181,15 @@ func (j *LegalHoldJob) run() {
 		j.client.Log.Error("Multiple Legal Hold jobs scheduled concurrently; there can be only one")
 		return
 	}
+
+	j.processAllLegalHolds()
+
+	_ = ctx
+	_ = settings
+}
+
+func (j *LegalHoldJob) processAllLegalHolds() {
+	j.client.Log.Info("Processing all Legal Holds")
 
 	// Retrieve the legal holds from the store.
 	legalHolds, err := j.kvstore.GetAllLegalHolds()
@@ -219,8 +232,6 @@ func (j *LegalHoldJob) run() {
 			}
 		}
 	}
-	_ = ctx
-	_ = settings
 }
 
 type runInstance struct {
