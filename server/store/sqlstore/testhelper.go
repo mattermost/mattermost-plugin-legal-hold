@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -14,6 +15,8 @@ import (
 	"github.com/mattermost/mattermost-server/v6/store/storetest"
 	"github.com/mattermost/mattermost-server/v6/testlib"
 )
+
+var onceStartDocker sync.Once
 
 type TestHelper struct {
 	mainHelper *testlib.MainHelper
@@ -51,8 +54,22 @@ func SetupHelper(t *testing.T) *TestHelper {
 		restoreEnv["MM_SERVER_PATH"] = oldPath
 	}
 
-	fmt.Println("serverPath=", serverPath)
-	fmt.Println("MM_SERVER_PATH=", os.Getenv("MM_SERVER_PATH"))
+	t.Logf("serverPath=%s", serverPath)
+	t.Logf("MM_SERVER_PATH=%s", os.Getenv("MM_SERVER_PATH"))
+
+	// start up docker via Mattermost server makefile
+	onceStartDocker.Do(func() {
+		cmd := exec.Command("make", "start-docker")
+		cmd.Dir = serverPath
+		stdout := &strings.Builder{}
+		stderr := &strings.Builder{}
+		cmd.Stdout = stdout
+		cmd.Stderr = stderr
+		err := cmd.Run()
+		t.Log(stdout.String())
+		t.Log(stderr.String())
+		require.NoError(t, err, "make start-docker fail")
+	})
 
 	th := &TestHelper{}
 	th.mainHelper = testlib.NewMainHelperWithOptions(&options)
@@ -232,7 +249,7 @@ func (th *TestHelper) CreateReactions(posts []*model.Post, userID string) ([]*mo
 	return reactions, nil
 }
 
-// storeWrapper is a wrapper for MainHelper that implements Source interface.
+// storeWrapper is a wrapper for MainHelper that implements SQLStoreSource interface.
 type storeWrapper struct {
 	mainHelper *testlib.MainHelper
 }
@@ -240,10 +257,12 @@ type storeWrapper struct {
 func (sw storeWrapper) GetMasterDB() (*sql.DB, error) {
 	return sw.mainHelper.SQLStore.GetInternalMasterDB(), nil
 }
+
 func (sw storeWrapper) GetReplicaDB() (*sql.DB, error) {
 	// For this test helper, just return the master DB even when a replica has been asked for.
 	return sw.mainHelper.SQLStore.GetInternalMasterDB(), nil
 }
+
 func (sw storeWrapper) DriverName() string {
 	return *sw.mainHelper.Settings.DriverName
 }

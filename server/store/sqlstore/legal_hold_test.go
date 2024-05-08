@@ -3,8 +3,9 @@ package sqlstore
 import (
 	"testing"
 
-	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/stretchr/testify/require"
+
+	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 )
