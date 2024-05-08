@@ -86,23 +86,39 @@ func SetupHelper(t *testing.T) *TestHelper {
 	require.NoError(t, err, "could not create store")
 	th.Store = store
 
-	fileBackendSettings := filestore.FileBackendSettings{
-		DriverName:                         "amazons3",
-		AmazonS3AccessKeyId:                "minioaccesskey",
-		AmazonS3SecretAccessKey:            "miniosecretkey",
-		AmazonS3Bucket:                     "mattermost-test",
-		AmazonS3Region:                     "",
-		AmazonS3Endpoint:                   "localhost:9000",
-		AmazonS3PathPrefix:                 "",
-		AmazonS3SSL:                        false,
-		AmazonS3SSE:                        false,
-		AmazonS3RequestTimeoutMilliseconds: 5000,
-	}
+	fileBackendSettings := getBackendSettings()
 	fileBackend, err := filestore.NewFileBackend(fileBackendSettings)
 	require.NoError(t, err)
 	th.FileBackend = fileBackend
 
 	return th
+}
+
+func getBackendSettings() filestore.FileBackendSettings {
+	s3Host := os.Getenv("CI_MINIO_HOST")
+	if s3Host == "" {
+		s3Host = "localhost"
+	}
+
+	s3Port := os.Getenv("CI_MINIO_PORT")
+	if s3Port == "" {
+		s3Port = "9000"
+	}
+
+	s3Endpoint := fmt.Sprintf("%s:%s", s3Host, s3Port)
+
+	return filestore.FileBackendSettings{
+		DriverName:                         model.ImageDriverS3,
+		AmazonS3AccessKeyId:                model.MinioAccessKey,
+		AmazonS3SecretAccessKey:            model.MinioSecretKey,
+		AmazonS3Bucket:                     model.MinioBucket,
+		AmazonS3Region:                     "",
+		AmazonS3Endpoint:                   s3Endpoint,
+		AmazonS3PathPrefix:                 "",
+		AmazonS3SSL:                        false,
+		AmazonS3SSE:                        false,
+		AmazonS3RequestTimeoutMilliseconds: 5000,
+	}
 }
 
 func (th *TestHelper) SetupBasic(t *testing.T) *TestHelper {
