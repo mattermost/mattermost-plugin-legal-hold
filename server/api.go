@@ -299,7 +299,7 @@ func (p *Plugin) runJobFromAPI(w http.ResponseWriter, _ *http.Request) {
 		p.API.LogError("failed to write http response", err.Error())
 	}
 
-	p.legalHoldJob.RunFromAPI()
+	go p.legalHoldJob.RunFromAPI()
 }
 
 func RequireLegalHoldID(r *http.Request) (string, error) {
