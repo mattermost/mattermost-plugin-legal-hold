@@ -149,7 +149,7 @@ func (j *LegalHoldJob) nextWaitInterval(now time.Time, metaData cluster.JobMetad
 }
 
 func (j *LegalHoldJob) RunFromAPI() {
-	j.processAllLegalHolds()
+	j.run()
 }
 
 func (j *LegalHoldJob) run() {

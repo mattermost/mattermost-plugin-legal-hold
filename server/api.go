@@ -44,8 +44,8 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/update", p.updateLegalHold).Methods(http.MethodPost)
 	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/download", p.downloadLegalHold).Methods(http.MethodGet)
 
-	// Debug routes
-	router.HandleFunc("/api/v1/legalhold/debug/run", p.runJobFromAPI).Methods(http.MethodPost)
+	// Other routes
+	router.HandleFunc("/api/v1/legalhold/run", p.runJobFromAPI).Methods(http.MethodPost)
 
 	p.router = router
 	p.router.ServeHTTP(w, r)
@@ -294,13 +294,12 @@ func (p *Plugin) downloadLegalHold(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Plugin) runJobFromAPI(w http.ResponseWriter, _ *http.Request) {
-	p.legalHoldJob.RunFromAPI()
-
-	_, err := w.Write([]byte("Processed all Legal Holds. Please check the MM server logs for more details."))
+	_, err := w.Write([]byte("Processing all Legal Holds. Please check the MM server logs for more details."))
 	if err != nil {
 		p.API.LogError("failed to write http response", err.Error())
-		return
 	}
+
+	p.legalHoldJob.RunFromAPI()
 }
 
 func RequireLegalHoldID(r *http.Request) (string, error) {
