@@ -186,13 +186,6 @@ func (j *LegalHoldJob) run() {
 	settings = j.settings.Clone()
 	j.mux.Unlock()
 
-	j.processAllLegalHolds()
-
-	_ = ctx
-	_ = settings
-}
-
-func (j *LegalHoldJob) processAllLegalHolds() {
 	j.client.Log.Info("Processing all Legal Holds")
 
 	// Retrieve the legal holds from the store.
@@ -236,6 +229,8 @@ func (j *LegalHoldJob) processAllLegalHolds() {
 			}
 		}
 	}
+	_ = ctx
+	_ = settings
 }
 
 type runInstance struct {
