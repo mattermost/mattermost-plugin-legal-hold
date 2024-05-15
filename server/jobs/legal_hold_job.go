@@ -172,6 +172,7 @@ func (j *LegalHoldJob) run() {
 	}
 
 	defer func() {
+		canceller()
 		close(exitSignal)
 
 		j.mux.Lock()
