@@ -153,6 +153,15 @@ func (j *LegalHoldJob) RunFromAPI() {
 }
 
 func (j *LegalHoldJob) run() {
+	j.mux.Lock()
+	oldRunner := j.runner
+	j.mux.Unlock()
+
+	if oldRunner != nil {
+		j.client.Log.Error("Multiple Legal Hold jobs scheduled concurrently; there can be only one")
+		return
+	}
+
 	j.client.Log.Info("Running Legal Hold Job")
 	exitSignal := make(chan struct{})
 	ctx, canceller := context.WithCancel(context.Background())
@@ -162,25 +171,19 @@ func (j *LegalHoldJob) run() {
 		exitSignal: exitSignal,
 	}
 
-	var oldRunner *runInstance
-	var settings *LegalHoldJobSettings
-	j.mux.Lock()
-	oldRunner = j.runner
-	j.runner = runner
-	settings = j.settings.Clone()
-	j.mux.Unlock()
-
 	defer func() {
 		close(exitSignal)
+
 		j.mux.Lock()
 		j.runner = nil
 		j.mux.Unlock()
 	}()
 
-	if oldRunner != nil {
-		j.client.Log.Error("Multiple Legal Hold jobs scheduled concurrently; there can be only one")
-		return
-	}
+	var settings *LegalHoldJobSettings
+	j.mux.Lock()
+	j.runner = runner
+	settings = j.settings.Clone()
+	j.mux.Unlock()
 
 	j.processAllLegalHolds()
 
