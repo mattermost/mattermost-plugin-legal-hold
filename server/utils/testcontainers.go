@@ -108,7 +108,16 @@ func createTestDBPostgres(ctx context.Context, databaseName string) (string, Tea
 // CreateMinio instantiates a minio container and returns the connection string needed to connect to it.
 // A teardown function is also returned to close the container and free resources.
 func CreateMinio(ctx context.Context) (string, TearDownFunc, error) {
-	minioContainer, err := minio.RunContainer(ctx, testcontainers.WithImage("minio/minio:RELEASE.2024-01-16T16-07-38Z"))
+	minioContainer, err := minio.RunContainer(
+		ctx,
+		testcontainers.WithImage("minio/minio:RELEASE.2024-01-16T16-07-38Z"),
+		// Create default bucket
+		testcontainers.WithStartupCommand(testcontainers.NewRawCommand([]string{"mkdir", "/data/" + model.MinioBucket})),
+		testcontainers.WithEnv(map[string]string{
+			"MINIO_ROOT_USER":     model.MinioAccessKey,
+			"MINIO_ROOT_PASSWORD": model.MinioSecretKey,
+		}),
+	)
 	if err != nil {
 		return "", nil, errors.Wrap(err, "failed to start minio container")
 	}

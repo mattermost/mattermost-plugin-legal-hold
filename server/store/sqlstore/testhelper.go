@@ -63,29 +63,26 @@ func SetupHelper(t *testing.T) *TestHelper {
 
 	th.mmStore = mmstore.New(settings, nil)
 
-	store, err := New(storeWrapper{mmStore}, &testLogger{t})
+	store, err := New(storeWrapper{th.mmStore}, &testLogger{t})
 	require.NoError(t, err, "could not create store")
 	th.Store = store
 
-	/*
-		// create a new minio instance
-		connStr, dbTearDown, err = utils.CreateMinio(ctx)
-		if err != nil {
-			require.NoError(t, err, "cannot instantiate test minio")
-		}
-		th.tearDowns = append(th.tearDowns, dbTearDown)
+	// create a new minio instance
+	connStr, dbTearDown, err = utils.CreateMinio(ctx)
+	if err != nil {
+		require.NoError(t, err, "cannot instantiate test minio")
+	}
+	th.tearDowns = append(th.tearDowns, dbTearDown)
 
-		fileBackendSettings := getBackendSettings(connStr)
-		fileBackend, err := filestore.NewFileBackend(fileBackendSettings)
-		require.NoError(t, err)
-		require.NoError(t, fileBackend.TestConnection())
-		th.FileBackend = fileBackend
-	*/
+	fileBackendSettings := getBackendSettings(connStr)
+	fileBackend, err := filestore.NewFileBackend(fileBackendSettings)
+	require.NoError(t, err)
+	require.NoError(t, fileBackend.TestConnection())
+	th.FileBackend = fileBackend
 
 	return th
 }
 
-/*
 func getBackendSettings(endPoint string) filestore.FileBackendSettings {
 	return filestore.FileBackendSettings{
 		DriverName:                         model.ImageDriverS3,
@@ -100,7 +97,6 @@ func getBackendSettings(endPoint string) filestore.FileBackendSettings {
 		AmazonS3RequestTimeoutMilliseconds: 5000,
 	}
 }
-*/
 
 func (th *TestHelper) SetupBasic(t *testing.T) *TestHelper {
 	// create some teams
