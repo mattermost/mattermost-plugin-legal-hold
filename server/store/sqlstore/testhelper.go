@@ -61,7 +61,7 @@ func SetupHelper(t *testing.T) *TestHelper {
 
 	t.Log("using database connection string: ", connStr)
 
-	mmStore := mmstore.New(settings, nil)
+	th.mmStore = mmstore.New(settings, nil)
 
 	store, err := New(storeWrapper{mmStore}, &testLogger{t})
 	require.NoError(t, err, "could not create store")
