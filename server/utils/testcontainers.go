@@ -73,7 +73,7 @@ func createTestDBMySQL(ctx context.Context, databaseName string) (string, TearDo
 
 func createTestDBPostgres(ctx context.Context, databaseName string) (string, TearDownFunc, error) {
 	postgresContainer, err := postgres.RunContainer(ctx,
-		testcontainers.WithImage("docker.io/postgres:15.2-alpine"),
+		testcontainers.WithImage("docker.io/library/postgres:15.2-alpine"),
 		postgres.WithDatabase(databaseName),
 		postgres.WithUsername(dbUser),
 		postgres.WithPassword(dbPassword),
