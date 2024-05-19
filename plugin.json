@@ -32,6 +32,13 @@
         "default": "1:00am -0700"
       },
       {
+        "key": "S3Bucket",
+        "display_name": "S3Bucket name (optional):",
+        "type": "text",
+        "help_text": "S3 Bucket to store Legal Hold artifacts. Defaults to the S3 bucket used by your Mattermost server.",
+        "default": ""
+      },
+      {
         "key": "LegalHoldsSettings",
         "display_name": "Legal Holds:",
         "type": "custom"

@@ -150,9 +150,16 @@ func (p *Plugin) Reconfigure() error {
 		return nil
 	}
 
+	fileSettings := p.Client.Configuration.GetUnsanitizedConfig().FileSettings
+
+	pluginConfig := p.getConfiguration()
+	if pluginConfig.S3Bucket != "" {
+		fileSettings.AmazonS3Bucket = &pluginConfig.S3Bucket
+	}
+
 	// Reinitialise the filestore backend
 	// FIXME: Boolean flags shouldn't be hard coded.
-	filesBackendSettings := FixedFileSettingsToFileBackendSettings(p.Client.Configuration.GetUnsanitizedConfig().FileSettings, false, true)
+	filesBackendSettings := FixedFileSettingsToFileBackendSettings(fileSettings, false, true)
 	filesBackend, err := filestore.NewFileBackend(filesBackendSettings)
 	if err != nil {
 		p.Client.Log.Error("unable to initialize the files storage", "err", err)

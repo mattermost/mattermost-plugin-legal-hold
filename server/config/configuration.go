@@ -13,6 +13,7 @@ package config
 // copy appropriate for your types.
 type Configuration struct {
 	TimeOfDay string
+	S3Bucket  string
 }
 
 // Clone shallow copies the Configuration. Your implementation may require a deep copy if
