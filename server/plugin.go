@@ -53,6 +53,8 @@ type Plugin struct {
 
 	// router holds the HTTP router for the plugin's rest API
 	router *mux.Router
+
+	fileBackendSettings *filestore.FileBackendSettings
 }
 
 func (p *Plugin) OnActivate() error {
@@ -79,7 +81,9 @@ func (p *Plugin) OnActivate() error {
 	// Create job manager
 	p.jobManager = jobs.NewJobManager(&p.Client.Log)
 
-	return p.Reconfigure()
+	conf := p.getConfiguration()
+
+	return p.Reconfigure(conf, conf)
 }
 
 // getConfiguration retrieves the active Configuration under lock, making it safe to use
@@ -123,21 +127,23 @@ func (p *Plugin) setConfiguration(configuration *config.Configuration) {
 	p.configuration = configuration
 }
 
-// OnConfigurationChange is invoked when Configuration changes may have been made.
+// OnConfigurationChange is invoked when server Configuration changes may have been made.
 func (p *Plugin) OnConfigurationChange() error {
-	var configuration = new(config.Configuration)
+	var newConfig = new(config.Configuration)
 
 	// Load the public Configuration fields from the Mattermost server Configuration.
-	if err := p.API.LoadPluginConfiguration(configuration); err != nil {
+	if err := p.API.LoadPluginConfiguration(newConfig); err != nil {
 		return errors.Wrap(err, "failed to load plugin Configuration")
 	}
 
-	p.setConfiguration(configuration)
+	oldConfig := p.getConfiguration()
 
-	return p.Reconfigure()
+	p.setConfiguration(newConfig)
+
+	return p.Reconfigure(oldConfig, newConfig)
 }
 
-func (p *Plugin) Reconfigure() error {
+func (p *Plugin) Reconfigure(oldConfig, newConfig *config.Configuration) error {
 	// Don't do anything if the plugin isn't activated yet.
 	if p.Client == nil {
 		return nil
@@ -150,9 +156,25 @@ func (p *Plugin) Reconfigure() error {
 		return nil
 	}
 
+	fileSettings := p.Client.Configuration.GetUnsanitizedConfig().FileSettings
+
+	pluginConfig := p.getConfiguration()
+	if pluginConfig.S3Bucket != "" {
+		fileSettings.AmazonS3Bucket = &pluginConfig.S3Bucket
+	}
+
 	// Reinitialise the filestore backend
-	// FIXME: Boolean flags shouldn't be hard coded.
-	filesBackendSettings := FixedFileSettingsToFileBackendSettings(p.Client.Configuration.GetUnsanitizedConfig().FileSettings, false, true)
+	filesBackendSettings := FixedFileSettingsToFileBackendSettings(fileSettings, newConfig.S3Bucket, false, true)
+	fileSettingsEqual := p.fileBackendSettings != nil && fileBackendSettingsEqual(*p.fileBackendSettings, filesBackendSettings)
+
+	pluginConfigEquals := oldConfig != nil && newConfig != nil && oldConfig.Equal(newConfig)
+
+	if pluginConfigEquals && fileSettingsEqual {
+		return nil
+	}
+
+	p.fileBackendSettings = &filesBackendSettings
+
 	filesBackend, err := filestore.NewFileBackend(filesBackendSettings)
 	if err != nil {
 		p.Client.Log.Error("unable to initialize the files storage", "err", err)
@@ -176,12 +198,14 @@ func (p *Plugin) Reconfigure() error {
 	if err := p.jobManager.AddJob(p.legalHoldJob); err != nil {
 		return fmt.Errorf("cannot add legal hold job: %w", err)
 	}
-	_ = p.jobManager.OnConfigurationChange(p.getConfiguration())
+	if err := p.jobManager.OnConfigurationChange(p.getConfiguration()); err != nil {
+		return fmt.Errorf("error configuring job: %w", err)
+	}
 
 	return nil
 }
 
-func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings, enableComplianceFeature bool, skipVerify bool) filestore.FileBackendSettings {
+func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings, customS3Bucket string, enableComplianceFeature bool, skipVerify bool) filestore.FileBackendSettings {
 	if *fileSettings.DriverName == model.ImageDriverLocal {
 		return filestore.FileBackendSettings{
 			DriverName: *fileSettings.DriverName,
@@ -190,7 +214,9 @@ func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings, ena
 	}
 
 	amazonS3Bucket := ""
-	if fileSettings.AmazonS3Bucket != nil {
+	if customS3Bucket != "" {
+		amazonS3Bucket = customS3Bucket
+	} else if fileSettings.AmazonS3Bucket != nil {
 		amazonS3Bucket = *fileSettings.AmazonS3Bucket
 	}
 
@@ -219,4 +245,30 @@ func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings, ena
 		AmazonS3RequestTimeoutMilliseconds: *fileSettings.AmazonS3RequestTimeoutMilliseconds,
 		SkipVerify:                         skipVerify,
 	}
+}
+
+func fileBackendSettingsEqual(settings, settings2 filestore.FileBackendSettings) bool {
+	b1 := settings.AmazonS3Bucket
+	b2 := settings2.AmazonS3Bucket
+	_, _ = b1, b2
+	switch {
+	case settings.DriverName != settings2.DriverName:
+	case settings.Directory != settings2.Directory:
+	case settings.AmazonS3AccessKeyId != settings2.AmazonS3AccessKeyId:
+	case settings.AmazonS3SecretAccessKey != settings2.AmazonS3SecretAccessKey:
+	case settings.AmazonS3Bucket != settings2.AmazonS3Bucket:
+	case settings.AmazonS3PathPrefix != settings2.AmazonS3PathPrefix:
+	case settings.AmazonS3Region != settings2.AmazonS3Region:
+	case settings.AmazonS3Endpoint != settings2.AmazonS3Endpoint:
+	case settings.AmazonS3SSL != settings2.AmazonS3SSL:
+	case settings.AmazonS3SignV2 != settings2.AmazonS3SignV2:
+	case settings.AmazonS3SSE != settings2.AmazonS3SSE:
+	case settings.AmazonS3Trace != settings2.AmazonS3Trace:
+	case settings.AmazonS3RequestTimeoutMilliseconds != settings2.AmazonS3RequestTimeoutMilliseconds:
+	case settings.SkipVerify != settings2.SkipVerify:
+	default:
+		return true
+	}
+
+	return false
 }

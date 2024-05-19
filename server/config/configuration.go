@@ -13,6 +13,7 @@ package config
 // copy appropriate for your types.
 type Configuration struct {
 	TimeOfDay string
+	S3Bucket  string
 }
 
 // Clone shallow copies the Configuration. Your implementation may require a deep copy if
@@ -20,4 +21,9 @@ type Configuration struct {
 func (c *Configuration) Clone() *Configuration {
 	var clone = *c
 	return &clone
+}
+
+func (c *Configuration) Equal(c2 *Configuration) bool {
+	return c.S3Bucket == c2.S3Bucket &&
+		c.TimeOfDay == c2.TimeOfDay
 }
