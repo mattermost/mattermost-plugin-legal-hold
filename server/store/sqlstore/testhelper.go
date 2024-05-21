@@ -240,7 +240,7 @@ func (th *TestHelper) CreatePostsWithAttachments(num int, userID string, channel
 			UpdateAt:  model.GetMillis(),
 			CreatorId: userID,
 			Name:      "file_upload_test.txt",
-			Path:      "tests/file_upload_test.txt",
+			Path:      "data/file_upload_test.txt",
 			MimeType:  "text/plain",
 			Size:      size,
 		}
