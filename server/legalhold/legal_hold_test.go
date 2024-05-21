@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
@@ -22,7 +23,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func TestContainers(t *testing.T) {
+func TestDBContainers(t *testing.T) {
 	connStr, tearDown, err := utils.CreateTestDB(context.TODO(), "postgres", "mattermost_test")
 	require.NoError(t, err)
 	defer func() {
@@ -40,6 +41,19 @@ func TestContainers(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.NoError(t, db.Close())
+}
+
+func TestMinIOContainers(t *testing.T) {
+	connStr, tearDown, err := utils.CreateMinio(context.TODO())
+	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, tearDown(context.Background()))
+	}()
+
+	fileBackendSettings := utils.GetBackendSettings(connStr)
+	fileBackend, err := filestore.NewFileBackend(fileBackendSettings)
+	require.NoError(t, err)
+	require.NoError(t, fileBackend.TestConnection())
 }
 
 func TestApp_LegalHoldExecution_Execute(t *testing.T) {

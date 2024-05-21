@@ -74,28 +74,13 @@ func SetupHelper(t *testing.T) *TestHelper {
 	}
 	th.tearDowns = append(th.tearDowns, dbTearDown)
 
-	fileBackendSettings := getBackendSettings(connStr)
+	fileBackendSettings := utils.GetBackendSettings(connStr)
 	fileBackend, err := filestore.NewFileBackend(fileBackendSettings)
 	require.NoError(t, err)
 	require.NoError(t, fileBackend.TestConnection())
 	th.FileBackend = fileBackend
 
 	return th
-}
-
-func getBackendSettings(endPoint string) filestore.FileBackendSettings {
-	return filestore.FileBackendSettings{
-		DriverName:                         model.ImageDriverS3,
-		AmazonS3AccessKeyId:                model.MinioAccessKey,
-		AmazonS3SecretAccessKey:            model.MinioSecretKey,
-		AmazonS3Bucket:                     model.MinioBucket,
-		AmazonS3Region:                     "",
-		AmazonS3Endpoint:                   endPoint,
-		AmazonS3PathPrefix:                 "",
-		AmazonS3SSL:                        false,
-		AmazonS3SSE:                        false,
-		AmazonS3RequestTimeoutMilliseconds: 5000,
-	}
 }
 
 func (th *TestHelper) SetupBasic(t *testing.T) *TestHelper {

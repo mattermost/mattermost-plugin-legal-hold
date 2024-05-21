@@ -90,7 +90,7 @@ func createTestDBPostgres(ctx context.Context, databaseName string) (string, Tea
 		return postgresContainer.Terminate(ctx)
 	}
 
-	connStr, err := postgresContainer.ConnectionString(ctx, "sslmode=disable", "connect_timeout=30", "binary_parameters=yes")
+	connStr, err := postgresContainer.ConnectionString(ctx, "sslmode=disable", "connect_timeout=30")
 	if err != nil {
 		return "", nil, errors.Wrap(err, "cannot generate connection string for postgres")
 	}
