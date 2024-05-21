@@ -1,25 +1,33 @@
 package sqlstore
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
-	"os"
-	"os/exec"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
 	"github.com/mattermost/mattermost-server/v6/model"
-	"github.com/mattermost/mattermost-server/v6/store/storetest"
-	"github.com/mattermost/mattermost-server/v6/testlib"
+	"github.com/mattermost/mattermost-server/v6/shared/filestore"
+	mmstore "github.com/mattermost/mattermost-server/v6/store/sqlstore"
+)
+
+const (
+	dbDriverName   = "postgres"
+	dbDatabaseName = "mattermost_test"
 )
 
 type TestHelper struct {
-	mainHelper *testlib.MainHelper
-	restoreEnv map[string]string
+	tearDowns []utils.TearDownFunc
 
-	Store *SQLStore
+	mmStore     *mmstore.SqlStore
+	Store       *SQLStore
+	FileBackend filestore.FileBackend
 
 	Team1    *model.Team
 	Team2    *model.Team
@@ -29,43 +37,48 @@ type TestHelper struct {
 	User2    *model.User
 }
 
-func getServerPath(t *testing.T) string {
-	out, err := exec.Command("go", "list", "-m", "-f", "'{{.Dir}}'", "github.com/mattermost/mattermost-server/v6").Output()
-	require.NoError(t, err, "cannot get mod cache path for server package")
-	return strings.Trim(strings.TrimSpace(string(out)), "'")
-}
-
 func SetupHelper(t *testing.T) *TestHelper {
-	var options = testlib.HelperOptions{
-		EnableStore: true,
+	th := &TestHelper{
+		tearDowns: make([]utils.TearDownFunc, 0),
 	}
 
-	// testlib needs to access files in the server package, so here we set the
-	// MM_SERVER_PATH env var to point to the server package in mod cache.
-	restoreEnv := make(map[string]string)
-	serverPath := getServerPath(t)
-	if serverPath != "" {
-		oldPath := os.Getenv("MM_SERVER_PATH")
-		err := os.Setenv("MM_SERVER_PATH", serverPath)
-		require.NoError(t, err, "cannot set env MM_SERVER_PATH var")
-		restoreEnv["MM_SERVER_PATH"] = oldPath
+	// TODO: uncomment below
+	// ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*30)
+	defer cancel()
+
+	// create and initialize a new database
+	connStr, dbTearDown, err := utils.CreateTestDB(ctx, dbDriverName, dbDatabaseName)
+	if err != nil {
+		require.NoError(t, err, "cannot instantiate test database")
 	}
+	th.tearDowns = append(th.tearDowns, dbTearDown)
 
-	fmt.Println("serverPath=", serverPath)
-	fmt.Println("MM_SERVER_PATH=", os.Getenv("MM_SERVER_PATH"))
+	settings := model.SqlSettings{}
+	settings.SetDefaults(false)
+	*settings.DataSource = connStr
+	*settings.DriverName = dbDriverName
 
-	th := &TestHelper{}
-	th.mainHelper = testlib.NewMainHelperWithOptions(&options)
-	th.restoreEnv = restoreEnv
+	t.Log("using database connection string: ", connStr)
 
-	dbStore := th.mainHelper.GetStore()
-	dbStore.DropAllTables()
-	dbStore.MarkSystemRanUnitTests()
-	th.mainHelper.PreloadMigrations()
+	th.mmStore = mmstore.New(settings, nil)
 
-	store, err := New(storeWrapper{th.mainHelper}, &testLogger{t})
+	store, err := New(storeWrapper{th.mmStore}, &testLogger{t})
 	require.NoError(t, err, "could not create store")
 	th.Store = store
+
+	// create a new minio instance
+	connStr, dbTearDown, err = utils.CreateMinio(ctx)
+	if err != nil {
+		require.NoError(t, err, "cannot instantiate test minio")
+	}
+	th.tearDowns = append(th.tearDowns, dbTearDown)
+
+	fileBackendSettings := utils.GetBackendSettings(connStr)
+	fileBackend, err := filestore.NewFileBackend(fileBackendSettings)
+	require.NoError(t, err)
+	require.NoError(t, fileBackend.TestConnection())
+	th.FileBackend = fileBackend
 
 	return th
 }
@@ -92,15 +105,12 @@ func (th *TestHelper) SetupBasic(t *testing.T) *TestHelper {
 	return th
 }
 
-func (th *TestHelper) TearDown() {
-	if th.mainHelper.SQLStore != nil {
-		th.mainHelper.SQLStore.Close()
-	}
-	if th.mainHelper.Settings != nil {
-		storetest.CleanupSqlSettings(th.mainHelper.Settings)
-	}
-	for k, v := range th.restoreEnv {
-		_ = os.Setenv(k, v)
+func (th *TestHelper) TearDown(t *testing.T) {
+	ctx := context.Background()
+	for _, f := range th.tearDowns {
+		if err := f(ctx); err != nil {
+			assert.NoError(t, err)
+		}
 	}
 }
 
@@ -112,7 +122,7 @@ func (th *TestHelper) CreateTeams(num int, namePrefix string) ([]*model.Team, er
 			DisplayName: fmt.Sprintf("%s-%d", namePrefix, i),
 			Type:        model.TeamOpen,
 		}
-		team, err := th.mainHelper.Store.Team().Save(team)
+		team, err := th.mmStore.Team().Save(team)
 		if err != nil {
 			return nil, err
 		}
@@ -129,7 +139,7 @@ func (th *TestHelper) CreateChannel(name string, userID string, teamID string) (
 		CreatorId:   userID,
 		TeamId:      teamID,
 	}
-	return th.mainHelper.Store.Channel().Save(channel, 1024)
+	return th.mmStore.Channel().Save(channel, 1024)
 }
 
 func (th *TestHelper) CreateChannels(num int, namePrefix string, userID string, teamID string) ([]*model.Channel, error) {
@@ -142,7 +152,7 @@ func (th *TestHelper) CreateChannels(num int, namePrefix string, userID string, 
 			CreatorId:   userID,
 			TeamId:      teamID,
 		}
-		channel, err := th.mainHelper.Store.Channel().Save(channel, 1024)
+		channel, err := th.mmStore.Channel().Save(channel, 1024)
 		if err != nil {
 			return nil, err
 		}
@@ -161,13 +171,13 @@ func (th *TestHelper) CreateChannelsWithChannelMemberHistory(num int, namePrefix
 			CreatorId:   userID,
 			TeamId:      teamID,
 		}
-		channel, err := th.mainHelper.Store.Channel().Save(channel, 1024)
+		channel, err := th.mmStore.Channel().Save(channel, 1024)
 		if err != nil {
 			return nil, err
 		}
 		channels = append(channels, channel)
 
-		err = th.mainHelper.Store.ChannelMemberHistory().LogJoinEvent(userID, channel.Id, model.GetMillis())
+		err = th.mmStore.ChannelMemberHistory().LogJoinEvent(userID, channel.Id, model.GetMillis())
 		if err != nil {
 			return nil, err
 		}
@@ -176,7 +186,7 @@ func (th *TestHelper) CreateChannelsWithChannelMemberHistory(num int, namePrefix
 }
 
 func (th *TestHelper) CreateDirectMessageChannel(user1 *model.User, user2 *model.User) (*model.Channel, error) {
-	return th.mainHelper.Store.Channel().CreateDirectChannel(user1, user2)
+	return th.mmStore.Channel().CreateDirectChannel(user1, user2)
 }
 
 func (th *TestHelper) CreateUsers(num int, namePrefix string) ([]*model.User, error) {
@@ -187,7 +197,7 @@ func (th *TestHelper) CreateUsers(num int, namePrefix string) ([]*model.User, er
 			Password: namePrefix,
 			Email:    fmt.Sprintf("%s@example.com", model.NewId()),
 		}
-		user, err := th.mainHelper.Store.User().Save(user)
+		user, err := th.mmStore.User().Save(user)
 		if err != nil {
 			return nil, err
 		}
@@ -205,7 +215,49 @@ func (th *TestHelper) CreatePosts(num int, userID string, channelID string) ([]*
 			Type:      model.PostTypeDefault,
 			Message:   fmt.Sprintf("test post %d of %d", i, num),
 		}
-		post, err := th.mainHelper.Store.Post().Save(post)
+		post, err := th.mmStore.Post().Save(post)
+		if err != nil {
+			return nil, err
+		}
+		posts = append(posts, post)
+	}
+	return posts, nil
+}
+
+func (th *TestHelper) CreatePostsWithAttachments(num int, userID string, channelID string) ([]*model.Post, error) {
+	var posts []*model.Post
+	for i := 0; i < num; i++ {
+		text := "This is a test uploaded file."
+		reader := strings.NewReader(text)
+		size, err := th.FileBackend.WriteFile(reader, "data/file_upload_test.txt")
+		if err != nil {
+			return nil, err
+		}
+
+		fileInfo := &model.FileInfo{
+			Id:        model.NewId(),
+			CreateAt:  model.GetMillis(),
+			UpdateAt:  model.GetMillis(),
+			CreatorId: userID,
+			Name:      "file_upload_test.txt",
+			Path:      "data/file_upload_test.txt",
+			MimeType:  "text/plain",
+			Size:      size,
+		}
+
+		fileInfo, err = th.mmStore.FileInfo().Save(fileInfo)
+		if err != nil {
+			return nil, err
+		}
+
+		post := &model.Post{
+			UserId:    userID,
+			ChannelId: channelID,
+			Type:      model.PostTypeDefault,
+			Message:   fmt.Sprintf("test post %d of %d", i, num),
+			FileIds:   []string{fileInfo.Id},
+		}
+		post, err = th.mmStore.Post().Save(post)
 		if err != nil {
 			return nil, err
 		}
@@ -223,7 +275,7 @@ func (th *TestHelper) CreateReactions(posts []*model.Post, userID string) ([]*mo
 			EmojiName: "shrug",
 			ChannelId: post.ChannelId,
 		}
-		reaction, err := th.mainHelper.Store.Reaction().Save(reaction)
+		reaction, err := th.mmStore.Reaction().Save(reaction)
 		if err != nil {
 			return nil, err
 		}
@@ -232,20 +284,22 @@ func (th *TestHelper) CreateReactions(posts []*model.Post, userID string) ([]*mo
 	return reactions, nil
 }
 
-// storeWrapper is a wrapper for MainHelper that implements Source interface.
+// storeWrapper is a wrapper for MainHelper that implements SQLStoreSource interface.
 type storeWrapper struct {
-	mainHelper *testlib.MainHelper
+	mmStore *mmstore.SqlStore
 }
 
 func (sw storeWrapper) GetMasterDB() (*sql.DB, error) {
-	return sw.mainHelper.SQLStore.GetInternalMasterDB(), nil
+	return sw.mmStore.GetInternalMasterDB(), nil
 }
+
 func (sw storeWrapper) GetReplicaDB() (*sql.DB, error) {
 	// For this test helper, just return the master DB even when a replica has been asked for.
-	return sw.mainHelper.SQLStore.GetInternalMasterDB(), nil
+	return sw.mmStore.GetInternalMasterDB(), nil
 }
+
 func (sw storeWrapper) DriverName() string {
-	return *sw.mainHelper.Settings.DriverName
+	return sw.mmStore.DriverName()
 }
 
 type testLogger struct {
