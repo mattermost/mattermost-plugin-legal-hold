@@ -53,7 +53,7 @@ func (jm *JobManager) RemoveJob(jobID string, timeout time.Duration) error {
 func (jm *JobManager) OnConfigurationChange(cfg *config.Configuration) error {
 	merr := merror.New()
 
-	jm.jobs.Range(func(k, v any) bool {
+	jm.jobs.Range(func(_, v any) bool {
 		job := v.(Job)
 		if err := job.OnConfigurationChange(cfg); err != nil {
 			merr.Append(err)
@@ -66,7 +66,7 @@ func (jm *JobManager) OnConfigurationChange(cfg *config.Configuration) error {
 func (jm *JobManager) Close(timeout time.Duration) error {
 	merr := merror.New()
 
-	jm.jobs.Range(func(k, v any) bool {
+	jm.jobs.Range(func(_, v any) bool {
 		job := v.(Job)
 		if err := job.Stop(timeout); err != nil {
 			merr.Append(err)
