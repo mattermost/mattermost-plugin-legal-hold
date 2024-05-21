@@ -229,7 +229,7 @@ func (th *TestHelper) CreatePostsWithAttachments(num int, userID string, channel
 	for i := 0; i < num; i++ {
 		text := "This is a test uploaded file."
 		reader := strings.NewReader(text)
-		size, err := th.FileBackend.WriteFile(reader, "tests/file_upload_test.txt")
+		size, err := th.FileBackend.WriteFile(reader, "data/file_upload_test.txt")
 		if err != nil {
 			return nil, err
 		}
