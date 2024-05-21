@@ -150,16 +150,12 @@ func (p *Plugin) Reconfigure() error {
 		return nil
 	}
 
-	fileSettings := p.Client.Configuration.GetUnsanitizedConfig().FileSettings
-
 	pluginConfig := p.getConfiguration()
-	if pluginConfig.S3Bucket != "" {
-		fileSettings.AmazonS3Bucket = &pluginConfig.S3Bucket
-	}
+	customS3Bucket := pluginConfig.S3Bucket
 
 	// Reinitialise the filestore backend
 	// FIXME: Boolean flags shouldn't be hard coded.
-	filesBackendSettings := FixedFileSettingsToFileBackendSettings(fileSettings, false, true)
+	filesBackendSettings := FixedFileSettingsToFileBackendSettings(p.Client.Configuration.GetUnsanitizedConfig().FileSettings, customS3Bucket, false, true)
 	filesBackend, err := filestore.NewFileBackend(filesBackendSettings)
 	if err != nil {
 		p.Client.Log.Error("unable to initialize the files storage", "err", err)
@@ -188,7 +184,7 @@ func (p *Plugin) Reconfigure() error {
 	return nil
 }
 
-func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings, enableComplianceFeature bool, skipVerify bool) filestore.FileBackendSettings {
+func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings, customS3Bucket string, enableComplianceFeature bool, skipVerify bool) filestore.FileBackendSettings {
 	if *fileSettings.DriverName == model.ImageDriverLocal {
 		return filestore.FileBackendSettings{
 			DriverName: *fileSettings.DriverName,
@@ -197,7 +193,9 @@ func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings, ena
 	}
 
 	amazonS3Bucket := ""
-	if fileSettings.AmazonS3Bucket != nil {
+	if customS3Bucket != "" {
+		amazonS3Bucket = customS3Bucket
+	} else if fileSettings.AmazonS3Bucket != nil {
 		amazonS3Bucket = *fileSettings.AmazonS3Bucket
 	}
 
