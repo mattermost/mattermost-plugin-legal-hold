@@ -150,17 +150,28 @@ func (p *Plugin) Reconfigure() error {
 		return nil
 	}
 
-	pluginConfig := p.getConfiguration()
-	customS3Bucket := pluginConfig.S3Bucket
+	conf := p.getConfiguration()
+
+	serverFileSettings := p.Client.Configuration.GetUnsanitizedConfig().FileSettings
+	if conf.AmazonS3BucketSettings.Enable {
+		serverFileSettings = conf.AmazonS3BucketSettings.Settings
+	}
 
 	// Reinitialise the filestore backend
 	// FIXME: Boolean flags shouldn't be hard coded.
-	filesBackendSettings := FixedFileSettingsToFileBackendSettings(p.Client.Configuration.GetUnsanitizedConfig().FileSettings, customS3Bucket, false, true)
+	filesBackendSettings := FixedFileSettingsToFileBackendSettings(serverFileSettings, false, true)
 	filesBackend, err := filestore.NewFileBackend(filesBackendSettings)
 	if err != nil {
 		p.Client.Log.Error("unable to initialize the files storage", "err", err)
 		return errors.New("unable to initialize the files storage")
 	}
+
+	if err = filesBackend.TestConnection(); err != nil {
+		err = errors.Wrap(err, "connection test for filestore failed")
+		p.Client.Log.Error(err.Error())
+		return err
+	}
+
 	p.FileBackend = filesBackend
 
 	// Remove old job if exists
@@ -184,7 +195,7 @@ func (p *Plugin) Reconfigure() error {
 	return nil
 }
 
-func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings, customS3Bucket string, enableComplianceFeature bool, skipVerify bool) filestore.FileBackendSettings {
+func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings, enableComplianceFeature bool, skipVerify bool) filestore.FileBackendSettings {
 	if *fileSettings.DriverName == model.ImageDriverLocal {
 		return filestore.FileBackendSettings{
 			DriverName: *fileSettings.DriverName,
@@ -193,9 +204,7 @@ func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings, cus
 	}
 
 	amazonS3Bucket := ""
-	if customS3Bucket != "" {
-		amazonS3Bucket = customS3Bucket
-	} else if fileSettings.AmazonS3Bucket != nil {
+	if fileSettings.AmazonS3Bucket != nil {
 		amazonS3Bucket = *fileSettings.AmazonS3Bucket
 	}
 

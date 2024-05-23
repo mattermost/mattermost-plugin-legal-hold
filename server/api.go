@@ -307,7 +307,7 @@ func (p *Plugin) runJobFromAPI(w http.ResponseWriter, _ *http.Request) {
 // we'll want to store the access secret encrypted in the database
 
 // testAmazonS3Connection tests the plugin's custom Amazon S3 connection
-func (p *Plugin) testAmazonS3Connection(w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) testAmazonS3Connection(w http.ResponseWriter, _ *http.Request) {
 	type messageResponse struct {
 		Message string `json:"message"`
 	}
@@ -320,9 +320,7 @@ func (p *Plugin) testAmazonS3Connection(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	conf.AmazonS3BucketSettings.Settings.DriverName = mattermostModel.NewString(mattermostModel.ImageDriverS3)
-	conf.AmazonS3BucketSettings.Settings.AmazonS3RequestTimeoutMilliseconds = mattermostModel.NewInt64(30000)
-	filesBackendSettings := FixedFileSettingsToFileBackendSettings(conf.AmazonS3BucketSettings.Settings, "", false, true)
+	filesBackendSettings := FixedFileSettingsToFileBackendSettings(conf.AmazonS3BucketSettings.Settings, false, true)
 	filesBackend, err := filestore.NewFileBackend(filesBackendSettings)
 	if err != nil {
 		err = errors.Wrap(err, "unable to initialize the file store")

@@ -15,7 +15,7 @@ const BaseSetting = (props: Props) => {
             <label
                 className='control-label col-sm-4'
             >
-                {`${props.name}:`}
+                {props.name && `${props.name}:`}
             </label>
             <div className='col-sm-8'>
                 {props.children}

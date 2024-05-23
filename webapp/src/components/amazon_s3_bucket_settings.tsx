@@ -8,8 +8,11 @@ import BooleanSetting from './admin_console_settings/boolean_setting';
 import TextSetting from './admin_console_settings/text_setting';
 import SaveButton from './mattermost-webapp/save_button';
 import BaseSetting from './admin_console_settings/base_setting';
+import StatusMessage from './admin_console_settings/status_message';
 
 type FileSettings = {
+    DriverName: string;
+    AmazonS3RequestTimeoutMilliseconds: number;
     AmazonS3Bucket: string;
     AmazonS3PathPrefix: string;
     AmazonS3Region: string;
@@ -26,9 +29,11 @@ type AmazonS3BucketSettingsData = {
 };
 
 const useS3BucketForm = (initialValue: AmazonS3BucketSettingsData | undefined, onChange: (id: string, value: AmazonS3BucketSettingsData) => void) => {
-    const [formState, setFormState] = useState<AmazonS3BucketSettingsData>(initialValue || {
-        Enable: false,
+    const [formState, setFormState] = useState<AmazonS3BucketSettingsData>({
+        Enable: initialValue?.Enable ?? false,
         Settings: {
+            DriverName: 'amazons3',
+            AmazonS3RequestTimeoutMilliseconds: 30000,
             AmazonS3Bucket: '',
             AmazonS3PathPrefix: '',
             AmazonS3Region: '',
@@ -37,6 +42,7 @@ const useS3BucketForm = (initialValue: AmazonS3BucketSettingsData | undefined, o
             AmazonS3SecretAccessKey: '',
             AmazonS3SSL: false,
             AmazonS3SSE: false,
+            ...initialValue?.Settings,
         },
     });
 
@@ -83,27 +89,52 @@ const AmazonS3BucketSettings = (props: Props) => {
     const {formState, setFormValue, setEnable} = useS3BucketForm(props.value, props.onChange);
     const [testingConnection, setTestingConnection] = useState(false);
 
+    const [message, setMessage] = useState('');
+    const [error, setError] = useState('');
+
     const s3Settings = formState.Settings;
 
     const testConnection = async () => {
         if (isSettingFormDirty()) {
-            alert('Please save the settings before testing the connection.');
+            setError('Please save the settings before testing the connection.');
             return;
         }
+
+        setMessage('');
+        setError('');
 
         setTestingConnection(true);
 
         try {
             const res = await Client.testAmazonS3Connection();
             if (res.message) {
-                alert(res.message);
+                setMessage(res.message);
             }
-        } catch (error) {
-            alert(`Error: ${error}`);
+        } catch (err) {
+            if ('message' in (err as Error)) {
+                setError((err as Error).message);
+            }
         }
 
         setTestingConnection(false);
     };
+
+    let statusMessage: React.ReactNode | undefined;
+    if (error) {
+        statusMessage = (
+            <StatusMessage
+                state='warn'
+                message={error}
+            />
+        );
+    } else if (message) {
+        statusMessage = (
+            <StatusMessage
+                state='success'
+                message={message}
+            />
+        );
+    }
 
     return (
         <IntlProvider locale='en-US'>
@@ -185,6 +216,7 @@ const AmazonS3BucketSettings = (props: Props) => {
                             defaultMessage={'Test Connection'}
                             onClick={testConnection}
                         />
+                        {statusMessage}
                     </BaseSetting>
                 </>
             )}

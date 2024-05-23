@@ -15,7 +15,6 @@ import "github.com/mattermost/mattermost-server/v6/model"
 // copy appropriate for your types.
 type Configuration struct {
 	TimeOfDay              string
-	S3Bucket               string
 	AmazonS3BucketSettings AmazonS3BucketSettings
 }
 
