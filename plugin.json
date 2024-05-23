@@ -42,6 +42,11 @@
         "key": "LegalHoldsSettings",
         "display_name": "Legal Holds:",
         "type": "custom"
+      },
+      {
+        "key": "S3BucketSettings",
+        "display_name": "S3 Bucket:",
+        "type": "custom"
       }
     ]
   }
