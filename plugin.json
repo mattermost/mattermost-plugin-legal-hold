@@ -44,7 +44,7 @@
         "type": "custom"
       },
       {
-        "key": "S3BucketSettings",
+        "key": "AmazonS3BucketSettings",
         "display_name": "S3 Bucket:",
         "type": "custom"
       }

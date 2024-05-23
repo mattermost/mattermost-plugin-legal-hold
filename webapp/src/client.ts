@@ -32,7 +32,12 @@ class APIClient {
         return this.doPost(url, data);
     };
 
-    doGet = async (url: string, headers = {}) => {
+    testAmazonS3Connection = () => {
+        const url = `${this.url}/test_amazon_s3_connection`;
+        return this.doPost(url, {}) as Promise<{message: string}>;
+    };
+
+    private doGet = async (url: string, headers = {}) => {
         const options = {
             method: 'get',
             headers,
@@ -53,7 +58,7 @@ class APIClient {
         });
     };
 
-    doPost = async (url: string, body: any, headers = {}) => {
+    private doPost = async (url: string, body: any, headers = {}) => {
         const options = {
             method: 'post',
             body: JSON.stringify(body),

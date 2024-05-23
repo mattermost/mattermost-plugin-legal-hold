@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
+	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
@@ -43,6 +44,7 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/release", p.releaseLegalHold).Methods(http.MethodPost)
 	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/update", p.updateLegalHold).Methods(http.MethodPost)
 	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/download", p.downloadLegalHold).Methods(http.MethodGet)
+	router.HandleFunc("/api/v1/test_amazon_s3_connection", p.testAmazonS3Connection).Methods(http.MethodPost)
 
 	// Other routes
 	router.HandleFunc("/api/v1/legalhold/run", p.runJobFromAPI).Methods(http.MethodPost)
@@ -300,6 +302,51 @@ func (p *Plugin) runJobFromAPI(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	go p.legalHoldJob.RunFromAPI()
+}
+
+// we'll want to store the access secret encrypted in the database
+
+// testAmazonS3Connection tests the plugin's custom Amazon S3 connection
+func (p *Plugin) testAmazonS3Connection(w http.ResponseWriter, r *http.Request) {
+	type messageResponse struct {
+		Message string `json:"message"`
+	}
+
+	var err error
+
+	conf := p.getConfiguration()
+	if !conf.AmazonS3BucketSettings.Enable {
+		http.Error(w, "Amazon S3 bucket settings are not enabled", http.StatusBadRequest)
+		return
+	}
+
+	conf.AmazonS3BucketSettings.Settings.DriverName = mattermostModel.NewString(mattermostModel.ImageDriverS3)
+	conf.AmazonS3BucketSettings.Settings.AmazonS3RequestTimeoutMilliseconds = mattermostModel.NewInt64(30000)
+	filesBackendSettings := FixedFileSettingsToFileBackendSettings(conf.AmazonS3BucketSettings.Settings, "", false, true)
+	filesBackend, err := filestore.NewFileBackend(filesBackendSettings)
+	if err != nil {
+		err = errors.Wrap(err, "unable to initialize the file store")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		p.Client.Log.Error(err.Error())
+		return
+	}
+
+	if err = filesBackend.TestConnection(); err != nil {
+		err = errors.Wrap(err, "failed to connect to Amazon S3 bucket")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		p.Client.Log.Error(err.Error())
+		return
+	}
+
+	response := messageResponse{
+		Message: "Successfully connected to Amazon S3 bucket",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		p.Client.Log.Error("failed to write http response", err.Error())
+	}
 }
 
 func RequireLegalHoldID(r *http.Request) (string, error) {

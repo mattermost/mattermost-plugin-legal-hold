@@ -8,6 +8,7 @@ import LoadingWrapper from '@/components/mattermost-webapp/loading_wrapper';
 
 type Props = {
     saving: boolean;
+    type: 'submit' | 'button';
     disabled?: boolean;
     id?: string;
     onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
@@ -20,6 +21,7 @@ type Props = {
 // eslint-disable-next-line react/prefer-stateless-function
 export default class SaveButton extends React.PureComponent<Props> {
     public static defaultProps: Partial<Props> = {
+        type: 'submit',
         btnClass: '',
         defaultMessage: (
             <FormattedMessage
@@ -45,6 +47,7 @@ export default class SaveButton extends React.PureComponent<Props> {
             defaultMessage,
             btnClass,
             extraClasses,
+            type,
             ...props
         } = this.props;
 
@@ -63,9 +66,7 @@ export default class SaveButton extends React.PureComponent<Props> {
 
         return (
             <button
-                type='submit'
-                data-testid='saveSetting'
-                id='saveSetting'
+                type={type}
                 className={className}
                 disabled={disabled}
                 {...props}
