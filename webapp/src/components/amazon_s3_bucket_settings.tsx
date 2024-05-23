@@ -145,81 +145,86 @@ const AmazonS3BucketSettings = (props: Props) => {
                 value={formState.Enable}
                 onChange={(value) => setEnable(value)}
             />
-            {formState.Enable && (
-                <>
-                    <TextSetting
-                        id='com.mattermost.plugin-legal-hold.AmazonS3Bucket'
-                        name='Amazon S3 Bucket'
-                        helpText='The name of the Amazon S3 bucket to store the files.'
-                        value={s3Settings.AmazonS3Bucket}
-                        onChange={(value) => setFormValue('AmazonS3Bucket', value)}
-                    />
-                    <TextSetting
-                        id='com.mattermost.plugin-legal-hold.AmazonS3PathPrefix'
-                        name='Amazon S3 Path Prefix'
-                        helpText='The path prefix to store the files in the Amazon S3 bucket.'
-                        value={s3Settings.AmazonS3PathPrefix}
-                        onChange={(value) => setFormValue('AmazonS3PathPrefix', value)}
-                    />
-                    <TextSetting
-                        id='com.mattermost.plugin-legal-hold.AmazonS3Region'
-                        name='Amazon S3 Region'
-                        helpText='The region of the Amazon S3 bucket.'
-                        value={s3Settings.AmazonS3Region}
-                        onChange={(value) => setFormValue('AmazonS3Region', value)}
-                    />
-                    <TextSetting
-                        id='com.mattermost.plugin-legal-hold.AmazonS3AccessKeyId'
-                        name='Amazon S3 Access Key ID'
-                        helpText='The access key ID to access the Amazon S3 bucket.'
-                        value={s3Settings.AmazonS3AccessKeyId}
-                        onChange={(value) => setFormValue('AmazonS3AccessKeyId', value)}
-                    />
-                    <TextSetting
-                        id='com.mattermost.plugin-legal-hold.AmazonS3Endpoint'
-                        name='Amazon S3 Endpoint'
-                        helpText='The endpoint of the Amazon S3 bucket.'
-                        value={s3Settings.AmazonS3Endpoint}
-                        onChange={(value) => setFormValue('AmazonS3Endpoint', value)}
-                    />
-                    <TextSetting
-                        id='com.mattermost.plugin-legal-hold.AmazonS3SecretAccessKey'
-                        name='Amazon S3 Secret Access Key'
-                        helpText='The secret access key to access the Amazon S3 bucket.'
-                        value={s3Settings.AmazonS3SecretAccessKey}
-                        onChange={(value) => setFormValue('AmazonS3SecretAccessKey', value)}
-                    />
-                    <BooleanSetting
-                        id='com.mattermost.plugin-legal-hold.AmazonS3SSL'
-                        name='Amazon S3 SSL'
-                        helpText='When enabled, the connection to the Amazon S3 bucket will be encrypted.'
-                        value={s3Settings.AmazonS3SSL}
-                        onChange={(value) => setFormValue('AmazonS3SSL', value)}
-                    />
-                    <BooleanSetting
-                        id='com.mattermost.plugin-legal-hold.AmazonS3SSE'
-                        name='Amazon S3 SSE'
-                        helpText='When enabled, the server-side encryption will be enabled for the Amazon S3 bucket.'
-                        value={s3Settings.AmazonS3SSE}
-                        onChange={(value) => setFormValue('AmazonS3SSE', value)}
-                    />
-                    <BaseSetting
-                        helpText=''
-                        id=''
-                        name=''
-                    >
-                        <SaveButton
-                            type='button'
-                            btnClass='btn-tertiary'
-                            saving={testingConnection}
-                            savingMessage={''}
-                            defaultMessage={'Test Connection'}
-                            onClick={testConnection}
-                        />
-                        {statusMessage}
-                    </BaseSetting>
-                </>
-            )}
+            <TextSetting
+                id='com.mattermost.plugin-legal-hold.AmazonS3Bucket'
+                name='Amazon S3 Bucket'
+                helpText='The name of the Amazon S3 bucket to store the files.'
+                value={s3Settings.AmazonS3Bucket}
+                onChange={(value) => setFormValue('AmazonS3Bucket', value)}
+                disabled={!formState.Enable}
+            />
+            <TextSetting
+                id='com.mattermost.plugin-legal-hold.AmazonS3PathPrefix'
+                name='Amazon S3 Path Prefix'
+                helpText='The path prefix to store the files in the Amazon S3 bucket.'
+                value={s3Settings.AmazonS3PathPrefix}
+                onChange={(value) => setFormValue('AmazonS3PathPrefix', value)}
+                disabled={!formState.Enable}
+            />
+            <TextSetting
+                id='com.mattermost.plugin-legal-hold.AmazonS3Region'
+                name='Amazon S3 Region'
+                helpText='The region of the Amazon S3 bucket.'
+                value={s3Settings.AmazonS3Region}
+                onChange={(value) => setFormValue('AmazonS3Region', value)}
+                disabled={!formState.Enable}
+            />
+            <TextSetting
+                id='com.mattermost.plugin-legal-hold.AmazonS3AccessKeyId'
+                name='Amazon S3 Access Key ID'
+                helpText='The access key ID to access the Amazon S3 bucket.'
+                value={s3Settings.AmazonS3AccessKeyId}
+                onChange={(value) => setFormValue('AmazonS3AccessKeyId', value)}
+                disabled={!formState.Enable}
+            />
+            <TextSetting
+                id='com.mattermost.plugin-legal-hold.AmazonS3Endpoint'
+                name='Amazon S3 Endpoint'
+                helpText='The endpoint of the Amazon S3 bucket.'
+                value={s3Settings.AmazonS3Endpoint}
+                onChange={(value) => setFormValue('AmazonS3Endpoint', value)}
+                disabled={!formState.Enable}
+            />
+            <TextSetting
+                id='com.mattermost.plugin-legal-hold.AmazonS3SecretAccessKey'
+                name='Amazon S3 Secret Access Key'
+                helpText='The secret access key to access the Amazon S3 bucket.'
+                value={s3Settings.AmazonS3SecretAccessKey}
+                onChange={(value) => setFormValue('AmazonS3SecretAccessKey', value)}
+                disabled={!formState.Enable}
+            />
+            <BooleanSetting
+                id='com.mattermost.plugin-legal-hold.AmazonS3SSL'
+                name='Amazon S3 SSL'
+                helpText='When enabled, the connection to the Amazon S3 bucket will be encrypted.'
+                value={s3Settings.AmazonS3SSL}
+                onChange={(value) => setFormValue('AmazonS3SSL', value)}
+                disabled={!formState.Enable}
+            />
+            <BooleanSetting
+                id='com.mattermost.plugin-legal-hold.AmazonS3SSE'
+                name='Amazon S3 SSE'
+                helpText='When enabled, the server-side encryption will be enabled for the Amazon S3 bucket.'
+                value={s3Settings.AmazonS3SSE}
+                onChange={(value) => setFormValue('AmazonS3SSE', value)}
+                disabled={!formState.Enable}
+            />
+            <BaseSetting
+                helpText=''
+                id=''
+                name=''
+            >
+                <SaveButton
+                    type='button'
+                    btnClass='btn-tertiary'
+                    saving={testingConnection}
+                    savingMessage={''}
+                    defaultMessage={'Test Connection'}
+                    onClick={testConnection}
+                    disabled={!formState.Enable}
+                />
+                {statusMessage}
+            </BaseSetting>
         </IntlProvider>
     );
 };
