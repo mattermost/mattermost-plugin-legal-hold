@@ -54,6 +54,11 @@ func Process(_ *cobra.Command, _ []string) {
 		fmt.Printf("Error while creating temporary directory: %v\n", err)
 	}
 
+	// Clean up the temporary directory when we're done.
+	defer func() {
+		os.RemoveAll(tempPath)
+	}()
+
 	if err := ExtractZip(legalHoldData, tempPath); err != nil {
 		fmt.Printf("Error while extracting: %v\n", err)
 		os.Exit(1)
