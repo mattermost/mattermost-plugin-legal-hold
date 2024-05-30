@@ -94,6 +94,7 @@ const LegalHoldsSetting = () => {
                     background: 'var(--sys-center-channel-bg)',
                     borderRadius: '4px',
                     boxShadow: '0 2px 3px rgba(0, 0, 0, 0.08)',
+                    marginBottom: '24px',
                 }}
             >
                 <div

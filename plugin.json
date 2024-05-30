@@ -32,13 +32,13 @@
         "default": "1:00am -0700"
       },
       {
-        "key": "AmazonS3BucketSettings",
-        "display_name": "S3 Bucket:",
+        "key": "LegalHoldsSettings",
+        "display_name": "Legal Holds:",
         "type": "custom"
       },
       {
-        "key": "LegalHoldsSettings",
-        "display_name": "Legal Holds:",
+        "key": "AmazonS3BucketSettings",
+        "display_name": "S3 Bucket:",
         "type": "custom"
       }
     ]
