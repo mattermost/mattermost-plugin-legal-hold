@@ -304,8 +304,6 @@ func (p *Plugin) runJobFromAPI(w http.ResponseWriter, _ *http.Request) {
 	go p.legalHoldJob.RunFromAPI()
 }
 
-// we'll want to store the access secret encrypted in the database
-
 // testAmazonS3Connection tests the plugin's custom Amazon S3 connection
 func (p *Plugin) testAmazonS3Connection(w http.ResponseWriter, _ *http.Request) {
 	type messageResponse struct {
