@@ -9,6 +9,7 @@ import TextSetting from './admin_console_settings/text_setting';
 import SaveButton from './mattermost-webapp/save_button';
 import BaseSetting from './admin_console_settings/base_setting';
 import StatusMessage from './admin_console_settings/status_message';
+import SecretTextSetting from './admin_console_settings/secret_text_setting';
 
 type FileSettings = {
     DriverName: string;
@@ -185,7 +186,7 @@ const AmazonS3BucketSettings = (props: Props) => {
                 onChange={(value) => setFormValue('AmazonS3Endpoint', value)}
                 disabled={!formState.Enable}
             />
-            <TextSetting
+            <SecretTextSetting
                 id='com.mattermost.plugin-legal-hold.AmazonS3SecretAccessKey'
                 name='Amazon S3 Secret Access Key'
                 helpText='The secret access key to access the Amazon S3 bucket.'
