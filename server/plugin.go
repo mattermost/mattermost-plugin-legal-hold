@@ -56,6 +56,14 @@ type Plugin struct {
 }
 
 func (p *Plugin) OnActivate() error {
+	// Check for an enterprise license or a development environment
+	config := p.API.GetConfig()
+	license := p.API.GetLicense()
+
+	if !pluginapi.IsEnterpriseLicensedOrDevelopment(config, license) {
+		return fmt.Errorf("this plugin requires an Enterprise license")
+	}
+
 	// Create plugin API client
 	p.Client = pluginapi.NewClient(p.API, p.Driver)
 	p.Client.Log.Debug("MM LH Plugin: OnActivate called")
