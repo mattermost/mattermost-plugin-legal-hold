@@ -188,7 +188,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
                             type='date'
                             autoComplete='off'
                             autoFocus={false}
-                            required={true}
+                            required={false}
                             name={'Ending at'}
                             label={'Ending at'}
                             placeholder={'Ending at'}
