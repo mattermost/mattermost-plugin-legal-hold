@@ -6,6 +6,7 @@ import UsersInput from '@/components/users_input';
 import {CreateLegalHold} from '@/types';
 import {GenericModal} from '@/components/mattermost-webapp/generic_modal/generic_modal';
 import Input from '@/components/mattermost-webapp/input/input';
+import Select from 'react-select';
 
 import './create_legal_hold_form.scss';
 
@@ -13,6 +14,7 @@ interface CreateLegalHoldFormProps {
     createLegalHold: (data: CreateLegalHold) => Promise<any>;
     onExited: () => void;
     visible: boolean;
+    excludePublicChannels: boolean;
 }
 
 const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
@@ -21,6 +23,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
     const [startsAt, setStartsAt] = useState('');
     const [endsAt, setEndsAt] = useState('');
     const [saving, setSaving] = useState(false);
+    const [excludePublicChannels, setExcludePublicChannels] = useState(props.excludePublicChannels);
     const [serverError, setServerError] = useState('');
 
     const displayNameChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,6 +36,10 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
 
     const endsAtChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
         setEndsAt(e.target.value);
+    };
+
+    const excludePublicChannelsChanged: (e: React.ChangeEvent<HTMLInputElement>) => void = (e) => {
+        setExcludePublicChannels(e.target.checked);
     };
 
     const resetForm = () => {
@@ -55,6 +62,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
             ends_at: (new Date(endsAt)).getTime(),
             starts_at: (new Date(startsAt)).getTime(),
             display_name: displayName,
+            exclude_public_channels: excludePublicChannels,
             name: slugify(displayName),
         };
 
@@ -144,6 +152,24 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
                             columnGap: '20px',
                         }}
                     >
+                        <label htmlFor={'legal-hold-exclude-public-channels'}>
+                            {'Exclude public channels'}
+                            <Input
+                                type='checkbox'
+                                id='legal-hold-exclude-public-channels'
+                                checked={excludePublicChannels}
+                                onChange={excludePublicChannelsChanged}
+                                inputClassName={'create-legal-hold-checkbox'}
+                                wrapperClassName={'create-legal-hold-checkbox-wrapper'}
+                            />
+                        </label>
+                    </div>
+                    <div
+                        style={{
+                            display: 'flex',
+                            columnGap: '20px',
+                        }}
+                    >
                         <Input
                             type='date'
                             autoComplete='off'
@@ -189,4 +215,3 @@ const slugify = (data: string) => {
 };
 
 export default CreateLegalHoldForm;
-
