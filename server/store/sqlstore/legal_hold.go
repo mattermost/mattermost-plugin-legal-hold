@@ -110,13 +110,23 @@ func (ss SQLStore) GetPostsBatch(channelID string, endTime int64, cursor model.L
 // GetChannelIDsForUserDuring gets the channel IDs for all channels that the user indicated by userID is
 // a member of during the time period from (and including) the startTime up until (but not including) the
 // endTime.
-func (ss SQLStore) GetChannelIDsForUserDuring(userID string, startTime int64, endTime int64) ([]string, error) {
+func (ss SQLStore) GetChannelIDsForUserDuring(userID string, startTime int64, endTime int64, excludePublic bool) ([]string, error) {
 	query := ss.replicaBuilder.
 		Select("distinct(cmh.channelid)").
-		From("channelmemberhistory as cmh").
+		From("channelmemberhistory as cmh")
+
+	query = query.
 		Where(sq.Lt{"cmh.jointime": endTime}).
 		Where(sq.Or{sq.Eq{"cmh.leavetime": nil}, sq.GtOrEq{"cmh.leavetime": startTime}}).
 		Where(sq.Eq{"cmh.userid": userID})
+
+	// Exclude all public channels from the results
+	if excludePublic {
+		query = query.Join("channels on cmh.channelid = channels.id").
+			Where(sq.NotEq{"channels.type": mattermostModel.ChannelTypeOpen})
+	}
+
+	ss.logger.Error(query.ToSql())
 
 	rows, err := query.Query()
 	if err != nil {

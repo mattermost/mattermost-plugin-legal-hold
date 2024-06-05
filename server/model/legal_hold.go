@@ -11,17 +11,18 @@ import (
 
 // LegalHold represents one legal hold.
 type LegalHold struct {
-	ID                   string   `json:"id"`
-	Name                 string   `json:"name"`
-	DisplayName          string   `json:"display_name"`
-	CreateAt             int64    `json:"create_at"`
-	UpdateAt             int64    `json:"update_at"`
-	UserIDs              []string `json:"user_ids"`
-	StartsAt             int64    `json:"starts_at"`
-	EndsAt               int64    `json:"ends_at"`
-	LastExecutionEndedAt int64    `json:"last_execution_ended_at"`
-	ExecutionLength      int64    `json:"execution_length"`
-	Secret               string   `json:"secret"`
+	ID                    string   `json:"id"`
+	Name                  string   `json:"name"`
+	DisplayName           string   `json:"display_name"`
+	CreateAt              int64    `json:"create_at"`
+	UpdateAt              int64    `json:"update_at"`
+	UserIDs               []string `json:"user_ids"`
+	StartsAt              int64    `json:"starts_at"`
+	EndsAt                int64    `json:"ends_at"`
+	ExcludePublicChannels bool     `json:"exclude_public_channels"`
+	LastExecutionEndedAt  int64    `json:"last_execution_ended_at"`
+	ExecutionLength       int64    `json:"execution_length"`
+	Secret                string   `json:"secret"`
 }
 
 // DeepCopy creates a deep copy of the LegalHold.
@@ -31,16 +32,17 @@ func (lh *LegalHold) DeepCopy() LegalHold {
 	}
 
 	newLegalHold := LegalHold{
-		ID:                   lh.ID,
-		Name:                 lh.Name,
-		DisplayName:          lh.DisplayName,
-		CreateAt:             lh.CreateAt,
-		UpdateAt:             lh.UpdateAt,
-		StartsAt:             lh.StartsAt,
-		EndsAt:               lh.EndsAt,
-		LastExecutionEndedAt: lh.LastExecutionEndedAt,
-		ExecutionLength:      lh.ExecutionLength,
-		Secret:               lh.Secret,
+		ID:                    lh.ID,
+		Name:                  lh.Name,
+		DisplayName:           lh.DisplayName,
+		CreateAt:              lh.CreateAt,
+		UpdateAt:              lh.UpdateAt,
+		StartsAt:              lh.StartsAt,
+		EndsAt:                lh.EndsAt,
+		ExcludePublicChannels: lh.ExcludePublicChannels,
+		LastExecutionEndedAt:  lh.LastExecutionEndedAt,
+		ExecutionLength:       lh.ExecutionLength,
+		Secret:                lh.Secret,
 	}
 
 	if len(lh.UserIDs) > 0 {
@@ -131,25 +133,27 @@ func (lh *LegalHold) BasePath() string {
 
 // CreateLegalHold holds the data that is specified in the API call to create a LegalHold.
 type CreateLegalHold struct {
-	Name        string   `json:"name"`
-	DisplayName string   `json:"display_name"`
-	UserIDs     []string `json:"user_ids"`
-	StartsAt    int64    `json:"starts_at"`
-	EndsAt      int64    `json:"ends_at"`
+	Name                  string   `json:"name"`
+	DisplayName           string   `json:"display_name"`
+	UserIDs               []string `json:"user_ids"`
+	StartsAt              int64    `json:"starts_at"`
+	EndsAt                int64    `json:"ends_at"`
+	ExcludePublicChannels bool     `json:"exclude_public_channels"`
 }
 
 // NewLegalHoldFromCreate creates and populates a new LegalHold instance from
 // the provided CreateLegalHold instance.
 func NewLegalHoldFromCreate(lhc CreateLegalHold) LegalHold {
 	return LegalHold{
-		ID:                   mattermostModel.NewId(),
-		Name:                 lhc.Name,
-		DisplayName:          lhc.DisplayName,
-		UserIDs:              lhc.UserIDs,
-		StartsAt:             lhc.StartsAt,
-		EndsAt:               lhc.EndsAt,
-		LastExecutionEndedAt: 0,
-		ExecutionLength:      86400000,
+		ID:                    mattermostModel.NewId(),
+		Name:                  lhc.Name,
+		DisplayName:           lhc.DisplayName,
+		UserIDs:               lhc.UserIDs,
+		StartsAt:              lhc.StartsAt,
+		EndsAt:                lhc.EndsAt,
+		ExcludePublicChannels: lhc.ExcludePublicChannels,
+		LastExecutionEndedAt:  0,
+		ExecutionLength:       86400000,
 	}
 }
 

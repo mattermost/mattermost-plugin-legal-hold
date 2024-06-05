@@ -19,7 +19,7 @@ func TestSQLStore_GetPostsBatch(t *testing.T) {
 	// Test with an open channel first
 
 	// create an open channel
-	channel, err := th.CreateChannel("stale-test", th.User1.Id, th.Team1.Id)
+	channel, err := th.CreateOpenChannel("stale-test", th.User1.Id, th.Team1.Id)
 	require.NoError(t, err)
 
 	var posts []*mattermostModel.Post
@@ -119,7 +119,7 @@ func TestSQLStore_LegalHold_GetChannelIDsForUserDuring(t *testing.T) {
 	require.NoError(t, th.mmStore.ChannelMemberHistory().LogLeaveEvent(th.User1.Id, channels[9].Id, endTwo-1000))
 
 	// Check channel IDs for first window.
-	firstWindowChannelIDs, err := th.Store.GetChannelIDsForUserDuring(th.User1.Id, startOne, endOne)
+	firstWindowChannelIDs, err := th.Store.GetChannelIDsForUserDuring(th.User1.Id, startOne, endOne, false)
 	expectedOne := []string{
 		channels[1].Id,
 		channels[2].Id,
@@ -133,7 +133,7 @@ func TestSQLStore_LegalHold_GetChannelIDsForUserDuring(t *testing.T) {
 	require.ElementsMatch(t, firstWindowChannelIDs, expectedOne)
 
 	// Check channel IDs for second window.
-	secondWindowChannelIDs, err := th.Store.GetChannelIDsForUserDuring(th.User1.Id, startTwo, endTwo)
+	secondWindowChannelIDs, err := th.Store.GetChannelIDsForUserDuring(th.User1.Id, startTwo, endTwo, false)
 	expectedTwo := []string{
 		channels[3].Id,
 		channels[4].Id,
@@ -143,6 +143,28 @@ func TestSQLStore_LegalHold_GetChannelIDsForUserDuring(t *testing.T) {
 	}
 	require.NoError(t, err)
 	require.ElementsMatch(t, secondWindowChannelIDs, expectedTwo)
+}
+
+func TestLegalHold_GetChannelIDsForUserDuring_ExcludePublic(t *testing.T) {
+	th := SetupHelper(t).SetupBasic(t)
+	defer th.TearDown(t)
+
+	timeReference := mattermostModel.GetMillis()
+	start := timeReference + 1000000
+	end := start + 10000
+
+	openChannel, err := th.CreateChannel("public-channel", th.User1.Id, th.Team1.Id, mattermostModel.ChannelTypeOpen)
+	require.NoError(t, err)
+	privateChannel, err := th.CreateChannel("private-channel", th.User1.Id, th.Team1.Id, mattermostModel.ChannelTypePrivate)
+	require.NoError(t, err)
+
+	require.NoError(t, th.mmStore.ChannelMemberHistory().LogJoinEvent(th.User1.Id, openChannel.Id, start+1000))
+	require.NoError(t, th.mmStore.ChannelMemberHistory().LogJoinEvent(th.User1.Id, privateChannel.Id, start+1000))
+
+	// Check channel IDs
+	channelIDs, err := th.Store.GetChannelIDsForUserDuring(th.User1.Id, start, end, true)
+	require.NoError(t, err)
+	require.ElementsMatch(t, channelIDs, []string{privateChannel.Id})
 }
 
 func TestSQLStore_LegalHold_GetFileInfosByIDs(t *testing.T) {
