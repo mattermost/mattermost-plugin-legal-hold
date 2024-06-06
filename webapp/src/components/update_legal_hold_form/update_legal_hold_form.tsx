@@ -177,16 +177,15 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
                             columnGap: '20px',
                         }}
                     >
+                        <input
+                            type='checkbox'
+                            id='legal-hold-exclude-public-channels'
+                            checked={excludePublicChannels}
+                            onChange={excludePublicChannelsChanged}
+                            className={'create-legal-hold-checkbox'}
+                        />
                         <label htmlFor={'legal-hold-exclude-public-channels'}>
                             {'Exclude public channels'}
-                            <Input
-                                type='checkbox'
-                                id='legal-hold-exclude-public-channels'
-                                checked={excludePublicChannels}
-                                onChange={excludePublicChannelsChanged}
-                                inputClassName={'create-legal-hold-checkbox'}
-                                wrapperClassName={'create-legal-hold-checkbox-wrapper'}
-                            />
                         </label>
                     </div>
                     <div
