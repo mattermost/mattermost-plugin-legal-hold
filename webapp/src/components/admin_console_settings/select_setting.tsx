@@ -12,8 +12,8 @@ type Props = {
     id: string;
     name: string;
     helpText: string;
-    onChange: (value: string) => void;
-    value: string;
+    onChange: (value: OptionType) => void;
+    value: OptionType;
     getOptions: () => OptionType[];
     disabled?: boolean;
 };
@@ -25,10 +25,7 @@ const SelectSetting = (props: Props) => {
         >
             <ReactSelect
                 id={props.id}
-                onChange={(v) => {
-                    console.log("ReactSelect", v)
-                    props.onChange((v as OptionType).value);
-                }}
+                onChange={props.onChange}
                 isDisabled={props.disabled}
                 value={props.value}
                 hideSelectedOptions={true}

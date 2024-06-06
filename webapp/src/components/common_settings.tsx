@@ -3,14 +3,15 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { IntlProvider } from 'react-intl';
 
 import SelectSetting, { OptionType } from './admin_console_settings/select_setting';
+import { func } from 'prop-types';
 
 type CommonSettingsData = {
-    TimeOfDay: string;
+    TimeOfDay: OptionType;
 };
 
 const useCommonSettingsForm = (initialValue: CommonSettingsData | undefined, onChange: (id: string, value: CommonSettingsData) => void) => {
     const [formState, setFormState] = useState<CommonSettingsData>({
-        TimeOfDay: initialValue?.TimeOfDay ?? '',
+        TimeOfDay: initialValue?.TimeOfDay ?? { label: '12:00am', value: '00:00' },
     });
 
     return useMemo(() => ({
@@ -21,10 +22,8 @@ const useCommonSettingsForm = (initialValue: CommonSettingsData | undefined, onC
                 [key]: value,
             };
 
-            console.log(newState)
-
             setFormState(newState);
-            onChange('PluginSettings.Plugins.com+mattermost+plugin-legal-hold.commonSettings', newState);
+            onChange('PluginSettings.Plugins.com+mattermost+plugin-legal-hold.commonsettings', newState);
         },
     }), [formState, setFormState, onChange]);
 };
@@ -72,15 +71,11 @@ const CommonSettings = (props: Props) => {
     return (
         <IntlProvider locale='en-US'>
             <SelectSetting
-                id='com.mattermost.plugin-legal-hold.TimeOfDay'
-                name='Time of day'
-                helpText='Time of day to run the Legal Hold task'
+                id={'com.mattermost.plugin-legal-hold.TimeOfDay'}
+                name={'Time of day'}
+                helpText={'Time of day to run the Legal Hold task'}
                 value={formState.TimeOfDay}
-                onChange={(value) => {
-                    console.log("SelectSetting", value)
-                    setFormValue('TimeOfDay', value)
-                    console.log("config", formState)
-                }}
+                onChange={(value) => setFormValue('TimeOfDay', value)}
                 getOptions={getJobTimeOptions()}
             />
         </IntlProvider>
