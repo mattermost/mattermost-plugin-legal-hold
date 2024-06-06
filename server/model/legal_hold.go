@@ -159,10 +159,11 @@ func NewLegalHoldFromCreate(lhc CreateLegalHold) LegalHold {
 
 // UpdateLegalHold holds the data that is specified in the API call to update a LegalHold.
 type UpdateLegalHold struct {
-	ID          string   `json:"id"`
-	DisplayName string   `json:"display_name"`
-	UserIDs     []string `json:"user_ids"`
-	EndsAt      int64    `json:"ends_at"`
+	ID                    string   `json:"id"`
+	DisplayName           string   `json:"display_name"`
+	UserIDs               []string `json:"user_ids"`
+	ExcludePublicChannels bool     `json:"exclude_public_channels"`
+	EndsAt                int64    `json:"ends_at"`
 }
 
 func (ulh UpdateLegalHold) IsValid() error {
@@ -195,4 +196,5 @@ func (lh *LegalHold) ApplyUpdates(updates UpdateLegalHold) {
 	lh.DisplayName = updates.DisplayName
 	lh.UserIDs = updates.UserIDs
 	lh.EndsAt = updates.EndsAt
+	lh.ExcludePublicChannels = updates.ExcludePublicChannels
 }
