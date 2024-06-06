@@ -6,7 +6,6 @@ import UsersInput from '@/components/users_input';
 import {CreateLegalHold} from '@/types';
 import {GenericModal} from '@/components/mattermost-webapp/generic_modal/generic_modal';
 import Input from '@/components/mattermost-webapp/input/input';
-import Select from 'react-select';
 
 import './create_legal_hold_form.scss';
 
@@ -14,7 +13,6 @@ interface CreateLegalHoldFormProps {
     createLegalHold: (data: CreateLegalHold) => Promise<any>;
     onExited: () => void;
     visible: boolean;
-    excludePublicChannels: boolean;
 }
 
 const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
@@ -23,7 +21,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
     const [startsAt, setStartsAt] = useState('');
     const [endsAt, setEndsAt] = useState('');
     const [saving, setSaving] = useState(false);
-    const [excludePublicChannels, setExcludePublicChannels] = useState(props.excludePublicChannels);
+    const [excludePublicChannels, setExcludePublicChannels] = useState(false);
     const [serverError, setServerError] = useState('');
 
     const displayNameChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,7 +64,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
             name: slugify(displayName),
         };
 
-        props.createLegalHold(data).then((response) => {
+        props.createLegalHold(data).then((_) => {
             resetForm();
             props.onExited();
         }).catch((error) => {
