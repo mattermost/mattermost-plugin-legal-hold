@@ -113,9 +113,7 @@ func (ss SQLStore) GetPostsBatch(channelID string, endTime int64, cursor model.L
 func (ss SQLStore) GetChannelIDsForUserDuring(userID string, startTime int64, endTime int64, excludePublic bool) ([]string, error) {
 	query := ss.replicaBuilder.
 		Select("distinct(cmh.channelid)").
-		From("channelmemberhistory as cmh")
-
-	query = query.
+		From("channelmemberhistory as cmh").
 		Where(sq.Lt{"cmh.jointime": endTime}).
 		Where(sq.Or{sq.Eq{"cmh.leavetime": nil}, sq.GtOrEq{"cmh.leavetime": startTime}}).
 		Where(sq.Eq{"cmh.userid": userID})
@@ -125,8 +123,6 @@ func (ss SQLStore) GetChannelIDsForUserDuring(userID string, startTime int64, en
 		query = query.Join("channels on cmh.channelid = channels.id").
 			Where(sq.NotEq{"channels.type": mattermostModel.ChannelTypeOpen})
 	}
-
-	ss.logger.Error(query.ToSql())
 
 	rows, err := query.Query()
 	if err != nil {
