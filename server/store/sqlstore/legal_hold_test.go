@@ -157,14 +157,20 @@ func TestLegalHold_GetChannelIDsForUserDuring_ExcludePublic(t *testing.T) {
 	require.NoError(t, err)
 	privateChannel, err := th.CreateChannel("private-channel", th.User1.Id, th.Team1.Id, mattermostModel.ChannelTypePrivate)
 	require.NoError(t, err)
+	dmChannel, err := th.CreateDirectMessageChannel(th.User1, th.User2)
+	require.NoError(t, err)
+	groupDM, err := th.CreateChannel("group-dm", th.User1.Id, th.Team1.Id, mattermostModel.ChannelTypeGroup)
+	require.NoError(t, err)
 
 	require.NoError(t, th.mmStore.ChannelMemberHistory().LogJoinEvent(th.User1.Id, openChannel.Id, start+1000))
 	require.NoError(t, th.mmStore.ChannelMemberHistory().LogJoinEvent(th.User1.Id, privateChannel.Id, start+1000))
+	require.NoError(t, th.mmStore.ChannelMemberHistory().LogJoinEvent(th.User1.Id, groupDM.Id, start+1000))
+	require.NoError(t, th.mmStore.ChannelMemberHistory().LogJoinEvent(th.User1.Id, dmChannel.Id, start+1000))
 
 	// Check channel IDs
 	channelIDs, err := th.Store.GetChannelIDsForUserDuring(th.User1.Id, start, end, true)
 	require.NoError(t, err)
-	require.ElementsMatch(t, channelIDs, []string{privateChannel.Id})
+	require.ElementsMatch(t, channelIDs, []string{privateChannel.Id, dmChannel.Id, groupDM.Id})
 }
 
 func TestSQLStore_LegalHold_GetFileInfosByIDs(t *testing.T) {
