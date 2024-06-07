@@ -91,7 +91,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
             display_name: displayName,
         };
 
-        props.updateLegalHold(data).then((_) => {
+        props.updateLegalHold(data).then(() => {
             resetForm();
             props.onExited();
         }).catch((error) => {
