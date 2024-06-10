@@ -25,6 +25,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
     const [startsAt, setStartsAt] = useState('');
     const [endsAt, setEndsAt] = useState('');
     const [saving, setSaving] = useState(false);
+    const [excludePublicChannels, setExcludePublicChannels] = useState(false);
     const [serverError, setServerError] = useState('');
 
     const displayNameChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,6 +34,10 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
 
     const endsAtChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
         setEndsAt(e.target.value);
+    };
+
+    const excludePublicChannelsChanged: (e: React.ChangeEvent<HTMLInputElement>) => void = (e) => {
+        setExcludePublicChannels(e.target.checked);
     };
 
     const resetForm = () => {
@@ -54,6 +59,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
             setId(props.legalHold.id);
             setDisplayName(props.legalHold?.display_name);
             setUsers(props.users);
+            setExcludePublicChannels(props.legalHold.exclude_public_channels);
 
             if (props.legalHold.starts_at) {
                 const startsAtString = dayjs(props.legalHold.starts_at).format('YYYY-MM-DD');
@@ -81,10 +87,11 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
             id: props.legalHold.id,
             user_ids: users.map((user) => user.id),
             ends_at: (new Date(endsAt)).getTime(),
+            exclude_public_channels: excludePublicChannels,
             display_name: displayName,
         };
 
-        props.updateLegalHold(data).then((response) => {
+        props.updateLegalHold(data).then(() => {
             resetForm();
             props.onExited();
         }).catch((error) => {
@@ -163,6 +170,23 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
                             users={users}
                             onChange={setUsers}
                         />
+                    </div>
+                    <div
+                        style={{
+                            display: 'flex',
+                            columnGap: '20px',
+                        }}
+                    >
+                        <input
+                            type='checkbox'
+                            id='legal-hold-exclude-public-channels'
+                            checked={excludePublicChannels}
+                            onChange={excludePublicChannelsChanged}
+                            className={'create-legal-hold-checkbox'}
+                        />
+                        <label htmlFor={'legal-hold-exclude-public-channels'}>
+                            {'Exclude public channels'}
+                        </label>
                     </div>
                     <div
                         style={{

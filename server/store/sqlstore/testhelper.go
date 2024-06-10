@@ -131,11 +131,15 @@ func (th *TestHelper) CreateTeams(num int, namePrefix string) ([]*model.Team, er
 	return teams, nil
 }
 
-func (th *TestHelper) CreateChannel(name string, userID string, teamID string) (*model.Channel, error) {
+func (th *TestHelper) CreateOpenChannel(name string, userID string, teamID string) (*model.Channel, error) {
+	return th.CreateChannel(name, userID, teamID, model.ChannelTypeOpen)
+}
+
+func (th *TestHelper) CreateChannel(name, userID, teamID string, channelType model.ChannelType) (*model.Channel, error) {
 	channel := &model.Channel{
 		Name:        name,
 		DisplayName: name,
-		Type:        model.ChannelTypeOpen,
+		Type:        channelType,
 		CreatorId:   userID,
 		TeamId:      teamID,
 	}
