@@ -186,7 +186,7 @@ const AmazonS3BucketSettings = (props: Props) => {
                 onChange={(value) => setFormValue('AmazonS3Endpoint', value)}
                 disabled={!formState.Enable}
             />
-            <SecretTextSetting
+            <TextSetting
                 id='com.mattermost.plugin-legal-hold.AmazonS3SecretAccessKey'
                 name='Amazon S3 Secret Access Key'
                 helpText='The secret access key to access the Amazon S3 bucket.'
