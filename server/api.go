@@ -318,6 +318,15 @@ func (p *Plugin) testAmazonS3Connection(w http.ResponseWriter, _ *http.Request) 
 		return
 	}
 
+	s3Secret, err := p.getS3Secret()
+	if err != nil {
+		http.Error(w, "failed to get Amazon S3 secret", http.StatusInternalServerError)
+		p.Client.Log.Error(err.Error())
+		return
+	}
+
+	conf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey = mattermostModel.NewString(string(s3Secret))
+
 	filesBackendSettings := FixedFileSettingsToFileBackendSettings(conf.AmazonS3BucketSettings.Settings, false, true)
 	filesBackend, err := filestore.NewFileBackend(filesBackendSettings)
 	if err != nil {
