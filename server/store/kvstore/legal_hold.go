@@ -3,8 +3,8 @@ package kvstore
 import (
 	"fmt"
 
-	pluginapi "github.com/mattermost/mattermost-plugin-api"
-	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
+	mattermostModel "github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/pluginapi"
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"

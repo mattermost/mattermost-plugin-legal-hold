@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
-	"github.com/mattermost/mattermost-server/v6/model"
-	"github.com/mattermost/mattermost-server/v6/shared/filestore"
-	mmstore "github.com/mattermost/mattermost-server/v6/store/sqlstore"
+	"github.com/mattermost/mattermost/server/public/model"
+	mmstore "github.com/mattermost/mattermost/server/v8/channels/store/sqlstore"
+	"github.com/mattermost/mattermost/server/v8/platform/shared/filestore"
 )
 
 const (
@@ -61,7 +61,8 @@ func SetupHelper(t *testing.T) *TestHelper {
 
 	t.Log("using database connection string: ", connStr)
 
-	th.mmStore = mmstore.New(settings, nil)
+	th.mmStore, err = mmstore.New(settings, nil, nil)
+	require.NoError(t, err, "could not create mmstore")
 
 	store, err := New(storeWrapper{th.mmStore}, &testLogger{t})
 	require.NoError(t, err, "could not create store")
@@ -143,7 +144,7 @@ func (th *TestHelper) CreateChannel(name, userID, teamID string, channelType mod
 		CreatorId:   userID,
 		TeamId:      teamID,
 	}
-	return th.mmStore.Channel().Save(channel, 1024)
+	return th.mmStore.Channel().Save(nil, channel, 1024)
 }
 
 func (th *TestHelper) CreateChannels(num int, namePrefix string, userID string, teamID string) ([]*model.Channel, error) {
@@ -156,7 +157,7 @@ func (th *TestHelper) CreateChannels(num int, namePrefix string, userID string, 
 			CreatorId:   userID,
 			TeamId:      teamID,
 		}
-		channel, err := th.mmStore.Channel().Save(channel, 1024)
+		channel, err := th.mmStore.Channel().Save(nil, channel, 1024)
 		if err != nil {
 			return nil, err
 		}
@@ -175,7 +176,7 @@ func (th *TestHelper) CreateChannelsWithChannelMemberHistory(num int, namePrefix
 			CreatorId:   userID,
 			TeamId:      teamID,
 		}
-		channel, err := th.mmStore.Channel().Save(channel, 1024)
+		channel, err := th.mmStore.Channel().Save(nil, channel, 1024)
 		if err != nil {
 			return nil, err
 		}
@@ -190,7 +191,7 @@ func (th *TestHelper) CreateChannelsWithChannelMemberHistory(num int, namePrefix
 }
 
 func (th *TestHelper) CreateDirectMessageChannel(user1 *model.User, user2 *model.User) (*model.Channel, error) {
-	return th.mmStore.Channel().CreateDirectChannel(user1, user2)
+	return th.mmStore.Channel().CreateDirectChannel(nil, user1, user2)
 }
 
 func (th *TestHelper) CreateUsers(num int, namePrefix string) ([]*model.User, error) {
@@ -201,7 +202,7 @@ func (th *TestHelper) CreateUsers(num int, namePrefix string) ([]*model.User, er
 			Password: namePrefix,
 			Email:    fmt.Sprintf("%s@example.com", model.NewId()),
 		}
-		user, err := th.mmStore.User().Save(user)
+		user, err := th.mmStore.User().Save(nil, user)
 		if err != nil {
 			return nil, err
 		}
@@ -219,7 +220,7 @@ func (th *TestHelper) CreatePosts(num int, userID string, channelID string) ([]*
 			Type:      model.PostTypeDefault,
 			Message:   fmt.Sprintf("test post %d of %d", i, num),
 		}
-		post, err := th.mmStore.Post().Save(post)
+		post, err := th.mmStore.Post().Save(nil, post)
 		if err != nil {
 			return nil, err
 		}
@@ -249,7 +250,7 @@ func (th *TestHelper) CreatePostsWithAttachments(num int, userID string, channel
 			Size:      size,
 		}
 
-		fileInfo, err = th.mmStore.FileInfo().Save(fileInfo)
+		fileInfo, err = th.mmStore.FileInfo().Save(nil, fileInfo)
 		if err != nil {
 			return nil, err
 		}
@@ -261,7 +262,7 @@ func (th *TestHelper) CreatePostsWithAttachments(num int, userID string, channel
 			Message:   fmt.Sprintf("test post %d of %d", i, num),
 			FileIds:   []string{fileInfo.Id},
 		}
-		post, err = th.mmStore.Post().Save(post)
+		post, err = th.mmStore.Post().Save(nil, post)
 		if err != nil {
 			return nil, err
 		}

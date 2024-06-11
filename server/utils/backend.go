@@ -1,8 +1,8 @@
 package utils
 
 import (
-	"github.com/mattermost/mattermost-server/v6/model"
-	"github.com/mattermost/mattermost-server/v6/shared/filestore"
+	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/v8/platform/shared/filestore"
 )
 
 func GetBackendSettings(endPoint string) filestore.FileBackendSettings {
