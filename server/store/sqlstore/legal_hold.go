@@ -178,6 +178,22 @@ func (ss SQLStore) GetFileInfosByIDs(ids []string) ([]model.FileInfo, error) {
 func (ss SQLStore) GetChannelMetadataForIDs(channelIDs []string) ([]model.ChannelMetadata, error) {
 	var data []model.ChannelMetadata
 
+	channelDisplayName := `
+						(select Users.Username from Users where Users.Id = split_part(Channels.Name, '__', 1))
+							|| ', ' ||
+						(select Users.Username from Users where Users.Id = split_part(Channels.Name, '__', 2))
+	`
+
+	if ss.src.DriverName() == mattermostModel.DatabaseDriverMysql {
+		channelDisplayName = `
+						concat(
+							(select Users.Username from Users where Users.Id = substring_index(Channels.Name, '__', 1)),
+							', ',
+							(select Users.Username from Users where Users.Id = substring_index(Channels.Name, '__', -1))
+						)
+						`
+	}
+
 	query := `
 		SELECT
 			COALESCE(Teams.Id, '00000000000000000000000000') AS TeamID,
@@ -189,9 +205,7 @@ func (ss SQLStore) GetChannelMetadataForIDs(channelIDs []string) ([]model.Channe
 			CASE
 				WHEN Channels.Type = 'D' THEN
 					(
-						(select Users.Username from Users where Users.Id = split_part(Channels.Name, '__', 1))
-							|| ', ' ||
-						(select Users.Username from Users where Users.Id = split_part(Channels.Name, '__', 2))
+						` + channelDisplayName + `
 					)
 				ELSE
 					Channels.DisplayName
