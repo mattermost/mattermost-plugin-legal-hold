@@ -36,6 +36,36 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
 
     const downloadUrl = Client.downloadUrl(lh.id);
 
+    const downloadButton = (
+        <OverlayTrigger
+
+            // @ts-ignore
+            delayShow={300}
+            placement='top'
+            overlay={(
+                <Tooltip id={'DownloadLegalHoldTooltip'}>
+                    {'Download Legal Hold'}
+                </Tooltip>
+            )}
+        >
+            <a
+                href={downloadUrl}
+                style={{
+                    marginRight: '20px',
+                    height: '24px',
+                }}
+            >
+                <span
+                    style={{
+                        fill: 'rgba(0, 0, 0, 0.5)',
+                    }}
+                >
+                    <DownloadIcon/>
+                </span>
+            </a>
+        </OverlayTrigger>
+    );
+
     return (
         <React.Fragment>
             <div>{lh.display_name}</div>
@@ -76,33 +106,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                         </span>
                     </a>
                 </OverlayTrigger>
-                <OverlayTrigger
-
-                    // @ts-ignore
-                    delayShow={300}
-                    placement='top'
-                    overlay={(
-                        <Tooltip id={'DownloadLegalHoldTooltip'}>
-                            {'Download Legal Hold'}
-                        </Tooltip>
-                    )}
-                >
-                    <a
-                        href={downloadUrl}
-                        style={{
-                            marginRight: '20px',
-                            height: '24px',
-                        }}
-                    >
-                        <span
-                            style={{
-                                fill: 'rgba(0, 0, 0, 0.5)',
-                            }}
-                        >
-                            <DownloadIcon/>
-                        </span>
-                    </a>
-                </OverlayTrigger>
+                {(lh.locked === false) ? downloadButton : null}
                 <a
                     href='#'
                     onClick={release}

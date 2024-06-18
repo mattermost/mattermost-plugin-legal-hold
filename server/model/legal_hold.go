@@ -2,12 +2,19 @@ package model
 
 import (
 	"fmt"
+	"path/filepath"
 
 	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
 )
+
+const (
+	baseFilestorePath = "legal_hold"
+)
+
+var FilestoreBundlePath = filepath.Join(baseFilestorePath, "bundles")
 
 // LegalHold represents one legal hold.
 type LegalHold struct {
@@ -23,6 +30,7 @@ type LegalHold struct {
 	LastExecutionEndedAt  int64    `json:"last_execution_ended_at"`
 	ExecutionLength       int64    `json:"execution_length"`
 	Secret                string   `json:"secret"`
+	Locked                bool     `json:"locked"`
 }
 
 // DeepCopy creates a deep copy of the LegalHold.
@@ -43,6 +51,7 @@ func (lh *LegalHold) DeepCopy() LegalHold {
 		LastExecutionEndedAt:  lh.LastExecutionEndedAt,
 		ExecutionLength:       lh.ExecutionLength,
 		Secret:                lh.Secret,
+		Locked:                lh.Locked,
 	}
 
 	if len(lh.UserIDs) > 0 {
@@ -128,7 +137,7 @@ func (lh *LegalHold) IsFinished() bool {
 
 // BasePath returns the base file storage path for this legal hold.
 func (lh *LegalHold) BasePath() string {
-	return fmt.Sprintf("legal_hold/%s_(%s)", lh.Name, lh.ID)
+	return fmt.Sprintf("%s/%s_(%s)", baseFilestorePath, lh.Name, lh.ID)
 }
 
 // CreateLegalHold holds the data that is specified in the API call to create a LegalHold.

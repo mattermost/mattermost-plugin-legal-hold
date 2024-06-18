@@ -53,6 +53,9 @@ type Plugin struct {
 
 	// router holds the HTTP router for the plugin's rest API
 	router *mux.Router
+
+	// Bot user ID
+	botUserID string
 }
 
 func (p *Plugin) OnActivate() error {
@@ -72,7 +75,6 @@ func (p *Plugin) OnActivate() error {
 	if err != nil {
 		return err
 	}
-
 	// Setup direct store access
 	SQLStore, err := sqlstore.New(p.Client.Store, &p.Client.Log)
 	if err != nil {
@@ -83,6 +85,15 @@ func (p *Plugin) OnActivate() error {
 	// FIXME: do we need to handle MM configuration changes?
 
 	p.KVStore = kvstore.NewKVStore(p.Client)
+
+	// Create bot user
+	p.botUserID, err = p.API.EnsureBotUser(&model.Bot{
+		Username:    "legal_hold_bot",
+		DisplayName: "Legal Hold Bot",
+	})
+	if err != nil {
+		return err
+	}
 
 	// Create job manager
 	p.jobManager = jobs.NewJobManager(&p.Client.Log)
