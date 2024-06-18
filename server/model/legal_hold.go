@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 
 	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/pkg/errors"
@@ -14,7 +15,11 @@ const (
 	baseFilestorePath = "legal_hold"
 )
 
-var FilestoreBundlePath = filepath.Join(baseFilestorePath, "bundles")
+var FilestoreBundlePath = filepath.Join(baseFilestorePath, "download")
+
+// FilestoreBundleRegex is a regular expression that matches the filename of a
+// legal hold bundle: <bundle_id>_<unix timestamp>.zip
+var FilestoreBundleRegex = regexp.MustCompile(`^([a-z0-9]+)_([0-9]+)\.zip$`)
 
 // LegalHold represents one legal hold.
 type LegalHold struct {
