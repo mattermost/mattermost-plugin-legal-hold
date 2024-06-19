@@ -89,6 +89,8 @@ func TestKVStore_GetLegalHoldById(t *testing.T) {
 
 	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, lh1.ID)).
 		Return(marshaled, nil)
+	api.On("KVGet", getLegalHoldLockKey(lh1.ID)).
+		Return(nil, nil)
 
 	// Test getting a valid legal hold
 	lh2, err := kvstore.GetLegalHoldByID(lh1.ID)
@@ -137,7 +139,9 @@ func TestKVStore_GetAllLegalHolds(t *testing.T) {
 		Once()
 
 	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, lh1.ID)).Return(marshaled1, nil)
+	api.On("KVGet", getLegalHoldLockKey(lh1.ID)).Return(nil, nil)
 	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, lh2.ID)).Return(marshaled2, nil)
+	api.On("KVGet", getLegalHoldLockKey(lh2.ID)).Return(nil, nil)
 
 	// Test with some data
 	result, err := kvstore.GetAllLegalHolds()

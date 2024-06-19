@@ -20,7 +20,7 @@ var ErrAlreadyLocked = errors.New("legal hold is already locked")
 var ErrAlreadyUnlocked = errors.New("legal hold is already unlocked")
 
 func getLegalHoldLockKey(legalHoldID string) string {
-	return "legal_hold_lock_" + legalHoldID
+	return legalHoldPrefix + "_lock_" + legalHoldID
 }
 
 type Impl struct {
