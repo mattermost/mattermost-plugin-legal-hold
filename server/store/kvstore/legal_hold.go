@@ -19,8 +19,8 @@ const (
 var ErrAlreadyLocked = errors.New("legal hold is already locked")
 var ErrAlreadyUnlocked = errors.New("legal hold is already unlocked")
 
-func getLegalHoldLockKey(legalHoldID string) string {
-	return legalHoldPrefix + "_lock_" + legalHoldID
+func getLegalHoldLockKey(legalHoldID string, lockType string) string {
+	return legalHoldPrefix + "_" + legalHoldID + "_lock_" + lockType
 }
 
 type Impl struct {
@@ -76,11 +76,11 @@ func (kvs Impl) GetAllLegalHolds() ([]model.LegalHold, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "could not get all legal holds")
 		}
-		isLocked, err := kvs.IsLockedLegalHold(legalHold.ID)
+		locks, err := kvs.GetLocksForLegalHold(legalHold.ID)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not get all legal holds")
+			return nil, errors.Wrap(err, "could not get locks for legal hold")
 		}
-		legalHold.Locked = isLocked
+		legalHold.Locks = locks
 		legalHolds = append(legalHolds, legalHold)
 	}
 
@@ -95,11 +95,11 @@ func (kvs Impl) GetLegalHoldByID(id string) (*model.LegalHold, error) {
 		return nil, errors.Wrap(err, "could not get legal hold by id")
 	}
 
-	isLocked, err := kvs.IsLockedLegalHold(legalHold.ID)
+	locks, err := kvs.GetLocksForLegalHold(legalHold.ID)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get legal hold by id")
+		return nil, errors.Wrap(err, "could not get locks for legal hold")
 	}
-	legalHold.Locked = isLocked
+	legalHold.Locks = locks
 
 	return &legalHold, nil
 }
@@ -136,8 +136,20 @@ func (kvs Impl) DeleteLegalHold(id string) error {
 	return err
 }
 
-func (kvs Impl) LockLegalHold(legalHoldID string) error {
-	locked, err := kvs.IsLockedLegalHold(legalHoldID)
+func (kvs Impl) GetLocksForLegalHold(legalHoldID string) ([]string, error) {
+	keys, err := kvs.client.KV.ListKeys(
+		0, 1000000000,
+		pluginapi.WithPrefix(getLegalHoldLockKey(legalHoldID, "")))
+
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get locks for legal hold")
+	}
+
+	return keys, nil
+}
+
+func (kvs Impl) LockLegalHold(legalHoldID, lockType string) error {
+	locked, err := kvs.IsLockedLegalHold(legalHoldID, lockType)
 	if err != nil {
 		return fmt.Errorf("could not lock legal hold: %w", err)
 	}
@@ -146,7 +158,7 @@ func (kvs Impl) LockLegalHold(legalHoldID string) error {
 	}
 
 	stored, err := kvs.client.KV.Set(
-		getLegalHoldLockKey(legalHoldID),
+		getLegalHoldLockKey(legalHoldID, lockType),
 		true,
 		pluginapi.SetAtomic(nil),
 		pluginapi.SetExpiry(lockExpiry),
@@ -162,8 +174,8 @@ func (kvs Impl) LockLegalHold(legalHoldID string) error {
 	return nil
 }
 
-func (kvs Impl) UnlockLegalHold(legalHoldID string) error {
-	locked, err := kvs.IsLockedLegalHold(legalHoldID)
+func (kvs Impl) UnlockLegalHold(legalHoldID, lockType string) error {
+	locked, err := kvs.IsLockedLegalHold(legalHoldID, lockType)
 	if err != nil {
 		return fmt.Errorf("could not unlock legal hold: %w", err)
 	}
@@ -171,7 +183,7 @@ func (kvs Impl) UnlockLegalHold(legalHoldID string) error {
 		return ErrAlreadyUnlocked
 	}
 
-	err = kvs.client.KV.Delete(getLegalHoldLockKey(legalHoldID))
+	err = kvs.client.KV.Delete(getLegalHoldLockKey(legalHoldID, lockType))
 	if err != nil {
 		return fmt.Errorf("could not unlock legal hold: %w", err)
 	}
@@ -179,9 +191,9 @@ func (kvs Impl) UnlockLegalHold(legalHoldID string) error {
 	return nil
 }
 
-func (kvs Impl) IsLockedLegalHold(legalHoldID string) (bool, error) {
+func (kvs Impl) IsLockedLegalHold(legalHoldID, lockType string) (bool, error) {
 	var locked *bool
-	err := kvs.client.KV.Get(getLegalHoldLockKey(legalHoldID), &locked)
+	err := kvs.client.KV.Get(getLegalHoldLockKey(legalHoldID, lockType), &locked)
 	if err != nil {
 		return false, fmt.Errorf("could not get legal hold lock status: %w", err)
 	}

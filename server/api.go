@@ -350,7 +350,7 @@ func (p *Plugin) bundleLegalHold(w http.ResponseWriter, r *http.Request) {
 
 	p.Client.Log.Info("Generating legal hold bundle on S3")
 	go func() {
-		err := p.KVStore.LockLegalHold(legalholdID)
+		err := p.KVStore.LockLegalHold(legalholdID, "bundle")
 		if err != nil {
 			p.Client.Log.Error("failed to lock legal hold before download task", err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
@@ -358,7 +358,7 @@ func (p *Plugin) bundleLegalHold(w http.ResponseWriter, r *http.Request) {
 		}
 
 		defer func() {
-			if err := p.KVStore.UnlockLegalHold(legalholdID); err != nil {
+			if err := p.KVStore.UnlockLegalHold(legalholdID, "bundle"); err != nil {
 				p.Client.Log.Error("failed to unlock legal hold after download task", err.Error())
 			}
 		}()

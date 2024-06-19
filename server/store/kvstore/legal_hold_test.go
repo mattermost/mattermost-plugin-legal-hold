@@ -89,8 +89,7 @@ func TestKVStore_GetLegalHoldById(t *testing.T) {
 
 	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, lh1.ID)).
 		Return(marshaled, nil)
-	api.On("KVGet", getLegalHoldLockKey(lh1.ID)).
-		Return(nil, nil)
+	api.On("KVList", getLegalHoldLockKey(lh1.ID, "")).Return(nil, nil)
 
 	// Test getting a valid legal hold
 	lh2, err := kvstore.GetLegalHoldByID(lh1.ID)
@@ -114,13 +113,15 @@ func TestKVStore_GetAllLegalHolds(t *testing.T) {
 	kvstore := NewKVStore(client)
 
 	lh1 := model.LegalHold{
-		ID:   mattermostModel.NewId(),
-		Name: "legal-hold-1",
+		ID:    mattermostModel.NewId(),
+		Name:  "legal-hold-1",
+		Locks: make([]string, 0),
 	}
 
 	lh2 := model.LegalHold{
-		ID:   mattermostModel.NewId(),
-		Name: "legal-hold-2",
+		ID:    mattermostModel.NewId(),
+		Name:  "legal-hold-2",
+		Locks: make([]string, 0),
 	}
 
 	lhs := []model.LegalHold{lh1, lh2}
@@ -139,9 +140,9 @@ func TestKVStore_GetAllLegalHolds(t *testing.T) {
 		Once()
 
 	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, lh1.ID)).Return(marshaled1, nil)
-	api.On("KVGet", getLegalHoldLockKey(lh1.ID)).Return(nil, nil)
+	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).Return([]string{}, nil).Once()
 	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, lh2.ID)).Return(marshaled2, nil)
-	api.On("KVGet", getLegalHoldLockKey(lh2.ID)).Return(nil, nil)
+	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).Return([]string{}, nil).Once()
 
 	// Test with some data
 	result, err := kvstore.GetAllLegalHolds()
@@ -268,14 +269,14 @@ func TestKVStore_LockLegalHold(t *testing.T) {
 			api.On("KVGet", mock.AnythingOfType("string")).Return(marshaled, nil).Once()
 		}).Return(true, nil).Once()
 
-		err := kvstore.LockLegalHold("legal_hold_id")
+		err := kvstore.LockLegalHold("legal_hold_id", "test")
 		require.NoError(t, err)
 	})
 
 	t.Run("can't lock twice", func(t *testing.T) {
 		// Fake existing key
 		api.On("KVGet", mock.AnythingOfType("string")).Return([]byte{0x74, 0x72, 0x75, 0x65}, nil).Once()
-		err := kvstore.LockLegalHold("legal_hold_id")
+		err := kvstore.LockLegalHold("legal_hold_id", "test")
 		require.Error(t, err)
 		require.ErrorIs(t, err, ErrAlreadyLocked)
 	})
@@ -299,13 +300,13 @@ func TestKVStore_UnlockLegalHold(t *testing.T) {
 			require.Empty(t, marshaled)
 		}).Return(true, nil).Once()
 
-		err := kvstore.UnlockLegalHold("legal_hold_id")
+		err := kvstore.UnlockLegalHold("legal_hold_id", "test")
 		require.NoError(t, err)
 	})
 
 	t.Run("can't unlock twice", func(t *testing.T) {
 		api.On("KVGet", mock.AnythingOfType("string")).Return(nil, nil).Once()
-		err := kvstore.UnlockLegalHold("legal_hold_id")
+		err := kvstore.UnlockLegalHold("legal_hold_id", "test")
 		require.Error(t, err)
 		require.ErrorIs(t, err, ErrAlreadyUnlocked)
 	})
@@ -320,14 +321,14 @@ func TestKVStore_IsLockedLegalHold(t *testing.T) {
 
 	t.Run("locked", func(t *testing.T) {
 		api.On("KVGet", mock.AnythingOfType("string")).Return([]byte{0x74, 0x72, 0x75, 0x65}, nil).Once()
-		locked, err := kvstore.IsLockedLegalHold("legal_hold_id")
+		locked, err := kvstore.IsLockedLegalHold("legal_hold_id", "test")
 		require.NoError(t, err)
 		require.True(t, locked)
 	})
 
 	t.Run("unlocked", func(t *testing.T) {
 		api.On("KVGet", mock.AnythingOfType("string")).Return(nil, nil).Once()
-		locked, err := kvstore.IsLockedLegalHold("legal_hold_id")
+		locked, err := kvstore.IsLockedLegalHold("legal_hold_id", "test")
 		require.NoError(t, err)
 		require.False(t, locked)
 	})
