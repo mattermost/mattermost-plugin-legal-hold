@@ -6,7 +6,7 @@ export interface LegalHold {
     ends_at: number;
     user_ids: string[];
     exclude_public_channels: boolean;
-    locked: boolean;
+    locks: string[];
 }
 
 export interface CreateLegalHold {

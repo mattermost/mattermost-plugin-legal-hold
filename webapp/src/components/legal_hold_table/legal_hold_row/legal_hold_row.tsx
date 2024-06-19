@@ -51,7 +51,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
             <a
                 href={downloadUrl}
                 style={{
-                    marginRight: '20px',
+                    marginRight: '10px',
                     height: '24px',
                 }}
             >
@@ -63,6 +63,64 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     <DownloadIcon/>
                 </span>
             </a>
+        </OverlayTrigger>
+    );
+
+    const bundleUrl = Client.bundleUrl(lh.id);
+    const bundleButton = (
+        <OverlayTrigger
+
+            // @ts-ignore
+            delayShow={300}
+            placement='top'
+            overlay={(
+                <Tooltip id={'BundleLegalHoldTooltip'}>
+                    {'Upload Legal Hold in file store'}
+                </Tooltip>
+            )}
+        >
+            <a
+                href={bundleUrl}
+                style={{
+                    marginRight: '10px',
+                    height: '24px',
+                    transform: 'rotate(180deg)',
+                }}
+            >
+                <span
+                    style={{
+                        fill: 'rgba(0, 0, 0, 0.5)',
+                    }}
+                >
+                    <DownloadIcon/>
+                </span>
+            </a>
+        </OverlayTrigger>
+    );
+
+    const disabledBundleButton = (
+        <OverlayTrigger
+
+            // @ts-ignore
+            delayShow={300}
+            placement='top'
+            overlay={(
+                <Tooltip id={'BundleLegalHoldTooltip'}>
+                    {'Can\'t upload Legal Hold because Another job is running'}
+                </Tooltip>
+            )}
+        >
+            <span
+                style={{
+                    marginRight: '10px',
+                    height: '24px',
+                    transform: 'rotate(180deg)',
+                    fill: 'rgba(0, 0, 0, 0.2)',
+                    cursor: 'not-allowed',
+                }}
+            >
+                <DownloadIcon/>
+            </span>
         </OverlayTrigger>
     );
 
@@ -106,7 +164,8 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                         </span>
                     </a>
                 </OverlayTrigger>
-                {(lh.locked === false) ? downloadButton : null}
+                {downloadButton}
+                {(lh.locks?.includes('bundle')) ? disabledBundleButton : bundleButton}
                 <a
                     href='#'
                     onClick={release}

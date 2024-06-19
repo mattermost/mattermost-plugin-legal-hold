@@ -12,6 +12,10 @@ class APIClient {
         return `${this.url}/legalhold/${id}/download`;
     };
 
+    bundleUrl = (id: string) => {
+        return `${this.url}/legalhold/${id}/bundle`;
+    };
+
     getLegalHolds = () => {
         const url = `${this.url}/legalhold/list`;
         return this.doGet(url);
