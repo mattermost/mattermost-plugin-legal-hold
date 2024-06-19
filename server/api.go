@@ -46,6 +46,7 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/release", p.releaseLegalHold).Methods(http.MethodPost)
 	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/update", p.updateLegalHold).Methods(http.MethodPost)
 	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/download", p.downloadLegalHold).Methods(http.MethodGet)
+	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/bundle", p.bundleLegalHold).Methods(http.MethodPost)
 	router.HandleFunc("/api/v1/test_amazon_s3_connection", p.testAmazonS3Connection).Methods(http.MethodPost)
 
 	// Other routes
@@ -242,105 +243,6 @@ func (p *Plugin) downloadLegalHold(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// If the Amazon S3 bucket is enabled, generate the download on S3.
-	if p.configuration.GenerateDownloadOnFilestore {
-		mattermostUserID := r.Header.Get("Mattermost-User-Id")
-
-		channel, appErr := p.API.GetDirectChannel(p.botUserID, mattermostUserID)
-		if appErr != nil {
-			http.Error(w, "failed to download legal hold", http.StatusInternalServerError)
-			p.Client.Log.Error(appErr.Error())
-			return
-		}
-
-		initialPost, appErr := p.API.CreatePost(&mattermostModel.Post{
-			UserId:    p.botUserID,
-			ChannelId: channel.Id,
-			Message:   "Generating legal hold bundle in the background as per the request. You will be notified once the download is ready.",
-		})
-		if appErr != nil {
-			http.Error(w, "failed to download legal hold", http.StatusInternalServerError)
-			p.Client.Log.Error(appErr.Error())
-			return
-		}
-
-		p.Client.Log.Info("Generating legal hold bundle on S3")
-		go func() {
-			err := p.KVStore.LockLegalHold(legalholdID)
-			if err != nil {
-				p.Client.Log.Error("failed to lock legal hold before download task", err.Error())
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			defer func() {
-				if err := p.KVStore.UnlockLegalHold(legalholdID); err != nil {
-					p.Client.Log.Error("failed to unlock legal hold after download task", err.Error())
-				}
-			}()
-
-			// Use a custom writter to use the Write/Append functions while we generate the boject on
-			// the fly and avoiding to store it on the local disk.
-			// Also usign a buffer to avoid writing to the S3 object in small chunks, since the minimal
-			// size for a source in the underneath `ComposeObject` call is 5MB, so using 5MB as buffer size.
-			filename := filepath.Join(model.FilestoreBundlePath, fmt.Sprintf("%s_%d.zip", legalholdID, time.Now().Unix()))
-			zipWriter := zip.NewWriter(
-				bufio.NewWriterSize(
-					filebackend.NewFileBackendWritter(p.FileBackend, filename),
-					1024*1024*5, // 5MB
-				))
-
-			bytesWritten := int64(0)
-			for _, entry := range files {
-				header := &zip.FileHeader{
-					Name:     entry,
-					Method:   zip.Deflate, // deflate also works, but at a cost
-					Modified: time.Now(),
-				}
-
-				entryWriter, err := zipWriter.CreateHeader(header)
-				if err != nil {
-					p.Client.Log.Error(err.Error())
-					return
-				}
-
-				backendReader, err := p.FileBackend.Reader(entry)
-				if err != nil {
-					p.Client.Log.Error(err.Error())
-					return
-				}
-
-				fileReader := bufio.NewReader(backendReader)
-
-				loopBytesWritten, err := io.Copy(entryWriter, fileReader)
-				if err != nil {
-					p.Client.Log.Error(err.Error())
-					return
-				}
-				bytesWritten += loopBytesWritten
-			}
-
-			if err := zipWriter.Close(); err != nil {
-				p.Client.Log.Error(err.Error())
-				return
-			}
-
-			_, appErr = p.API.CreatePost(&mattermostModel.Post{
-				UserId:    p.botUserID,
-				ChannelId: channel.Id,
-				RootId:    initialPost.Id,
-				Message:   fmt.Sprintf("Legal hold bundle is ready for download. You can find it under `%s` in your storage provider.", filename),
-			})
-			if appErr != nil {
-				p.Client.Log.Error(appErr.Error())
-				return
-			}
-		}()
-
-		w.WriteHeader(http.StatusCreated)
-		return
-	}
-
 	// Write headers for the zip file.
 	w.Header().Set("Content-Type", "application/zip")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", "legalholddata.zip"))
@@ -394,6 +296,132 @@ func (p *Plugin) downloadLegalHold(w http.ResponseWriter, r *http.Request) {
 		p.Client.Log.Error(err.Error())
 		return
 	}
+}
+
+func (p *Plugin) bundleLegalHold(w http.ResponseWriter, r *http.Request) {
+	// Get the LegalHold.
+	legalholdID, err := RequireLegalHoldID(r)
+	if err != nil {
+		http.Error(w, "failed to parse LegalHold ID", http.StatusBadRequest)
+		p.Client.Log.Error(err.Error())
+		return
+	}
+
+	legalHold, err := p.KVStore.GetLegalHoldByID(legalholdID)
+	if err != nil {
+		http.Error(w, "failed to download legal hold", http.StatusInternalServerError)
+		p.Client.Log.Error(err.Error())
+		return
+	}
+
+	// Get the list of files to include in the download.
+	files, err := p.FileBackend.ListDirectoryRecursively(legalHold.BasePath())
+	if err != nil {
+		http.Error(w, "failed to download legal hold", http.StatusInternalServerError)
+		p.Client.Log.Error(err.Error())
+		return
+	}
+
+	// If the Amazon S3 bucket is enabled, generate the download on S3.
+	if !p.configuration.GenerateDownloadOnFilestore {
+		http.Error(w, "disabled", http.StatusBadRequest)
+		return
+	}
+
+	mattermostUserID := r.Header.Get("Mattermost-User-Id")
+
+	channel, appErr := p.API.GetDirectChannel(p.botUserID, mattermostUserID)
+	if appErr != nil {
+		http.Error(w, "failed to download legal hold", http.StatusInternalServerError)
+		p.Client.Log.Error(appErr.Error())
+		return
+	}
+
+	initialPost, appErr := p.API.CreatePost(&mattermostModel.Post{
+		UserId:    p.botUserID,
+		ChannelId: channel.Id,
+		Message:   "Generating legal hold bundle in the background as per the request. You will be notified once the download is ready.",
+	})
+	if appErr != nil {
+		http.Error(w, "failed to download legal hold", http.StatusInternalServerError)
+		p.Client.Log.Error(appErr.Error())
+		return
+	}
+
+	p.Client.Log.Info("Generating legal hold bundle on S3")
+	go func() {
+		err := p.KVStore.LockLegalHold(legalholdID)
+		if err != nil {
+			p.Client.Log.Error("failed to lock legal hold before download task", err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		defer func() {
+			if err := p.KVStore.UnlockLegalHold(legalholdID); err != nil {
+				p.Client.Log.Error("failed to unlock legal hold after download task", err.Error())
+			}
+		}()
+
+		// Use a custom writter to use the Write/Append functions while we generate the boject on
+		// the fly and avoiding to store it on the local disk.
+		// Also usign a buffer to avoid writing to the S3 object in small chunks, since the minimal
+		// size for a source in the underneath `ComposeObject` call is 5MB, so using 5MB as buffer size.
+		filename := filepath.Join(model.FilestoreBundlePath, fmt.Sprintf("%s_%d.zip", legalholdID, time.Now().Unix()))
+		zipWriter := zip.NewWriter(
+			bufio.NewWriterSize(
+				filebackend.NewFileBackendWritter(p.FileBackend, filename),
+				1024*1024*5, // 5MB
+			))
+
+		bytesWritten := int64(0)
+		for _, entry := range files {
+			header := &zip.FileHeader{
+				Name:     entry,
+				Method:   zip.Deflate, // deflate also works, but at a cost
+				Modified: time.Now(),
+			}
+
+			entryWriter, err := zipWriter.CreateHeader(header)
+			if err != nil {
+				p.Client.Log.Error(err.Error())
+				return
+			}
+
+			backendReader, err := p.FileBackend.Reader(entry)
+			if err != nil {
+				p.Client.Log.Error(err.Error())
+				return
+			}
+
+			fileReader := bufio.NewReader(backendReader)
+
+			loopBytesWritten, err := io.Copy(entryWriter, fileReader)
+			if err != nil {
+				p.Client.Log.Error(err.Error())
+				return
+			}
+			bytesWritten += loopBytesWritten
+		}
+
+		if err := zipWriter.Close(); err != nil {
+			p.Client.Log.Error(err.Error())
+			return
+		}
+
+		_, appErr = p.API.CreatePost(&mattermostModel.Post{
+			UserId:    p.botUserID,
+			ChannelId: channel.Id,
+			RootId:    initialPost.Id,
+			Message:   fmt.Sprintf("Legal hold bundle is ready for download. You can find it under `%s` in your storage provider.", filename),
+		})
+		if appErr != nil {
+			p.Client.Log.Error(appErr.Error())
+			return
+		}
+	}()
+
+	w.WriteHeader(http.StatusCreated)
 }
 
 func (p *Plugin) runJobFromAPI(w http.ResponseWriter, _ *http.Request) {
