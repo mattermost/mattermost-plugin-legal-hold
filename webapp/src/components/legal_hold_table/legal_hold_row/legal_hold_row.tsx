@@ -9,6 +9,7 @@ import Tooltip from '@/components/mattermost-webapp/tooltip';
 import OverlayTrigger from '@/components/mattermost-webapp/overlay_trigger';
 
 import DownloadIcon from './download-outline_F0B8F.svg';
+import UploadIcon from './upload-outline_F0E07.svg';
 import EditIcon from './pencil-outline_F0CB6.svg';
 
 interface LegalHoldRowProps {
@@ -84,7 +85,6 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                 style={{
                     marginRight: '10px',
                     height: '24px',
-                    transform: 'rotate(180deg)',
                 }}
             >
                 <span
@@ -92,7 +92,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                         fill: 'rgba(0, 0, 0, 0.5)',
                     }}
                 >
-                    <DownloadIcon/>
+                    <UploadIcon/>
                 </span>
             </a>
         </OverlayTrigger>
@@ -114,12 +114,11 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                 style={{
                     marginRight: '10px',
                     height: '24px',
-                    transform: 'rotate(180deg)',
                     fill: 'rgba(0, 0, 0, 0.2)',
                     cursor: 'not-allowed',
                 }}
             >
-                <DownloadIcon/>
+                <UploadIcon/>
             </span>
         </OverlayTrigger>
     );
