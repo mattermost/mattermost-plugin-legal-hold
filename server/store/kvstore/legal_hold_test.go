@@ -81,15 +81,16 @@ func TestKVStore_GetLegalHoldById(t *testing.T) {
 	kvstore := NewKVStore(client)
 
 	lh1 := model.LegalHold{
-		ID:   mattermostModel.NewId(),
-		Name: "legal-hold-1",
+		ID:    mattermostModel.NewId(),
+		Name:  "legal-hold-1",
+		Locks: make([]string, 0),
 	}
 	marshaled, err := json.Marshal(lh1)
 	require.NoError(t, err)
 
 	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, lh1.ID)).
 		Return(marshaled, nil)
-	api.On("KVList", getLegalHoldLockKey(lh1.ID, "")).Return(nil, nil)
+	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).Return(nil, nil)
 
 	// Test getting a valid legal hold
 	lh2, err := kvstore.GetLegalHoldByID(lh1.ID)
