@@ -68,7 +68,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
     );
 
     const bundleUrl = Client.bundleUrl(lh.id);
-    const bundleButton = (
+    const enabledBundleButton = (
         <OverlayTrigger
 
             // @ts-ignore
@@ -123,6 +123,8 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
         </OverlayTrigger>
     );
 
+    const bundleButton = (lh.locks?.includes('bundle')) ? disabledBundleButton : enabledBundleButton;
+
     return (
         <React.Fragment>
             <div>{lh.display_name}</div>
@@ -164,7 +166,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     </a>
                 </OverlayTrigger>
                 {downloadButton}
-                {(lh.locks?.includes('bundle')) ? disabledBundleButton : bundleButton}
+                {bundleButton}
                 <a
                     href='#'
                     onClick={release}

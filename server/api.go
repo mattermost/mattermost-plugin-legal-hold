@@ -322,12 +322,6 @@ func (p *Plugin) bundleLegalHold(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// If the Amazon S3 bucket is enabled, generate the download on S3.
-	if !p.configuration.GenerateDownloadOnFilestore {
-		http.Error(w, "disabled", http.StatusBadRequest)
-		return
-	}
-
 	mattermostUserID := r.Header.Get("Mattermost-User-Id")
 
 	channel, appErr := p.API.GetDirectChannel(p.botUserID, mattermostUserID)

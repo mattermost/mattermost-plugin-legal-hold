@@ -14,9 +14,8 @@ import "github.com/mattermost/mattermost-server/v6/model"
 // If you add non-reference types to your Configuration struct, be sure to rewrite Clone as a deep
 // copy appropriate for your types.
 type Configuration struct {
-	TimeOfDay                   string
-	GenerateDownloadOnFilestore bool
-	AmazonS3BucketSettings      AmazonS3BucketSettings
+	TimeOfDay              string
+	AmazonS3BucketSettings AmazonS3BucketSettings
 }
 
 type AmazonS3BucketSettings struct {
