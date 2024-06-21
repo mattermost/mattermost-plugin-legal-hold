@@ -36,6 +36,11 @@ class APIClient {
         return this.doPost(url, data);
     };
 
+    bundleLegalHold = (id: string) => {
+        const url = this.bundleUrl(id);
+        return this.doPost(url, {}) as Promise<{message: string}>;
+    };
+
     testAmazonS3Connection = () => {
         const url = `${this.url}/test_amazon_s3_connection`;
         return this.doPost(url, {}) as Promise<{message: string}>;

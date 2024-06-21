@@ -415,7 +415,16 @@ func (p *Plugin) bundleLegalHold(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(struct {
+		Message string `json:"message"`
+	}{
+		Message: "Legal hold bundle is being generated. You will be notified once it is ready.",
+	})
+	if err != nil {
+		p.API.LogError("failed to write http response", err.Error())
+	}
 }
 
 func (p *Plugin) runJobFromAPI(w http.ResponseWriter, _ *http.Request) {

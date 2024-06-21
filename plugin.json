@@ -32,13 +32,6 @@
         "default": "1:00am -0700"
       },
       {
-        "key": "GenerateDownloadOnFilestore",
-        "display_name": "Generate download on filestore instead of downloading it directly:",
-        "type": "bool",
-        "default": false,
-        "help_text": "If enabled, the download will be generated on the set up filestore. The user that requests the download will receive a notification when the file is ready to download."
-      },
-      {
         "key": "LegalHoldsSettings",
         "display_name": "Legal Holds:",
         "type": "custom"

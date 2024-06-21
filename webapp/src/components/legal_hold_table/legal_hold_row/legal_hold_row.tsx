@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {UserProfile} from 'mattermost-redux/types/users';
 
 import {LegalHold} from '@/types';
@@ -7,6 +7,7 @@ import Client from '@/client';
 import Tooltip from '@/components/mattermost-webapp/tooltip';
 
 import OverlayTrigger from '@/components/mattermost-webapp/overlay_trigger';
+import StatusMessage from '@/components/admin_console_settings/status_message';
 
 import DownloadIcon from './download-outline_F0B8F.svg';
 import UploadIcon from './upload-outline_F0E07.svg';
@@ -28,12 +29,39 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
         props.releaseLegalHold(lh);
     };
 
-    const usernames = props.users.map((user) => {
-        if (user) {
-            return `@${user.username} `;
+    const [message, setMessage] = useState('');
+    const [error, setError] = useState('');
+
+    const bundleLegalHold = async (legalHold: LegalHold) => {
+        try {
+            const res = await Client.bundleLegalHold(legalHold.id);
+            if (res.message) {
+                setMessage(res.message);
+            }
+            lh.locks?.push('bundle');
+        } catch (err) {
+            if ('message' in (err as Error)) {
+                setError((err as Error).message);
+            }
         }
-        return 'loading...';
-    });
+    };
+
+    let statusMessage: React.ReactNode | undefined;
+    if (error) {
+        statusMessage = (
+            <StatusMessage
+                state='warn'
+                message={error}
+            />
+        );
+    } else if (message) {
+        statusMessage = (
+            <StatusMessage
+                state='success'
+                message={message}
+            />
+        );
+    }
 
     const downloadUrl = Client.downloadUrl(lh.id);
 
@@ -67,7 +95,6 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
         </OverlayTrigger>
     );
 
-    const bundleUrl = Client.bundleUrl(lh.id);
     const enabledBundleButton = (
         <OverlayTrigger
 
@@ -80,21 +107,17 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                 </Tooltip>
             )}
         >
-            <a
-                href={bundleUrl}
+            <span
+                onClick={() => bundleLegalHold(lh)}
                 style={{
                     marginRight: '10px',
                     height: '24px',
+                    fill: 'rgba(0, 0, 0, 0.5)',
+                    cursor: 'pointer',
                 }}
             >
-                <span
-                    style={{
-                        fill: 'rgba(0, 0, 0, 0.5)',
-                    }}
-                >
-                    <UploadIcon/>
-                </span>
-            </a>
+                <UploadIcon/>
+            </span>
         </OverlayTrigger>
     );
 
@@ -173,6 +196,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     className={'btn btn-danger'}
                 >{'Release'}</a>
             </div>
+            {(statusMessage) ? (<React.Fragment>{statusMessage}</React.Fragment>) : null}
         </React.Fragment>
     );
 };
