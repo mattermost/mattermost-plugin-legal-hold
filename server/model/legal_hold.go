@@ -142,7 +142,7 @@ func (lh *LegalHold) IsFinished() bool {
 
 // BasePath returns the base file storage path for this legal hold.
 func (lh *LegalHold) BasePath() string {
-	return fmt.Sprintf("%s/%s_(%s)", baseFilestorePath, lh.Name, lh.ID)
+	return fmt.Sprintf("legal_hold/%s_%s", lh.Name, lh.ID)
 }
 
 // CreateLegalHold holds the data that is specified in the API call to create a LegalHold.
