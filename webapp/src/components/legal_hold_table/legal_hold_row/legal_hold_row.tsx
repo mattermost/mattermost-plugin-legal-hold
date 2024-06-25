@@ -12,6 +12,7 @@ import StatusMessage from '@/components/admin_console_settings/status_message';
 import DownloadIcon from './download-outline_F0B8F.svg';
 import UploadIcon from './upload-outline_F0E07.svg';
 import EditIcon from './pencil-outline_F0CB6.svg';
+import LoadingIcon from './loading.svg';
 
 interface LegalHoldRowProps {
     legalHold: LegalHold;
@@ -29,15 +30,13 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
         props.releaseLegalHold(lh);
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
 
     const bundleLegalHold = async (legalHold: LegalHold) => {
         try {
-            const res = await Client.bundleLegalHold(legalHold.id);
-            if (res.message) {
-                setMessage(res.message);
-            }
+            await Client.bundleLegalHold(legalHold.id);
             lh.locks?.push('bundle');
         } catch (err) {
             if ('message' in (err as Error)) {
@@ -137,11 +136,16 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                 style={{
                     marginRight: '10px',
                     height: '24px',
-                    fill: 'rgba(0, 0, 0, 0.2)',
+                    width: '24px',
+                    fill: 'rgba(0, 0, 0, 0.5)',
                     cursor: 'not-allowed',
                 }}
             >
-                <UploadIcon/>
+                <LoadingIcon
+                    style={{
+                        animation: 'spin 2s linear infinite',
+                    }}
+                />
             </span>
         </OverlayTrigger>
     );
