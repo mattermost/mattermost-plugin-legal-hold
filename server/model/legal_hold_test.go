@@ -405,8 +405,8 @@ func TestModel_LegalHold_BasePath(t *testing.T) {
 		lh       *LegalHold
 		expected string
 	}{
-		{&LegalHold{Name: "testhold", ID: "1"}, "legal_hold/testhold_(1)"},
-		{&LegalHold{Name: "anotherhold", ID: "2"}, "legal_hold/anotherhold_(2)"},
+		{&LegalHold{Name: "testhold", ID: "1"}, "legal_hold/testhold_1"},
+		{&LegalHold{Name: "anotherhold", ID: "2"}, "legal_hold/anotherhold_2"},
 	}
 
 	for _, tc := range cases {
