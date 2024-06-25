@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	pluginapi "github.com/mattermost/mattermost-plugin-api"
-	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
-	"github.com/mattermost/mattermost-server/v6/plugin/plugintest"
+	mattermostModel "github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
+	"github.com/mattermost/mattermost/server/public/pluginapi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -241,4 +241,23 @@ func TestKVStore_DeleteLegalHold(t *testing.T) {
 
 	err = kvstore.DeleteLegalHold("does-not-exist")
 	require.Error(t, err)
+}
+
+func TestKVStore_GetAWSSecretKey(t *testing.T) {
+	api := &plugintest.API{}
+	driver := &plugintest.Driver{}
+	client := pluginapi.NewClient(api, driver)
+
+	secretKey := "my_secret_key"
+
+	api.On("KVSetWithOptions", awsSecretKeyKey, []byte(secretKey), mock.Anything).Return(true, nil)
+	api.On("KVGet", awsSecretKeyKey).Return([]byte(secretKey), nil)
+
+	kvstore := NewKVStore(client)
+	err := kvstore.SetAWSSecretKey(secretKey)
+	require.NoError(t, err)
+
+	result, err := kvstore.GetAWSSecretKey()
+	require.NoError(t, err)
+	assert.Equal(t, secretKey, result)
 }

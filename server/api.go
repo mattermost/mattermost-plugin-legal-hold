@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
-	"github.com/mattermost/mattermost-server/v6/plugin"
-	"github.com/mattermost/mattermost-server/v6/shared/filestore"
+	mattermostModel "github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/plugin"
+	"github.com/mattermost/mattermost/server/v8/platform/shared/filestore"
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
@@ -317,6 +317,15 @@ func (p *Plugin) testAmazonS3Connection(w http.ResponseWriter, _ *http.Request) 
 		http.Error(w, "Amazon S3 bucket settings are not enabled", http.StatusBadRequest)
 		return
 	}
+
+	s3Secret, err := p.getS3Secret()
+	if err != nil {
+		http.Error(w, "failed to get Amazon S3 secret", http.StatusInternalServerError)
+		p.Client.Log.Error(err.Error())
+		return
+	}
+
+	conf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey = mattermostModel.NewString(s3Secret)
 
 	filesBackendSettings := FixedFileSettingsToFileBackendSettings(conf.AmazonS3BucketSettings.Settings, false, true)
 	filesBackend, err := filestore.NewFileBackend(filesBackendSettings)

@@ -1,15 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"sync"
 
 	"github.com/gorilla/mux"
-	pluginapi "github.com/mattermost/mattermost-plugin-api"
-	"github.com/mattermost/mattermost-server/v6/model"
-	"github.com/mattermost/mattermost-server/v6/plugin"
-	"github.com/mattermost/mattermost-server/v6/shared/filestore"
+	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/plugin"
+	"github.com/mattermost/mattermost/server/public/pluginapi"
+	"github.com/mattermost/mattermost/server/v8/platform/shared/filestore"
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/config"
@@ -19,7 +20,8 @@ import (
 )
 
 const (
-	LegalHoldJobID = "legal_hold_job"
+	LegalHoldJobID    = "legal_hold_job"
+	LegalHoldPluginID = "com.mattermost.plugin-legal-hold"
 )
 
 // Plugin implements the interface expected by the Mattermost server to communicate between the server and plugin processes.
@@ -145,6 +147,57 @@ func (p *Plugin) OnConfigurationChange() error {
 	return p.Reconfigure()
 }
 
+func (p *Plugin) ConfigurationWillBeSaved(newCfg *model.Config) (*model.Config, error) {
+	oldPluginConf := p.getConfiguration()
+
+	newPluginSettings := newCfg.PluginSettings.Plugins[LegalHoldPluginID]
+	if newPluginSettings == nil {
+		return newCfg, nil
+	}
+
+	newPluginSettingsBytes, err := json.Marshal(newPluginSettings)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal plugin settings")
+	}
+
+	newPluginConf := &config.Configuration{}
+	err = json.Unmarshal(newPluginSettingsBytes, newPluginConf)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal plugin settings")
+	}
+
+	secretChanged := newPluginConf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey != nil &&
+		*newPluginConf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey != "" &&
+		*newPluginConf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey != model.FakeSetting &&
+		(oldPluginConf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey == nil ||
+			*newPluginConf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey != *oldPluginConf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey)
+
+	if !secretChanged {
+		return newCfg, nil
+	}
+
+	newSecret := *newPluginConf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey
+
+	s3Settings := newCfg.PluginSettings.Plugins[LegalHoldPluginID]["amazons3bucketsettings"]
+	s3SettingsMap, ok := s3Settings.(map[string]interface{})
+	if !ok {
+		return nil, errors.New("failed to cast s3Settings to map[string]interface{}")
+	}
+
+	actualSettings, ok := s3SettingsMap["Settings"].(map[string]interface{})
+	if !ok {
+		return nil, errors.New("failed to cast actualSettings to map[string]interface{}")
+	}
+
+	actualSettings["AmazonS3SecretAccessKey"] = model.FakeSetting
+	err = p.saveS3Secret(newSecret)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to save s3 secret")
+	}
+
+	return newCfg, nil
+}
+
 func (p *Plugin) Reconfigure() error {
 	// Don't do anything if the plugin isn't activated yet.
 	if p.Client == nil {
@@ -163,6 +216,15 @@ func (p *Plugin) Reconfigure() error {
 	serverFileSettings := p.Client.Configuration.GetUnsanitizedConfig().FileSettings
 	if conf.AmazonS3BucketSettings.Enable {
 		serverFileSettings = conf.AmazonS3BucketSettings.Settings
+
+		s3Secret, err := p.getS3Secret()
+		if err != nil {
+			return err
+		}
+
+		if len(s3Secret) > 0 {
+			serverFileSettings.AmazonS3SecretAccessKey = model.NewString(s3Secret)
+		}
 	}
 
 	// Reinitialise the filestore backend
@@ -241,4 +303,12 @@ func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings, ena
 		AmazonS3RequestTimeoutMilliseconds: *fileSettings.AmazonS3RequestTimeoutMilliseconds,
 		SkipVerify:                         skipVerify,
 	}
+}
+
+func (p *Plugin) saveS3Secret(secret string) error {
+	return p.KVStore.SetAWSSecretKey(secret)
+}
+
+func (p *Plugin) getS3Secret() (string, error) {
+	return p.KVStore.GetAWSSecretKey()
 }

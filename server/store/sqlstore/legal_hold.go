@@ -5,7 +5,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 
-	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
+	mattermostModel "github.com/mattermost/mattermost/server/public/model"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 )
