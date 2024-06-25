@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useMemo, useState} from 'react';
 
 import {IntlProvider} from 'react-intl';
 
@@ -9,7 +9,6 @@ import TextSetting from './admin_console_settings/text_setting';
 import SaveButton from './mattermost-webapp/save_button';
 import BaseSetting from './admin_console_settings/base_setting';
 import StatusMessage from './admin_console_settings/status_message';
-import SecretTextSetting from './admin_console_settings/secret_text_setting';
 
 type FileSettings = {
     DriverName: string;
