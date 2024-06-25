@@ -242,3 +242,22 @@ func TestKVStore_DeleteLegalHold(t *testing.T) {
 	err = kvstore.DeleteLegalHold("does-not-exist")
 	require.Error(t, err)
 }
+
+func TestKVStore_GetAWSSecretKey(t *testing.T) {
+	api := &plugintest.API{}
+	driver := &plugintest.Driver{}
+	client := pluginapi.NewClient(api, driver)
+
+	secretKey := "my_secret_key"
+
+	api.On("KVSetWithOptions", awsSecretKeyKey, []byte(secretKey), mock.Anything).Return(true, nil)
+	api.On("KVGet", awsSecretKeyKey).Return([]byte(secretKey), nil)
+
+	kvstore := NewKVStore(client)
+	err := kvstore.SetAWSSecretKey(secretKey)
+	require.NoError(t, err)
+
+	result, err := kvstore.GetAWSSecretKey()
+	require.NoError(t, err)
+	assert.Equal(t, secretKey, result)
+}

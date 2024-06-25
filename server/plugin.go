@@ -302,20 +302,9 @@ func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings, ena
 }
 
 func (p *Plugin) saveS3Secret(secret string) error {
-	appErr := p.API.KVSet("s3secret", []byte(secret))
-	if appErr != nil {
-		return appErr
-	}
-
-	return nil
+	return p.KVStore.SetAWSSecretKey(secret)
 }
 
 func (p *Plugin) getS3Secret() (string, error) {
-	var s3Secret []byte
-	err := p.Client.KV.Get("s3secret", &s3Secret)
-	if err != nil {
-		return "", err
-	}
-
-	return string(s3Secret), nil
+	return p.KVStore.GetAWSSecretKey()
 }

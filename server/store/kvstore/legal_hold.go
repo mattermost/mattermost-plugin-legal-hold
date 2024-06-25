@@ -12,6 +12,8 @@ import (
 
 const (
 	legalHoldPrefix = "kvstore_legal_hold_"
+
+	awsSecretKeyKey = "aws_secret_key"
 )
 
 type Impl struct {
@@ -114,4 +116,23 @@ func (kvs Impl) DeleteLegalHold(id string) error {
 
 	err := kvs.client.KV.Delete(key)
 	return err
+}
+
+func (kvs Impl) GetAWSSecretKey() (string, error) {
+	var secretKey []byte
+	err := kvs.client.KV.Get(awsSecretKeyKey, &secretKey)
+	if err != nil {
+		return "", errors.Wrap(err, "error getting AWS secret key from kv store")
+	}
+
+	return string(secretKey), nil
+}
+
+func (kvs Impl) SetAWSSecretKey(secretKey string) error {
+	_, err := kvs.client.KV.Set(awsSecretKeyKey, []byte(secretKey))
+	if err != nil {
+		return errors.Wrap(err, "error saving AWS secret key to kv store")
+	}
+
+	return nil
 }
