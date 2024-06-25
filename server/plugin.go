@@ -166,30 +166,33 @@ func (p *Plugin) ConfigurationWillBeSaved(newCfg *model.Config) (*model.Config, 
 		return nil, errors.Wrap(err, "failed to unmarshal plugin settings")
 	}
 
-	if newPluginConf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey != nil &&
+	secretChanged := newPluginConf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey != nil &&
 		*newPluginConf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey != "" &&
 		*newPluginConf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey != model.FakeSetting &&
-		oldPluginConf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey != nil &&
-		*newPluginConf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey != *oldPluginConf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey {
+		(oldPluginConf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey == nil ||
+			*newPluginConf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey != *oldPluginConf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey)
 
-		newSecret := *newPluginConf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey
+	if !secretChanged {
+		return newCfg, nil
+	}
 
-		s3Settings := newCfg.PluginSettings.Plugins[LegalHoldPluginID]["amazons3bucketsettings"]
-		s3SettingsMap, ok := s3Settings.(map[string]interface{})
-		if !ok {
-			return nil, errors.New("failed to cast s3Settings to map[string]interface{}")
-		}
+	newSecret := *newPluginConf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey
 
-		actualSettings, ok := s3SettingsMap["Settings"].(map[string]interface{})
-		if !ok {
-			return nil, errors.New("failed to cast actualSettings to map[string]interface{}")
-		}
+	s3Settings := newCfg.PluginSettings.Plugins[LegalHoldPluginID]["amazons3bucketsettings"]
+	s3SettingsMap, ok := s3Settings.(map[string]interface{})
+	if !ok {
+		return nil, errors.New("failed to cast s3Settings to map[string]interface{}")
+	}
 
-		actualSettings["AmazonS3SecretAccessKey"] = model.FakeSetting
-		err = p.saveS3Secret(newSecret)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to save s3 secret")
-		}
+	actualSettings, ok := s3SettingsMap["Settings"].(map[string]interface{})
+	if !ok {
+		return nil, errors.New("failed to cast actualSettings to map[string]interface{}")
+	}
+
+	actualSettings["AmazonS3SecretAccessKey"] = model.FakeSetting
+	err = p.saveS3Secret(newSecret)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to save s3 secret")
 	}
 
 	return newCfg, nil
