@@ -325,7 +325,7 @@ func (p *Plugin) testAmazonS3Connection(w http.ResponseWriter, _ *http.Request) 
 		return
 	}
 
-	conf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey = mattermostModel.NewString(string(s3Secret))
+	conf.AmazonS3BucketSettings.Settings.AmazonS3SecretAccessKey = mattermostModel.NewString(s3Secret)
 
 	filesBackendSettings := FixedFileSettingsToFileBackendSettings(conf.AmazonS3BucketSettings.Settings, false, true)
 	filesBackend, err := filestore.NewFileBackend(filesBackendSettings)

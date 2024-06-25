@@ -161,7 +161,8 @@ func (p *Plugin) ConfigurationWillBeSaved(newCfg *model.Config) (*model.Config, 
 	}
 
 	newPluginConf := &config.Configuration{}
-	if err := json.Unmarshal(newPluginSettingsBytes, newPluginConf); err != nil {
+	err = json.Unmarshal(newPluginSettingsBytes, newPluginConf)
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal plugin settings")
 	}
 
@@ -219,7 +220,7 @@ func (p *Plugin) Reconfigure() error {
 		}
 
 		if len(s3Secret) > 0 {
-			serverFileSettings.AmazonS3SecretAccessKey = model.NewString(string(s3Secret))
+			serverFileSettings.AmazonS3SecretAccessKey = model.NewString(s3Secret)
 		}
 	}
 
