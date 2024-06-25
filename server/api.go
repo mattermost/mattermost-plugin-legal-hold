@@ -344,16 +344,16 @@ func (p *Plugin) bundleLegalHold(w http.ResponseWriter, r *http.Request) {
 
 	p.Client.Log.Info("Generating legal hold bundle on S3")
 	go func() {
-		err := p.KVStore.LockLegalHold(legalholdID, "bundle")
-		if err != nil {
-			p.Client.Log.Error("failed to lock legal hold before download task", err.Error())
+		errGoro := p.KVStore.LockLegalHold(legalholdID, "bundle")
+		if errGoro != nil {
+			p.Client.Log.Error("failed to lock legal hold before download task", errGoro.Error())
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		defer func() {
-			if err := p.KVStore.UnlockLegalHold(legalholdID, "bundle"); err != nil {
-				p.Client.Log.Error("failed to unlock legal hold after download task", err.Error())
+			if errGoro := p.KVStore.UnlockLegalHold(legalholdID, "bundle"); errGoro != nil {
+				p.Client.Log.Error("failed to unlock legal hold after download task", errGoro.Error())
 			}
 		}()
 
@@ -376,30 +376,30 @@ func (p *Plugin) bundleLegalHold(w http.ResponseWriter, r *http.Request) {
 				Modified: time.Now(),
 			}
 
-			entryWriter, err := zipWriter.CreateHeader(header)
-			if err != nil {
-				p.Client.Log.Error(err.Error())
+			entryWriter, errGoro := zipWriter.CreateHeader(header)
+			if errGoro != nil {
+				p.Client.Log.Error(errGoro.Error())
 				return
 			}
 
-			backendReader, err := p.FileBackend.Reader(entry)
-			if err != nil {
-				p.Client.Log.Error(err.Error())
+			backendReader, errGoro := p.FileBackend.Reader(entry)
+			if errGoro != nil {
+				p.Client.Log.Error(errGoro.Error())
 				return
 			}
 
 			fileReader := bufio.NewReader(backendReader)
 
-			loopBytesWritten, err := io.Copy(entryWriter, fileReader)
-			if err != nil {
-				p.Client.Log.Error(err.Error())
+			loopBytesWritten, errGoro := io.Copy(entryWriter, fileReader)
+			if errGoro != nil {
+				p.Client.Log.Error(errGoro.Error())
 				return
 			}
 			bytesWritten += loopBytesWritten
 		}
 
-		if err := zipWriter.Close(); err != nil {
-			p.Client.Log.Error(err.Error())
+		if errGoro := zipWriter.Close(); errGoro != nil {
+			p.Client.Log.Error(errGoro.Error())
 			return
 		}
 
