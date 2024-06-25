@@ -12,6 +12,10 @@ class APIClient {
         return `${this.url}/legalhold/${id}/download`;
     };
 
+    bundleUrl = (id: string) => {
+        return `${this.url}/legalhold/${id}/bundle`;
+    };
+
     getLegalHolds = () => {
         const url = `${this.url}/legalhold/list`;
         return this.doGet(url);
@@ -30,6 +34,11 @@ class APIClient {
     updateLegalHold = (id: string, data: UpdateLegalHold) => {
         const url = `${this.url}/legalhold/${id}/update`;
         return this.doPost(url, data);
+    };
+
+    bundleLegalHold = (id: string) => {
+        const url = this.bundleUrl(id);
+        return this.doPost(url, {}) as Promise<{message: string}>;
     };
 
     testAmazonS3Connection = () => {
