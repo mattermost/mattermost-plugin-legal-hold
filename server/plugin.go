@@ -264,5 +264,6 @@ func FixedFileSettingsToFileBackendSettings(fileSettings mattermostModel.FileSet
 		AmazonS3Trace:                      fileSettings.AmazonS3Trace != nil && *fileSettings.AmazonS3Trace,
 		AmazonS3RequestTimeoutMilliseconds: *fileSettings.AmazonS3RequestTimeoutMilliseconds,
 		SkipVerify:                         skipVerify,
+		AmazonS3PresignExpiresSeconds:      24 * 60 * 60, // 1 day
 	}
 }
