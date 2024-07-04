@@ -3,9 +3,10 @@ package kvstore
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
+
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
-	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 )
@@ -103,7 +104,7 @@ func (kvs Impl) UpdateLegalHold(lh, oldValue model.LegalHold) (*model.LegalHold,
 	var savedLegalHold model.LegalHold
 	err = kvs.client.KV.Get(key, &savedLegalHold)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get legal hold after creating it")
+		return nil, errors.Wrap(err, "failed to get legal hold after updating it")
 	}
 
 	return &savedLegalHold, nil
