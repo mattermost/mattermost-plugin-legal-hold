@@ -49,6 +49,6 @@ func parseLegaHoldJobSettings(cfg *config.Configuration) (*LegalHoldJobSettings,
 func (s *LegalHoldJobSettings) CalcNext(last time.Time, timeOfDay time.Time) time.Time {
 	originalLocation := timeOfDay.Location()
 	last = last.In(originalLocation)
-	next := time.Date(last.Year(), last.Month(), last.Day()+1, timeOfDay.Hour(), timeOfDay.Minute(), timeOfDay.Second(), 0, timeOfDay.Location())
+	next := time.Date(last.Year(), last.Month(), last.Day(), last.Hour(), last.Minute()+2, last.Second(), 0, timeOfDay.Location())
 	return next.In(originalLocation)
 }
