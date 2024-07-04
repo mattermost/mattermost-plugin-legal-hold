@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
-	"github.com/mattermost/mattermost-server/v6/plugin"
-	"github.com/mattermost/mattermost-server/v6/shared/filestore"
+	mattermostModel "github.com/mattermost/mattermost/server/public/model"
+	plugin "github.com/mattermost/mattermost/server/public/plugin"
+	"github.com/mattermost/mattermost/server/v8/platform/shared/filestore"
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
@@ -403,11 +403,27 @@ func (p *Plugin) bundleLegalHold(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		finishedMessage := fmt.Sprintf("Legal hold bundle is ready for download. You can find it under `%s` in your storage provider.", filename)
+
+		if p.FileBackend.DriverName() == "amazons3" {
+			backend, ok := p.FileBackend.(filestore.FileBackendWithLinkGenerator)
+			if ok {
+				publicLink, expiration, errPublicLink := backend.GeneratePublicLink(filename)
+				if errPublicLink != nil {
+					p.Client.Log.Error(errPublicLink.Error())
+				} else {
+					finishedMessage = fmt.Sprintf("Legal hold bundle is ready for download. You can find it [here](%s). Link will expire in %v.", publicLink, expiration.String())
+				}
+			} else {
+				p.Client.Log.Warn("File backend does not support generting public link")
+			}
+		}
+
 		_, appErr = p.API.CreatePost(&mattermostModel.Post{
 			UserId:    p.botUserID,
 			ChannelId: channel.Id,
 			RootId:    initialPost.Id,
-			Message:   fmt.Sprintf("Legal hold bundle is ready for download. You can find it under `%s` in your storage provider.", filename),
+			Message:   finishedMessage,
 		})
 		if appErr != nil {
 			p.Client.Log.Error(appErr.Error())

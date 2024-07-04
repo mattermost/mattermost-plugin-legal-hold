@@ -5,7 +5,7 @@ import (
 	"io"
 	"log"
 
-	"github.com/mattermost/mattermost-server/v6/shared/filestore"
+	"github.com/mattermost/mattermost/server/v8/platform/shared/filestore"
 )
 
 // fileBackendWritter is a simple io.Writer that writes to a file using a filestore.FileBackend
