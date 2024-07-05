@@ -12,6 +12,9 @@ on:
 permissions:
   contents: read
 
+env:
+  IS_CI: true
+
 jobs:
   plugin-ci:
     uses: mattermost/actions-workflows/.github/workflows/plugin-ci.yml@main
