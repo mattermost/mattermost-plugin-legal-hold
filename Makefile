@@ -86,7 +86,7 @@ else
 endif
 endif
 
-## Builds the processor for all supported architectures.
+## Builds the processor for all architectures.
 .PHONY: processor
 processor:
 	rm -rf $(PROCESSOR_DIR)/bin;
