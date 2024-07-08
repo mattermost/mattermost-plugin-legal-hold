@@ -10,11 +10,14 @@ MM_UTILITIES_DIR ?= ../mattermost-utilities
 DLV_DEBUG_PORT := 2346
 DEFAULT_GOOS := $(shell go env GOOS)
 DEFAULT_GOARCH := $(shell go env GOARCH)
+IS_CI ?= false
 
 export GO111MODULE=on
 
 # You can include assets this directory into the bundle. This can be e.g. used to include profile pictures.
 ASSETS_DIR ?= assets
+
+PROCESSOR_DIR ?= processor
 
 ## Define the default target (make all)
 .PHONY: default
@@ -69,17 +72,31 @@ ifneq ($(MM_DEBUG),)
 	$(info DEBUG mode is on; to disable, unset MM_DEBUG)
 endif
 	mkdir -p server/dist;
+## Developer mode builds current architecture, CI builds only Linux AMD64, otherwise all unsupported architectures are built.
 ifneq ($(MM_SERVICESETTINGS_ENABLEDEVELOPER),)
 	@echo Building plugin only for $(DEFAULT_GOOS)-$(DEFAULT_GOARCH) because MM_SERVICESETTINGS_ENABLEDEVELOPER is enabled
 	cd server && env CGO_ENABLED=0 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o dist/plugin-$(DEFAULT_GOOS)-$(DEFAULT_GOARCH);
 else
 	cd server && env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o dist/plugin-linux-amd64;
+ifneq ($(IS_CI),true)
 	cd server && env CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o dist/plugin-linux-arm64;
 	cd server && env CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o dist/plugin-darwin-amd64;
 	cd server && env CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o dist/plugin-darwin-arm64;
 	cd server && env CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o dist/plugin-windows-amd64.exe;
 endif
 endif
+endif
+
+## Builds the processor for all architectures.
+.PHONY: processor
+processor:
+	rm -rf $(PROCESSOR_DIR)/bin;
+	mkdir -p $(PROCESSOR_DIR)/bin;
+	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-linux-amd64;
+	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-linux-arm64;
+	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-darwin-amd64;
+	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-darwin-arm64;
+	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-windows-amd64.exe;
 
 ## Ensures NPM dependencies are installed without having to run this all the time.
 webapp/node_modules: $(wildcard webapp/package.json)
@@ -120,12 +137,13 @@ ifneq ($(HAS_WEBAPP),)
 	cp -r webapp/dist dist/$(PLUGIN_ID)/webapp/
 endif
 	cd dist && tar -cvzf $(BUNDLE_NAME) $(PLUGIN_ID)
+	cp $(PROCESSOR_DIR)/bin/* dist/
 
 	@echo plugin built at: dist/$(BUNDLE_NAME)
 
 ## Builds and bundles the plugin.
 .PHONY: dist
-dist:	server webapp bundle
+dist:	server webapp processor bundle
 
 ## Builds and installs the plugin to a server.
 .PHONY: deploy
