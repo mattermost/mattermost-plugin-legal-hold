@@ -128,7 +128,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
             placement='top'
             overlay={(
                 <Tooltip id={'BundleLegalHoldTooltip'}>
-                    {'Can\'t upload Legal Hold because Another job is running'}
+                    {'Can\'t upload Legal Hold because another job is running'}
                 </Tooltip>
             )}
         >
