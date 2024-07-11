@@ -23,11 +23,11 @@ import (
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
 // sendMessageToUser sends a message to a user in the provided channel and returns the created post.
-func (p *Plugin) sendMessageToUser(channelID, message, replyToRootId string) (*mattermostModel.Post, *mattermostModel.AppError) {
+func (p *Plugin) sendMessageToUser(channelID, message, replyToRootID string) (*mattermostModel.Post, *mattermostModel.AppError) {
 	post, appErr := p.API.CreatePost(&mattermostModel.Post{
 		UserId:    p.botUserID,
 		ChannelId: channelID,
-		RootId:    replyToRootId,
+		RootId:    replyToRootID,
 		Message:   message,
 	})
 	if appErr != nil {
@@ -40,8 +40,8 @@ func (p *Plugin) sendMessageToUser(channelID, message, replyToRootId string) (*m
 
 // sendErrorMessageToUser sends an error message to the user ignoring the error output since this method
 // should already be used in the failure path of the code.
-func (p *Plugin) sendErrorMessageToUser(message, replyToRootId string) {
-	_, _ = p.sendMessageToUser(p.botUserID, message, replyToRootId)
+func (p *Plugin) sendErrorMessageToUser(message, replyToRootID string) {
+	_, _ = p.sendMessageToUser(p.botUserID, message, replyToRootID)
 }
 
 // ServeHTTP demonstrates a plugin that handles HTTP requests by greeting the world.
