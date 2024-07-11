@@ -22,6 +22,28 @@ import (
 
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
 
+// sendMessageToUser sends a message to a user in the provided channel and returns the created post.
+func (p *Plugin) sendMessageToUser(channelID, message, replyToRootId string) (*mattermostModel.Post, *mattermostModel.AppError) {
+	post, appErr := p.API.CreatePost(&mattermostModel.Post{
+		UserId:    p.botUserID,
+		ChannelId: channelID,
+		RootId:    replyToRootId,
+		Message:   message,
+	})
+	if appErr != nil {
+		p.Client.Log.Error(appErr.Error())
+		return nil, appErr
+	}
+
+	return post, nil
+}
+
+// sendErrorMessageToUser sends an error message to the user ignoring the error output since this method
+// should already be used in the failure path of the code.
+func (p *Plugin) sendErrorMessageToUser(message, replyToRootId string) {
+	_, _ = p.sendMessageToUser(p.botUserID, message, replyToRootId)
+}
+
 // ServeHTTP demonstrates a plugin that handles HTTP requests by greeting the world.
 func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Request) {
 	// All HTTP endpoints of this plugin require a logged-in user.
@@ -331,11 +353,8 @@ func (p *Plugin) bundleLegalHold(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	initialPost, appErr := p.API.CreatePost(&mattermostModel.Post{
-		UserId:    p.botUserID,
-		ChannelId: channel.Id,
-		Message:   "Generating legal hold bundle in the background as per the request. You will be notified once the download is ready.",
-	})
+	// Create an initial post to notify the user that the bundle is being generated.
+	initialPost, appErr := p.sendMessageToUser(channel.Id, "Generating legal hold bundle in the background as per the request. You will be notified once the download is ready.", "")
 	if appErr != nil {
 		http.Error(w, "failed to download legal hold", http.StatusInternalServerError)
 		p.Client.Log.Error(appErr.Error())
@@ -347,6 +366,7 @@ func (p *Plugin) bundleLegalHold(w http.ResponseWriter, r *http.Request) {
 		errGoro := p.KVStore.LockLegalHold(legalholdID, "bundle")
 		if errGoro != nil {
 			p.Client.Log.Error("failed to lock legal hold before download task", errGoro.Error())
+			p.sendErrorMessageToUser("There was an error generating the legal hold on the file store. Check the server logs for more details or contact an administrator.", initialPost.Id)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -379,12 +399,14 @@ func (p *Plugin) bundleLegalHold(w http.ResponseWriter, r *http.Request) {
 			entryWriter, errGoro := zipWriter.CreateHeader(header)
 			if errGoro != nil {
 				p.Client.Log.Error(errGoro.Error())
+				p.sendErrorMessageToUser("There was an error generating the legal hold on the file store. Check the server logs for more details or contact an administrator.", initialPost.Id)
 				return
 			}
 
 			backendReader, errGoro := p.FileBackend.Reader(entry)
 			if errGoro != nil {
 				p.Client.Log.Error(errGoro.Error())
+				p.sendErrorMessageToUser("There was an error generating the legal hold on the file store. Check the server logs for more details or contact an administrator.", initialPost.Id)
 				return
 			}
 
@@ -393,6 +415,7 @@ func (p *Plugin) bundleLegalHold(w http.ResponseWriter, r *http.Request) {
 			loopBytesWritten, errGoro := io.Copy(entryWriter, fileReader)
 			if errGoro != nil {
 				p.Client.Log.Error(errGoro.Error())
+				p.sendErrorMessageToUser("There was an error generating the legal hold on the file store. Check the server logs for more details or contact an administrator.", initialPost.Id)
 				return
 			}
 			bytesWritten += loopBytesWritten
@@ -400,19 +423,11 @@ func (p *Plugin) bundleLegalHold(w http.ResponseWriter, r *http.Request) {
 
 		if errGoro := zipWriter.Close(); errGoro != nil {
 			p.Client.Log.Error(errGoro.Error())
+			p.sendErrorMessageToUser("There was an error generating the legal hold on the file store. Check the server logs for more details or contact an administrator.", initialPost.Id)
 			return
 		}
 
-		_, appErr = p.API.CreatePost(&mattermostModel.Post{
-			UserId:    p.botUserID,
-			ChannelId: channel.Id,
-			RootId:    initialPost.Id,
-			Message:   fmt.Sprintf("Legal hold bundle is ready for download. You can find it under `%s` in your storage provider.", filename),
-		})
-		if appErr != nil {
-			p.Client.Log.Error(appErr.Error())
-			return
-		}
+		_, _ = p.sendMessageToUser(channel.Id, fmt.Sprintf("Legal hold bundle is ready for download. You can find it under `%s` in your storage provider.", filename), initialPost.Id)
 	}()
 
 	w.Header().Set("Content-Type", "application/json")
