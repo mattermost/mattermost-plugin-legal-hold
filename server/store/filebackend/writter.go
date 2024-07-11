@@ -3,7 +3,6 @@ package filebackend
 import (
 	"bytes"
 	"io"
-	"log"
 
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 )
@@ -20,10 +19,8 @@ func (s *fileBackendWritter) Write(p []byte) (n int, err error) {
 	var written int64
 	if !s.created {
 		s.created = true
-		log.Println("writeFile")
 		written, err = s.fileBackend.WriteFile(bytes.NewReader(p), s.filePath)
 	} else {
-		log.Println("appendFile")
 		written, err = s.fileBackend.AppendFile(bytes.NewReader(p), s.filePath)
 	}
 	return int(written), err
