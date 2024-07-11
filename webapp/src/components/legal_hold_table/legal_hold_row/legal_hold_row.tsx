@@ -193,7 +193,6 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     </a>
                 </OverlayTrigger>
                 {downloadButton}
-                {/* {bundleButton} */}
                 <a
                     href='#'
                     onClick={release}
