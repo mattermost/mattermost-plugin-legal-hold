@@ -358,8 +358,8 @@ func (p *Plugin) bundleLegalHold(w http.ResponseWriter, r *http.Request) {
 		}()
 
 		// Use a custom writter to use the Write/Append functions while we generate the object on
-		// the fly and avoiding to store it on the local disk.
-		// Also usign a buffer to avoid writing to the S3 object in small chunks, since the minimal
+		// the fly and avoid storing it on the local disk.
+		// Also use a buffer to avoid writing to the S3 object in small chunks, since the minimal
 		// size for a source in the underneath `ComposeObject` call is 5MB, so using 5MB as buffer size.
 		filename := filepath.Join(model.FilestoreBundlePath, fmt.Sprintf("%s_%d.zip", legalholdID, time.Now().Unix()))
 		zipWriter := zip.NewWriter(
