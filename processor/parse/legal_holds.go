@@ -25,9 +25,9 @@ func ListLegalHolds(tempPath string) ([]model.LegalHold, error) {
 			continue
 		}
 
-		nameID := strings.Split(file.Name(), "_(")
-		if len(nameID) != 2 || !strings.HasSuffix(nameID[1], ")") {
-			return nil, errors.New("directory name does not match pattern name_(id)")
+		nameID := strings.Split(file.Name(), "_")
+		if len(nameID) != 2 {
+			return nil, errors.New("directory name does not match pattern name_id")
 		}
 
 		id := strings.TrimSuffix(nameID[1], ")")
