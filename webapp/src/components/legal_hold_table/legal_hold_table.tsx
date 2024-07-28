@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React, {useEffect} from 'react';
 
 import LegalHoldRow from '@/components/legal_hold_table/legal_hold_row';
-import { LegalHold } from '@/types';
+import {LegalHold} from '@/types';
 
 interface LegalHoldTableProps {
     legalHolds: LegalHold[];

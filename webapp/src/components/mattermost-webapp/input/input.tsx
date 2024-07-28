@@ -3,7 +3,7 @@
 // @ts-nocheck
 
 import classNames from 'classnames';
-import React, {useState, useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 import {useIntl} from 'react-intl';
 
 import {CloseCircleIcon} from '@mattermost/compass-icons/components';
@@ -93,7 +93,7 @@ const Input = React.forwardRef((
         if (customMessage !== undefined && customMessage !== null && Boolean(customMessage.value)) { // eslint-disable-line no-undefined
             setCustomInputLabel(customMessage);
         }
-    }, [customMessage]);
+    }, [customMessage, customInputLabel]);
 
     const handleOnFocus = (event: React.FocusEvent<HTMLInputElement>) => {
         setFocused(true);
