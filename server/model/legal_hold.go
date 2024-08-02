@@ -2,12 +2,24 @@ package model
 
 import (
 	"fmt"
+	"path/filepath"
+	"regexp"
 
 	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
 )
+
+const (
+	baseFilestorePath = "legal_hold"
+)
+
+var FilestoreBundlePath = filepath.Join(baseFilestorePath, "download")
+
+// FilestoreBundleRegex is a regular expression that matches the filename of a
+// legal hold bundle: <bundle_id>_<unix timestamp>.zip
+var FilestoreBundleRegex = regexp.MustCompile(`^([a-z0-9]+)_([0-9]+)\.zip$`)
 
 // LegalHold represents one legal hold.
 type LegalHold struct {
@@ -23,6 +35,7 @@ type LegalHold struct {
 	LastExecutionEndedAt  int64    `json:"last_execution_ended_at"`
 	ExecutionLength       int64    `json:"execution_length"`
 	Secret                string   `json:"secret"`
+	Locks                 []string `json:"locks"`
 }
 
 // DeepCopy creates a deep copy of the LegalHold.
@@ -43,6 +56,7 @@ func (lh *LegalHold) DeepCopy() LegalHold {
 		LastExecutionEndedAt:  lh.LastExecutionEndedAt,
 		ExecutionLength:       lh.ExecutionLength,
 		Secret:                lh.Secret,
+		Locks:                 lh.Locks,
 	}
 
 	if len(lh.UserIDs) > 0 {
