@@ -28,9 +28,9 @@ const SecretTextSetting = (props: Props) => {
         mounted.current = true;
     }, [props.value]);
 
-    const handleChange = (newValue: string) => {        
+    const handleChange = (newValue: string) => {
         setValue(newValue);
-        props.onChange(newValue)
+        props.onChange(newValue);
     };
 
     return (
