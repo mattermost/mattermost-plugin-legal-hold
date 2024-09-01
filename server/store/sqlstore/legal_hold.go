@@ -120,8 +120,8 @@ func (ss SQLStore) GetChannelIDsForUserDuring(userID string, startTime int64, en
 
 	// Exclude all public channels from the results
 	if excludePublic {
-		query = query.Join("channels on cmh.channelid = channels.id").
-			Where(sq.NotEq{"channels.type": mattermostModel.ChannelTypeOpen})
+		query = query.Join("Channels on cmh.channelid = Channels.id").
+			Where(sq.NotEq{"Channels.type": mattermostModel.ChannelTypeOpen})
 	}
 
 	rows, err := query.Query()

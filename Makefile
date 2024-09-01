@@ -208,7 +208,8 @@ detach: setup-attach
 .PHONY: test
 test: webapp/node_modules
 ifneq ($(HAS_SERVER),)
-	$(GO) test -v $(GO_TEST_FLAGS) ./server/...
+	TEST_DB_DRIVER_NAME=postgres $(GO) test -v $(GO_TEST_FLAGS) ./server/...
+	TEST_DB_DRIVER_NAME=mysql $(GO) test -v $(GO_TEST_FLAGS) ./server/...
 endif
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && $(NPM) run test;

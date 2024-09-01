@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -18,7 +19,6 @@ import (
 )
 
 const (
-	dbDriverName   = "postgres"
 	dbDatabaseName = "mattermost_test"
 )
 
@@ -46,6 +46,15 @@ func SetupHelper(t *testing.T) *TestHelper {
 	// ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*30)
 	defer cancel()
+
+	dbDriverName := os.Getenv("TEST_DB_DRIVER_NAME")
+	if len(dbDriverName) == 0 {
+		dbDriverName = "postgres"
+	}
+
+	if !(dbDriverName == "postgres" || dbDriverName == "mysql") {
+		t.Fatalf("invalid TEST_DB_DRIVER_NAME environment variable: %s", dbDriverName)
+	}
 
 	// create and initialize a new database
 	connStr, dbTearDown, err := utils.CreateTestDB(ctx, dbDriverName, dbDatabaseName)
