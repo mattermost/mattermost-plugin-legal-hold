@@ -16,6 +16,7 @@ interface LegalHoldRowProps {
     users: UserProfile[];
     releaseLegalHold: Function;
     showUpdateModal: Function;
+    runLegalHold: Function;
 }
 
 const LegalHoldRow = (props: LegalHoldRowProps) => {
@@ -26,6 +27,10 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
     const release = () => {
         props.releaseLegalHold(lh);
     };
+
+    const run = () => {
+        props.runLegalHold(lh);
+    }
 
     const usernames = props.users.map((user) => {
         if (user) {
@@ -108,6 +113,11 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     onClick={release}
                     className={'btn btn-danger'}
                 >{'Release'}</a>
+                <a
+                    href='#'
+                    onClick={run}
+                    className={'btn btn-info'}
+                >{'Run Now'}</a>
             </div>
         </React.Fragment>
     );

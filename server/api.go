@@ -45,6 +45,7 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/update", p.updateLegalHold).Methods(http.MethodPost)
 	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/download", p.downloadLegalHold).Methods(http.MethodGet)
 	router.HandleFunc("/api/v1/test_amazon_s3_connection", p.testAmazonS3Connection).Methods(http.MethodPost)
+	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/run", p.runLegalHoldNow).Methods(http.MethodPost)
 
 	// Other routes
 	router.HandleFunc("/api/v1/legalhold/run", p.runJobFromAPI).Methods(http.MethodPost)
@@ -302,6 +303,37 @@ func (p *Plugin) runJobFromAPI(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	go p.legalHoldJob.RunFromAPI()
+}
+
+func (p *Plugin) runLegalHoldNow(w http.ResponseWriter, r *http.Request) {
+	legalholdID, err := RequireLegalHoldID(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Fetch the LegalHold
+	lh, err := p.KVStore.GetLegalHoldByID(legalholdID)
+	if err != nil {
+		p.API.LogError("Failed to release legal hold - retrieve legal hold from kvstore", err.Error())
+		http.Error(w, "failed to release legal hold", http.StatusInternalServerError)
+		return
+	}
+
+	p.legalHoldJob.RunSingleHoldNow(lh)
+
+	b, jsonErr := json.Marshal(make(map[string]interface{}))
+	if jsonErr != nil {
+		http.Error(w, "Error encoding json", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(b)
+	if err != nil {
+		p.API.LogError("failed to write http response", err.Error())
+		return
+	}
 }
 
 // testAmazonS3Connection tests the plugin's custom Amazon S3 connection

@@ -12,6 +12,7 @@ import LegalHoldTable from '@/components/legal_hold_table';
 import ConfirmRelease from '@/components/confirm_release';
 import LegalHoldIcon from '@/components/legal_hold_icon.svg';
 import UpdateLegalHoldForm from '@/components/update_legal_hold_form';
+import ConfirmRun from "@/components/confirm_run";
 
 const LegalHoldsSetting = () => {
     const [legalHoldsFetched, setLegalHoldsFetched] = useState(false);
@@ -20,6 +21,7 @@ const LegalHoldsSetting = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showUpdateModal, setShowUpdateModal] = useState(false);
     const [showReleaseModal, setShowReleaseModal] = useState(false);
+    const [showRunModal, setShowRunModal] = useState(false);
     const [activeLegalHold, setActiveLegalHold] = useState<LegalHold|null>(null);
 
     const createLegalHold = async (data: CreateLegalHold) => {
@@ -55,6 +57,17 @@ const LegalHoldsSetting = () => {
         }
     };
 
+    const runLegalHold = async (id: string) => {
+        try {
+            const response = await Client.runLegalHold(id);
+            setLegalHoldsFetched(false);
+            return response;
+        } catch (error) {
+            console.log(error); //eslint-disable-line no-console
+            throw error;
+        }
+    };
+
     const doShowUpdateModal = (legalHold: LegalHold) => {
         setActiveLegalHold(legalHold);
         setShowUpdateModal(true);
@@ -64,6 +77,11 @@ const LegalHoldsSetting = () => {
         setActiveLegalHold(legalHold);
         setShowReleaseModal(true);
     };
+
+    const doShowRunModal = (legalHold: LegalHold) => {
+        setActiveLegalHold(legalHold);
+        setShowRunModal(true);
+    }
 
     useEffect(() => {
         const fetchLegalHolds = async () => {
@@ -161,6 +179,7 @@ const LegalHoldsSetting = () => {
                         legalHolds={legalHolds}
                         releaseLegalHold={doShowReleaseModal}
                         showUpdateModal={doShowUpdateModal}
+                        runLegalHold={doShowRunModal}
                     />
                 )}
 
@@ -182,6 +201,13 @@ const LegalHoldsSetting = () => {
                     releaseLegalHold={releaseLegalHold}
                     onExited={() => setShowReleaseModal(false)}
                     visible={showReleaseModal}
+                />
+
+                <ConfirmRun
+                    legalHold={activeLegalHold}
+                    runLegalHold={runLegalHold}
+                    onExited={() => setShowRunModal(false)}
+                    visible={showRunModal}
                 />
 
             </div>
