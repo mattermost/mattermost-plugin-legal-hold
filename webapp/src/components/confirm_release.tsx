@@ -28,6 +28,7 @@ const ConfirmRelease = (props: ConfirmReleaseProps) => {
         setSaving(true);
         props.releaseLegalHold(props.legalHold.id).then((response) => {
             props.onExited();
+            setSaving(false);
         }).catch((error) => {
             setSaving(false);
             setServerError(error.toString());
