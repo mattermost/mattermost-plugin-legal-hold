@@ -2,7 +2,7 @@ In order to get your environment set up to run [Playwright](https://playwright.d
 
 What this script does:
 
-- Navigate to the folder above `mattermost-plugin-todo`
+- Navigate to the folder above `mattermost-plugin-legal-hold`
 - Clone `mattermost` (if it is already cloned there, please have a clean git index to avoid issues with conflicts)
 - `cd mattermost`
 - Install webapp dependencies - `cd webapp && npm i`
@@ -23,15 +23,15 @@ Start Mattermost server:
 
 Run test:
 
-- `cd <path>/mattermost-plugin-todo/e2e/playwright`
+- `cd <path>/mattermost-plugin-legal-hold/e2e/playwright`
 - `npm test`
 
 To see the test report:
 
-- `cd <path>/mattermost-plugin-todo/e2e/playwright`
+- `cd <path>/mattermost-plugin-legal-hold/e2e/playwright`
 - `npm run show-report`
 - Navigate to http://localhost:9323
 
 To see test screenshots:
 
-- `cd <path>/mattermost-plugin-todo/e2e/playwright/screenshots`
+- `cd <path>/mattermost-plugin-legal-hold/e2e/playwright/screenshots`
