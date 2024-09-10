@@ -177,7 +177,7 @@ func (p *Plugin) Reconfigure() error {
 	if err = filesBackend.TestConnection(); err != nil {
 		pluginConfig := p.Client.Configuration.GetPluginConfig()
 
-		// Disableling the AWS setting in case the AWS config is invalid
+		// Disable the S3 settings in case the AWS config is invalid
 		pluginConfig["amazons3bucketsettings"].(map[string]interface{})["Enable"] = false
 
 		confErr := p.Client.Configuration.SavePluginConfig(pluginConfig)
