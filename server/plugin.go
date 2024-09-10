@@ -57,12 +57,12 @@ type Plugin struct {
 
 func (p *Plugin) OnActivate() error {
 	// Check for an enterprise license or a development environment
-	config := p.API.GetConfig()
-	license := p.API.GetLicense()
+	// config := p.API.GetConfig()
+	// license := p.API.GetLicense()
 
-	if !pluginapi.IsEnterpriseLicensedOrDevelopment(config, license) {
-		return fmt.Errorf("this plugin requires an Enterprise license")
-	}
+	// if !pluginapi.IsEnterpriseLicensedOrDevelopment(config, license) {
+	// 	return fmt.Errorf("this plugin requires an Enterprise license")
+	// }
 
 	// Create plugin API client
 	p.Client = pluginapi.NewClient(p.API, p.Driver)
@@ -175,6 +175,17 @@ func (p *Plugin) Reconfigure() error {
 	}
 
 	if err = filesBackend.TestConnection(); err != nil {
+		pluginConfig := p.Client.Configuration.GetPluginConfig()
+
+		// Disableling the AWS setting in case the AWS config is invalid
+		pluginConfig["amazons3bucketsettings"].(map[string]interface{})["Enable"] = false
+
+		confErr := p.Client.Configuration.SavePluginConfig(pluginConfig)
+		if confErr != nil {
+			p.Client.Log.Error("Error while saving plugin config.", "Error", confErr.Error())
+			return confErr
+		}
+
 		err = errors.Wrap(err, "connection test for filestore failed")
 		p.Client.Log.Error(err.Error())
 		return err
