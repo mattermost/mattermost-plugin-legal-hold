@@ -31,7 +31,7 @@ To see the test report:
 
 - `cd <path>/mattermost-plugin-legal-hold/e2e/playwright`
 - `npm run show-report`
-- Navigate to http://localhost:9323
+- Navigate to http://localhost:8065
 
 To see test screenshots:
 
