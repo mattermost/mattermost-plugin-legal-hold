@@ -1,7 +1,11 @@
-dist/
+# env, cert, key, license
+.env*
+*.crt
+*.key
+*.license
 
-# Mac
-.DS_Store
+# Plugin
+*.tar.gz
 
-# Jetbrains
-.idea/
+# node
+*.lock
