@@ -1,5 +1,4 @@
 import { test, expect, type Page } from '@playwright/test';
-import fs from 'fs';
 
 const URL = 'http://localhost:8065';
 const username = 'yuney@worx4you.com';
