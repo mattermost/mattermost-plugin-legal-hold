@@ -11,5 +11,5 @@ cd ../e2e-tests/playwright
 npm i
 npx playwright install --with-deps
 
-cd ../../../mattermost-plugin-todo/e2e/playwright
+cd ../../../mattermost-plugin-legal-hold/e2e/playwright
 npm i
