@@ -8,8 +8,8 @@ What this script does:
 - Install webapp dependencies - `cd webapp && npm i`
 - Install Playwright test dependencies - `cd ../e2e-tests/playwright && npm i`
 - Install Playwright - `npx install playwright`
-- Install Todo plugin e2e dependencies - `cd ../../../mattermost-plugin-todo/e2e/playwright && npm i`
-- Build and deploy plugin with e2e support - `make deploy-e2e`
+- Install Legal Hold plugin e2e dependencies - `cd ../../../mattermost-plugin-legal-hold/e2e/playwright && npm i`
+- Build and deploy plugin with e2e support - `make deploy`
 
 ---
 
@@ -24,7 +24,8 @@ Start Mattermost server:
 Run test:
 
 - `cd <path>/mattermost-plugin-legal-hold/e2e/playwright`
-- `npm test`
+- `npm run test` to run in multiple projects such as `chrome`, `firefox` and `ipad`.
+- `npm run test -- --project=chrome` to run in specific project such as `chrome`.
 
 To see the test report:
 
