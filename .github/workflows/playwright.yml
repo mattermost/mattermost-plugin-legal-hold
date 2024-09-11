@@ -42,19 +42,6 @@ jobs:
           - 10080:10080
           - 10110:10110
           - 10025:10025
-      elasticsearch:
-        image: mattermost/mattermost-elasticsearch-docker:7.0.0
-        env:
-          http.host: "0.0.0.0"
-          http.port: 9200
-          http.cors.enabled: "true"
-          http.cors.allow-origin: "http://localhost:1358,http://127.0.0.1:1358"
-          http.cors.allow-headers: "X-Requested-With,X-Auth-Token,Content-Type,Content-Length,Authorization"
-          http.cors.allow-credentials: "true"
-          transport.host: "127.0.0.1"
-          ES_JAVA_OPTS: "-Xms512m -Xmx512m"
-        ports:
-          - 9200:9200
       mattermost-server:
         image: mattermost/mattermost-enterprise-edition:master
         env:
@@ -125,15 +112,6 @@ jobs:
 
       - name: ci/build-and-install-plugin
         run: make deploy
-        env:
-          PLUGIN_E2E_MOCK_OAUTH_SERVER_URL: http://172.17.0.1:8080
-          E2E_TESTING: true
-
-      # - name: ci/checkout-mattermost-monorepo
-      #   uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
-      #   with:
-      #     path: ../mattermost
-      #     repository: mattermost/mattermost
 
       - name: ci/checkout-mattermost-monorepo
         run: |
@@ -165,15 +143,10 @@ jobs:
           cd e2e/playwright
           npm ci
 
-      - name: ci/tsc
+      - name: ci/check
         run: |
           cd e2e/playwright
-          npm run tsc
-
-      - name: ci/lint
-        run: |
-          cd e2e/playwright
-          npm run lint
+          npm run tsc && npm run lint && npm run prettier
 
       - name: ci/run-playwright-tests
         run: |
@@ -189,7 +162,7 @@ jobs:
           mkdir results
           mv playwright-report results
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4.3.0
         if: success() || failure()
         with:
           name: test-results
