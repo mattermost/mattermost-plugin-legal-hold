@@ -167,7 +167,9 @@ func (p *Plugin) Reconfigure() error {
 
 	// Reinitialise the filestore backend
 	// FIXME: Boolean flags shouldn't be hard coded.
-	filesBackendSettings := FixedFileSettingsToFileBackendSettings(serverFileSettings, false, true)
+	config := p.API.GetConfig()
+	compilanceEnabled := config.ComplianceSettings.Enable != nil && *config.ComplianceSettings.Enable
+	filesBackendSettings := FixedFileSettingsToFileBackendSettings(serverFileSettings, compilanceEnabled, true)
 	filesBackend, err := filestore.NewFileBackend(filesBackendSettings)
 	if err != nil {
 		p.Client.Log.Error("unable to initialize the files storage", "err", err)
