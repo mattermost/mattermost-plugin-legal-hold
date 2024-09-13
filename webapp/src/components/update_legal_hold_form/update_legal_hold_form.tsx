@@ -1,12 +1,12 @@
-import React, {useEffect, useState} from 'react';
 import dayjs from 'dayjs';
+import React, {useEffect, useState} from 'react';
 
 import {UserProfile} from 'mattermost-redux/types/users';
 
-import UsersInput from '@/components/users_input';
-import {LegalHold, UpdateLegalHold} from '@/types';
 import {GenericModal} from '@/components/mattermost-webapp/generic_modal/generic_modal';
 import Input from '@/components/mattermost-webapp/input/input';
+import UsersInput from '@/components/users_input';
+import {LegalHold, UpdateLegalHold} from '@/types';
 
 import '../create_legal_hold_form.scss';
 
@@ -71,7 +71,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
                 setEndsAt(endsAtString);
             }
         }
-    }, [props.legalHold, props.users, props.visible]);
+    }, [props.legalHold, props.users, props.visible, id]);
 
     const onSave = () => {
         if (saving) {

@@ -30,6 +30,7 @@ const SecretTextSetting = (props: Props) => {
 
     const handleChange = (newValue: string) => {
         setValue(newValue);
+        props.onChange(newValue);
     };
 
     return (

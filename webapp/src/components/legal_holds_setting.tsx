@@ -5,15 +5,14 @@ import {IntlProvider} from 'react-intl';
 import Client from '@/client';
 import {CreateLegalHold, LegalHold, UpdateLegalHold} from '@/types';
 
+import CreateLegalHoldButton from '@/components/create_legal_hold_button';
 import CreateLegalHoldForm from '@/components/create_legal_hold_form';
 import LegalHoldTable from '@/components/legal_hold_table';
-import CreateLegalHoldButton from '@/components/create_legal_hold_button';
-
-import LegalHoldIcon from '@/components/legal_hold_icon.svg';
 import UpdateLegalHoldForm from '@/components/update_legal_hold_form';
+import ShowSecretModal from '@/components/show_secret_modal';
+
 import ConfirmRelease from '@/components/confirm_release';
-import { GenericModal } from './mattermost-webapp/generic_modal/generic_modal';
-import ShowSecretModal from './show_secret_modal';
+import LegalHoldIcon from '@/components/legal_hold_icon.svg';
 
 const LegalHoldsSetting = () => {
     const [legalHoldsFetched, setLegalHoldsFetched] = useState(false);
@@ -91,7 +90,7 @@ const LegalHoldsSetting = () => {
         if (!legalHoldsFetched && !legalHoldsFetching) {
             fetchLegalHolds().catch(console.error); //eslint-disable-line no-console
         }
-    });
+    }, [legalHoldsFetched, legalHoldsFetching]);
 
     return (
         <IntlProvider locale='en-US'>

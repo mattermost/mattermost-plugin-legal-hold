@@ -24,23 +24,45 @@ import (
 )
 
 func TestDBContainers(t *testing.T) {
-	connStr, tearDown, err := utils.CreateTestDB(context.TODO(), "postgres", "mattermost_test")
-	require.NoError(t, err)
-	defer func() {
-		assert.NoError(t, tearDown(context.Background()))
-	}()
+	t.Run("Postgres", func(t *testing.T) {
+		connStr, tearDown, err := utils.CreateTestDB(context.TODO(), "postgres", "mattermost_test")
+		require.NoError(t, err)
+		defer func() {
+			assert.NoError(t, tearDown(context.Background()))
+		}()
 
-	t.Log("Connection string: ", connStr)
+		t.Log("Connection string: ", connStr)
 
-	time.Sleep(5 * time.Second)
+		time.Sleep(5 * time.Second)
 
-	db, err := dbsql.Open("postgres", connStr)
-	require.NoError(t, err)
+		db, err := dbsql.Open("postgres", connStr)
+		require.NoError(t, err)
 
-	err = db.Ping()
-	require.NoError(t, err)
+		err = db.Ping()
+		require.NoError(t, err)
 
-	assert.NoError(t, db.Close())
+		assert.NoError(t, db.Close())
+	})
+
+	t.Run("MySQL", func(t *testing.T) {
+		connStr, tearDown, err := utils.CreateTestDB(context.TODO(), "mysql", "mattermost_test")
+		require.NoError(t, err)
+		defer func() {
+			assert.NoError(t, tearDown(context.Background()))
+		}()
+
+		t.Log("Connection string: ", connStr)
+
+		time.Sleep(5 * time.Second)
+
+		db, err := dbsql.Open("mysql", connStr)
+		require.NoError(t, err)
+
+		err = db.Ping()
+		require.NoError(t, err)
+
+		assert.NoError(t, db.Close())
+	})
 }
 
 func TestMinIOContainers(t *testing.T) {

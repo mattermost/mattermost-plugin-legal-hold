@@ -26,7 +26,7 @@ const LegalHoldTable = (props: LegalHoldTableProps) => {
         props.actions.getMissingProfilesByIds(
             user_ids,
         );
-    });
+    }, [props.actions, user_ids]);
 
     return (
         <div>
