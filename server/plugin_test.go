@@ -30,12 +30,12 @@ func TestFixedFileSettingsToFileBackendSettings(t *testing.T) {
 		AmazonS3SSE:                        model.NewBool(false),
 	}
 
-	t.Run("with compilance enabled", func(t *testing.T) {
+	t.Run("with compliance enabled", func(t *testing.T) {
 		result := FixedFileSettingsToFileBackendSettings(f, true, false)
 		assert.True(t, result.AmazonS3SSE)
 	})
 
-	t.Run("with compilance disabled", func(t *testing.T) {
+	t.Run("with compliance disabled", func(t *testing.T) {
 		result := FixedFileSettingsToFileBackendSettings(f, false, false)
 		assert.False(t, result.AmazonS3SSE)
 	})
