@@ -237,7 +237,7 @@ func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings, ena
 		AmazonS3Endpoint:                   *fileSettings.AmazonS3Endpoint,
 		AmazonS3SSL:                        fileSettings.AmazonS3SSL != nil && *fileSettings.AmazonS3SSL,
 		AmazonS3SignV2:                     fileSettings.AmazonS3SignV2 != nil && *fileSettings.AmazonS3SignV2,
-		AmazonS3SSE:                        fileSettings.AmazonS3SSE != nil && *fileSettings.AmazonS3SSE && enableComplianceFeature,
+		AmazonS3SSE:                        (fileSettings.AmazonS3SSE != nil && *fileSettings.AmazonS3SSE) || enableComplianceFeature,
 		AmazonS3Trace:                      fileSettings.AmazonS3Trace != nil && *fileSettings.AmazonS3Trace,
 		AmazonS3RequestTimeoutMilliseconds: *fileSettings.AmazonS3RequestTimeoutMilliseconds,
 		SkipVerify:                         skipVerify,
