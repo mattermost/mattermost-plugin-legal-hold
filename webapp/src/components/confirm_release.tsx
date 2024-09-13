@@ -26,7 +26,7 @@ const ConfirmRelease = (props: ConfirmReleaseProps) => {
         }
 
         setSaving(true);
-        props.releaseLegalHold(props.legalHold.id).then((response) => {
+        props.releaseLegalHold(props.legalHold.id).then(() => {
             props.onExited();
             setSaving(false);
         }).catch((error) => {

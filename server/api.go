@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -16,9 +17,32 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/filebackend"
 )
 
 const requestBodyMaxSizeBytes = 1024 * 1024 // 1MB
+
+// sendMessageToUser sends a message to a user in the provided channel and returns the created post.
+func (p *Plugin) sendMessageToUser(channelID, message, replyToRootID string) (*mattermostModel.Post, *mattermostModel.AppError) {
+	post, appErr := p.API.CreatePost(&mattermostModel.Post{
+		UserId:    p.botUserID,
+		ChannelId: channelID,
+		RootId:    replyToRootID,
+		Message:   message,
+	})
+	if appErr != nil {
+		p.Client.Log.Error(appErr.Error())
+		return nil, appErr
+	}
+
+	return post, nil
+}
+
+// sendErrorMessageToUser sends an error message to the user ignoring the error output since this method
+// should already be used in the failure path of the code.
+func (p *Plugin) sendErrorMessageToUser(message, replyToRootID string) {
+	_, _ = p.sendMessageToUser(p.botUserID, message, replyToRootID)
+}
 
 // ServeHTTP demonstrates a plugin that handles HTTP requests by greeting the world.
 func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Request) {
@@ -44,6 +68,7 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/release", p.releaseLegalHold).Methods(http.MethodPost)
 	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/update", p.updateLegalHold).Methods(http.MethodPost)
 	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/download", p.downloadLegalHold).Methods(http.MethodGet)
+	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/bundle", p.bundleLegalHold).Methods(http.MethodPost)
 	router.HandleFunc("/api/v1/test_amazon_s3_connection", p.testAmazonS3Connection).Methods(http.MethodPost)
 
 	// Other routes
@@ -245,8 +270,8 @@ func (p *Plugin) downloadLegalHold(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", "legalholddata.zip"))
 	w.WriteHeader(http.StatusOK)
 
-	// Write the files to the download on-the-fly.
 	zipWriter := zip.NewWriter(w)
+	// Write the files to the download on-the-fly.
 	for _, entry := range files {
 		header := &zip.FileHeader{
 			Name:     entry,
@@ -292,6 +317,128 @@ func (p *Plugin) downloadLegalHold(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to download legal hold", http.StatusInternalServerError)
 		p.Client.Log.Error(err.Error())
 		return
+	}
+}
+
+func (p *Plugin) bundleLegalHold(w http.ResponseWriter, r *http.Request) {
+	// Get the LegalHold.
+	legalholdID, err := RequireLegalHoldID(r)
+	if err != nil {
+		http.Error(w, "failed to parse LegalHold ID", http.StatusBadRequest)
+		p.Client.Log.Error(err.Error())
+		return
+	}
+
+	legalHold, err := p.KVStore.GetLegalHoldByID(legalholdID)
+	if err != nil {
+		http.Error(w, "failed to download legal hold", http.StatusInternalServerError)
+		p.Client.Log.Error(err.Error())
+		return
+	}
+
+	// Get the list of files to include in the download.
+	files, err := p.FileBackend.ListDirectoryRecursively(legalHold.BasePath())
+	if err != nil {
+		http.Error(w, "failed to download legal hold", http.StatusInternalServerError)
+		p.Client.Log.Error(err.Error())
+		return
+	}
+
+	mattermostUserID := r.Header.Get("Mattermost-User-Id")
+
+	channel, appErr := p.API.GetDirectChannel(p.botUserID, mattermostUserID)
+	if appErr != nil {
+		http.Error(w, "failed to download legal hold", http.StatusInternalServerError)
+		p.Client.Log.Error(appErr.Error())
+		return
+	}
+
+	// Create an initial post to notify the user that the bundle is being generated.
+	initialPost, appErr := p.sendMessageToUser(channel.Id, "Generating legal hold bundle in the background as per the request. You will be notified once the download is ready.", "")
+	if appErr != nil {
+		http.Error(w, "failed to download legal hold", http.StatusInternalServerError)
+		p.Client.Log.Error(appErr.Error())
+		return
+	}
+
+	p.Client.Log.Info("Generating legal hold bundle on S3")
+	go func() {
+		errGoro := p.KVStore.LockLegalHold(legalholdID, "bundle")
+		if errGoro != nil {
+			p.Client.Log.Error("failed to lock legal hold before download task", errGoro.Error())
+			p.sendErrorMessageToUser("There was an error generating the legal hold on the file store. Check the server logs for more details or contact an administrator.", initialPost.Id)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		defer func() {
+			if errGoro := p.KVStore.UnlockLegalHold(legalholdID, "bundle"); errGoro != nil {
+				p.Client.Log.Error("failed to unlock legal hold after download task", errGoro.Error())
+			}
+		}()
+
+		// Use a custom writter to use the Write/Append functions while we generate the object on
+		// the fly and avoid storing it on the local disk.
+		// Also use a buffer to avoid writing to the S3 object in small chunks, since the minimal
+		// size for a source in the underneath `ComposeObject` call is 5MB, so using 5MB as buffer size.
+		filename := filepath.Join(model.FilestoreBundlePath, fmt.Sprintf("%s_%d.zip", legalholdID, time.Now().Unix()))
+		zipWriter := zip.NewWriter(
+			bufio.NewWriterSize(
+				filebackend.NewFileBackendWritter(p.FileBackend, filename),
+				1024*1024*5, // 5MB
+			))
+
+		bytesWritten := int64(0)
+		for _, entry := range files {
+			header := &zip.FileHeader{
+				Name:     entry,
+				Method:   zip.Deflate, // deflate also works, but at a cost
+				Modified: time.Now(),
+			}
+
+			entryWriter, errGoro := zipWriter.CreateHeader(header)
+			if errGoro != nil {
+				p.Client.Log.Error(errGoro.Error())
+				p.sendErrorMessageToUser("There was an error generating the legal hold on the file store. Check the server logs for more details or contact an administrator.", initialPost.Id)
+				return
+			}
+
+			backendReader, errGoro := p.FileBackend.Reader(entry)
+			if errGoro != nil {
+				p.Client.Log.Error(errGoro.Error())
+				p.sendErrorMessageToUser("There was an error generating the legal hold on the file store. Check the server logs for more details or contact an administrator.", initialPost.Id)
+				return
+			}
+
+			fileReader := bufio.NewReader(backendReader)
+
+			loopBytesWritten, errGoro := io.Copy(entryWriter, fileReader)
+			if errGoro != nil {
+				p.Client.Log.Error(errGoro.Error())
+				p.sendErrorMessageToUser("There was an error generating the legal hold on the file store. Check the server logs for more details or contact an administrator.", initialPost.Id)
+				return
+			}
+			bytesWritten += loopBytesWritten
+		}
+
+		if errGoro := zipWriter.Close(); errGoro != nil {
+			p.Client.Log.Error(errGoro.Error())
+			p.sendErrorMessageToUser("There was an error generating the legal hold on the file store. Check the server logs for more details or contact an administrator.", initialPost.Id)
+			return
+		}
+
+		_, _ = p.sendMessageToUser(channel.Id, fmt.Sprintf("Legal hold bundle is ready for download. You can find it under `%s` in your storage provider.", filename), initialPost.Id)
+	}()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(struct {
+		Message string `json:"message"`
+	}{
+		Message: "Legal hold bundle is being generated. You will be notified once it is ready.",
+	})
+	if err != nil {
+		p.API.LogError("failed to write http response", err.Error())
 	}
 }
 

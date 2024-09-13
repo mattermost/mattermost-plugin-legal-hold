@@ -81,14 +81,16 @@ func TestKVStore_GetLegalHoldById(t *testing.T) {
 	kvstore := NewKVStore(client)
 
 	lh1 := model.LegalHold{
-		ID:   mattermostModel.NewId(),
-		Name: "legal-hold-1",
+		ID:    mattermostModel.NewId(),
+		Name:  "legal-hold-1",
+		Locks: make([]string, 0),
 	}
 	marshaled, err := json.Marshal(lh1)
 	require.NoError(t, err)
 
 	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, lh1.ID)).
 		Return(marshaled, nil)
+	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).Return(nil, nil)
 
 	// Test getting a valid legal hold
 	lh2, err := kvstore.GetLegalHoldByID(lh1.ID)
@@ -112,13 +114,15 @@ func TestKVStore_GetAllLegalHolds(t *testing.T) {
 	kvstore := NewKVStore(client)
 
 	lh1 := model.LegalHold{
-		ID:   mattermostModel.NewId(),
-		Name: "legal-hold-1",
+		ID:    mattermostModel.NewId(),
+		Name:  "legal-hold-1",
+		Locks: make([]string, 0),
 	}
 
 	lh2 := model.LegalHold{
-		ID:   mattermostModel.NewId(),
-		Name: "legal-hold-2",
+		ID:    mattermostModel.NewId(),
+		Name:  "legal-hold-2",
+		Locks: make([]string, 0),
 	}
 
 	lhs := []model.LegalHold{lh1, lh2}
@@ -137,7 +141,9 @@ func TestKVStore_GetAllLegalHolds(t *testing.T) {
 		Once()
 
 	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, lh1.ID)).Return(marshaled1, nil)
+	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).Return([]string{}, nil).Once()
 	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, lh2.ID)).Return(marshaled2, nil)
+	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).Return([]string{}, nil).Once()
 
 	// Test with some data
 	result, err := kvstore.GetAllLegalHolds()
@@ -241,4 +247,90 @@ func TestKVStore_DeleteLegalHold(t *testing.T) {
 
 	err = kvstore.DeleteLegalHold("does-not-exist")
 	require.Error(t, err)
+}
+
+func TestKVStore_LockLegalHold(t *testing.T) {
+	api := &plugintest.API{}
+	driver := &plugintest.Driver{}
+	client := pluginapi.NewClient(api, driver)
+
+	kvstore := NewKVStore(client)
+
+	t.Run("lock ok", func(t *testing.T) {
+		api.On("KVGet", mock.AnythingOfType("string")).Return(nil, nil).Once()
+		api.On("KVSetWithOptions",
+			mock.AnythingOfType("string"),
+			mock.AnythingOfType("[]uint8"),
+			mock.AnythingOfType("model.PluginKVSetOptions"),
+		).Run(func(args mock.Arguments) {
+			marshaled := args.Get(1).([]uint8)
+			var checkLH bool
+			require.NoError(t, json.Unmarshal(marshaled, &checkLH))
+			require.True(t, checkLH)
+			api.On("KVGet", mock.AnythingOfType("string")).Return(marshaled, nil).Once()
+		}).Return(true, nil).Once()
+
+		err := kvstore.LockLegalHold("legal_hold_id", "test")
+		require.NoError(t, err)
+	})
+
+	t.Run("can't lock twice", func(t *testing.T) {
+		// Fake existing key
+		api.On("KVGet", mock.AnythingOfType("string")).Return([]byte{0x74, 0x72, 0x75, 0x65}, nil).Once()
+		err := kvstore.LockLegalHold("legal_hold_id", "test")
+		require.Error(t, err)
+		require.ErrorIs(t, err, ErrAlreadyLocked)
+	})
+}
+
+func TestKVStore_UnlockLegalHold(t *testing.T) {
+	api := &plugintest.API{}
+	driver := &plugintest.Driver{}
+	client := pluginapi.NewClient(api, driver)
+
+	kvstore := NewKVStore(client)
+
+	t.Run("unlock ok", func(t *testing.T) {
+		api.On("KVGet", mock.AnythingOfType("string")).Return([]byte{0x74, 0x72, 0x75, 0x65}, nil).Once()
+		api.On("KVSetWithOptions",
+			mock.AnythingOfType("string"),
+			mock.AnythingOfType("[]uint8"),
+			mock.AnythingOfType("model.PluginKVSetOptions"),
+		).Run(func(args mock.Arguments) {
+			marshaled := args.Get(1)
+			require.Empty(t, marshaled)
+		}).Return(true, nil).Once()
+
+		err := kvstore.UnlockLegalHold("legal_hold_id", "test")
+		require.NoError(t, err)
+	})
+
+	t.Run("can't unlock twice", func(t *testing.T) {
+		api.On("KVGet", mock.AnythingOfType("string")).Return(nil, nil).Once()
+		err := kvstore.UnlockLegalHold("legal_hold_id", "test")
+		require.Error(t, err)
+		require.ErrorIs(t, err, ErrAlreadyUnlocked)
+	})
+}
+
+func TestKVStore_IsLockedLegalHold(t *testing.T) {
+	api := &plugintest.API{}
+	driver := &plugintest.Driver{}
+	client := pluginapi.NewClient(api, driver)
+
+	kvstore := NewKVStore(client)
+
+	t.Run("locked", func(t *testing.T) {
+		api.On("KVGet", mock.AnythingOfType("string")).Return([]byte{0x74, 0x72, 0x75, 0x65}, nil).Once()
+		locked, err := kvstore.IsLockedLegalHold("legal_hold_id", "test")
+		require.NoError(t, err)
+		require.True(t, locked)
+	})
+
+	t.Run("unlocked", func(t *testing.T) {
+		api.On("KVGet", mock.AnythingOfType("string")).Return(nil, nil).Once()
+		locked, err := kvstore.IsLockedLegalHold("legal_hold_id", "test")
+		require.NoError(t, err)
+		require.False(t, locked)
+	})
 }

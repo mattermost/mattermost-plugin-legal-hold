@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/gorilla/mux"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
-	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost-plugin-api/cluster"
+	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 	"github.com/pkg/errors"
@@ -53,6 +55,12 @@ type Plugin struct {
 
 	// router holds the HTTP router for the plugin's rest API
 	router *mux.Router
+
+	// Bot user ID
+	botUserID string
+
+	// cleanupJob is the job that cleans up old legal hold jobs bunldes from the filestore
+	cleanupJob *cluster.Job
 }
 
 func (p *Plugin) OnActivate() error {
@@ -83,6 +91,15 @@ func (p *Plugin) OnActivate() error {
 	// FIXME: do we need to handle MM configuration changes?
 
 	p.KVStore = kvstore.NewKVStore(p.Client)
+
+	// Create bot user
+	p.botUserID, err = p.API.EnsureBotUser(&mattermostModel.Bot{
+		Username:    "legal_hold_bot",
+		DisplayName: "Legal Hold Bot",
+	})
+	if err != nil {
+		return err
+	}
 
 	// Create job manager
 	p.jobManager = jobs.NewJobManager(&p.Client.Log)
@@ -195,16 +212,22 @@ func (p *Plugin) Reconfigure() error {
 	if err != nil {
 		return fmt.Errorf("cannot create legal hold job: %w", err)
 	}
-	if err := p.jobManager.AddJob(p.legalHoldJob); err != nil {
+	if err = p.jobManager.AddJob(p.legalHoldJob); err != nil {
 		return fmt.Errorf("cannot add legal hold job: %w", err)
 	}
 	_ = p.jobManager.OnConfigurationChange(p.getConfiguration())
 
+	// Setup cluster cleanup job
+	p.cleanupJob, err = cluster.Schedule(p.API, "legal_hold_bundle_cleanup", cluster.MakeWaitForRoundedInterval(time.Minute), p.jobCleanupOldBundlesFromFilestore)
+	if err != nil {
+		return fmt.Errorf("error setting up cluster cleanup job: %w", err)
+	}
+
 	return nil
 }
 
-func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings, enableComplianceFeature bool, skipVerify bool) filestore.FileBackendSettings {
-	if *fileSettings.DriverName == model.ImageDriverLocal {
+func FixedFileSettingsToFileBackendSettings(fileSettings mattermostModel.FileSettings, enableComplianceFeature bool, skipVerify bool) filestore.FileBackendSettings {
+	if *fileSettings.DriverName == mattermostModel.ImageDriverLocal {
 		return filestore.FileBackendSettings{
 			DriverName: *fileSettings.DriverName,
 			Directory:  *fileSettings.Directory,
