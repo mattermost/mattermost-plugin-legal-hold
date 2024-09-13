@@ -26,10 +26,6 @@ func NewKVStore(client *pluginapi.Client) KVStore {
 }
 
 func (kvs Impl) CreateLegalHold(lh model.LegalHold) (*model.LegalHold, error) {
-	if err := lh.IsValidForCreate(); err != nil {
-		return nil, errors.Wrap(err, "LegalHold is not valid for create")
-	}
-
 	lh.CreateAt = mattermostModel.GetMillis()
 	lh.UpdateAt = lh.CreateAt
 	lh.Secret = mattermostModel.NewId()
@@ -86,8 +82,8 @@ func (kvs Impl) GetLegalHoldByID(id string) (*model.LegalHold, error) {
 }
 
 func (kvs Impl) UpdateLegalHold(lh, oldValue model.LegalHold) (*model.LegalHold, error) {
-	if err := lh.IsValidForCreate(); err != nil {
-		return nil, errors.Wrap(err, "LegalHold is not valid for create")
+	if !mattermostModel.IsValidId(lh.ID) {
+		return nil, fmt.Errorf("legal hold does not have a valid id")
 	}
 
 	lh.UpdateAt = mattermostModel.GetMillis()
