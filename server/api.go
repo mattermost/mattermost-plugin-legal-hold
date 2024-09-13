@@ -86,7 +86,17 @@ func (p *Plugin) createLegalHold(w http.ResponseWriter, r *http.Request) {
 	}
 
 	legalHold := model.NewLegalHoldFromCreate(createLegalHold)
-	// TODO: Validate all the provided data here?
+
+	config := p.API.GetConfig()
+	if config == nil {
+		http.Error(w, "failed to get config", http.StatusInternalServerError)
+		return
+	}
+
+	if err := legalHold.IsValidForCreate(config); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	savedLegalHold, err := p.KVStore.CreateLegalHold(legalHold)
 	if err != nil {
@@ -178,7 +188,13 @@ func (p *Plugin) updateLegalHold(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = updateLegalHold.IsValid(); err != nil {
+	config := p.API.GetConfig()
+	if config == nil {
+		http.Error(w, "failed to get config", http.StatusInternalServerError)
+		return
+	}
+
+	if err = updateLegalHold.IsValid(config); err != nil {
 		http.Error(w, "LegalHold update data is not valid", http.StatusBadRequest)
 		p.Client.Log.Error(err.Error())
 		return
