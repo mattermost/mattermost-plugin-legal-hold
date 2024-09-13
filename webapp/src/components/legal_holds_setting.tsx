@@ -12,6 +12,8 @@ import CreateLegalHoldButton from '@/components/create_legal_hold_button';
 import LegalHoldIcon from '@/components/legal_hold_icon.svg';
 import UpdateLegalHoldForm from '@/components/update_legal_hold_form';
 import ConfirmRelease from '@/components/confirm_release';
+import { GenericModal } from './mattermost-webapp/generic_modal/generic_modal';
+import ShowSecretModal from './show_secret_modal';
 
 const LegalHoldsSetting = () => {
     const [legalHoldsFetched, setLegalHoldsFetched] = useState(false);
@@ -20,6 +22,7 @@ const LegalHoldsSetting = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showUpdateModal, setShowUpdateModal] = useState(false);
     const [showReleaseModal, setShowReleaseModal] = useState(false);
+    const [showSecretModal, setShowSecretModal] = useState(false);
     const [activeLegalHold, setActiveLegalHold] = useState<LegalHold|null>(null);
 
     const createLegalHold = async (data: CreateLegalHold) => {
@@ -63,6 +66,11 @@ const LegalHoldsSetting = () => {
     const doShowReleaseModal = (legalHold: LegalHold) => {
         setActiveLegalHold(legalHold);
         setShowReleaseModal(true);
+    };
+
+    const doShowSecretModal = (legalHold: LegalHold) => {
+        setActiveLegalHold(legalHold);
+        setShowSecretModal(true);
     };
 
     useEffect(() => {
@@ -161,6 +169,7 @@ const LegalHoldsSetting = () => {
                         legalHolds={legalHolds}
                         releaseLegalHold={doShowReleaseModal}
                         showUpdateModal={doShowUpdateModal}
+                        showSecretModal={doShowSecretModal}
                     />
                 )}
 
@@ -175,6 +184,12 @@ const LegalHoldsSetting = () => {
                     visible={showUpdateModal}
                     onExited={() => setShowUpdateModal(false)}
                     legalHold={activeLegalHold}
+                />
+
+                <ShowSecretModal
+                    legalHold={activeLegalHold}
+                    visible={showSecretModal}
+                    onExited={() => setShowSecretModal(false)}
                 />
 
                 <ConfirmRelease
