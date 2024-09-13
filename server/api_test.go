@@ -20,6 +20,7 @@ func TestTestAmazonS3Connection(t *testing.T) {
 	p.SetAPI(api)
 	p.Client = pluginapi.NewClient(p.API, p.Driver)
 
+	api.On("GetConfig").Return(&model.Config{})
 	api.On("HasPermissionTo", "test_user_id", model.PermissionManageSystem).Return(true)
 	api.On("LogInfo", mock.Anything).Maybe()
 
