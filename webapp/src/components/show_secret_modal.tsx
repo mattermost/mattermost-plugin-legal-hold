@@ -19,7 +19,7 @@ const ShowSecretModal = (props: ShowSecretModalProps) => {
     const createMessage = (lh: LegalHold|null) => {
         if (lh) {
             return (
-                <React.Fragment style={{textAlign: 'center'}}>
+                <React.Fragment>
                     <div
                         style={{
                             textAlign: 'center',
@@ -36,7 +36,7 @@ const ShowSecretModal = (props: ShowSecretModalProps) => {
                             >{lh.secret}</code>
                         </p>
                         <p>{'Please keep this key safe and do not share it with anyone.'}</p>
-                        <hr />
+                        <hr/>
                         <p>
                             {'In order to verify the contents of the files in a legal hold, ensure you put the '}
                         </p>
