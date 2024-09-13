@@ -38,7 +38,14 @@ func Execute() {
 	}
 }
 
-func Process(_ *cobra.Command, _ []string) {
+func Process(cmd *cobra.Command, _ []string) {
+	if legalHoldData == "" {
+		fmt.Println("Error: --legal-hold-data flag is required")
+		fmt.Println("")
+		_ = cmd.Help()
+		os.Exit(1)
+	}
+
 	fmt.Println("Running the Mattermost Legal Hold Processor")
 	fmt.Printf("- Input data: %s\n", legalHoldData)
 	fmt.Printf("- Procesed output will be written to: %s\n", outputPath)
