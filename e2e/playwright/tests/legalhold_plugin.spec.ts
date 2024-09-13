@@ -14,7 +14,6 @@ test('Admin user is able to access the plugin successfully', async ({pw, pages})
     await systemConsolePage.page.getByRole('link', {name: 'Legal Hold Plugin'}).click();
 
     // # Enable the plugin
-    await page.getByTestId('PluginSettings.PluginStates.com+mattermost+plugin-legal-hold.Enablefalse').check();
     await page.getByTestId('PluginSettings.PluginStates.com+mattermost+plugin-legal-hold.Enabletrue').check();
     await page.getByTestId('saveSetting').click();
 
