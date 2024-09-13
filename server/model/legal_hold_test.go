@@ -62,9 +62,10 @@ func TestModel_LegalHold_DeepCopy(t *testing.T) {
 
 func TestModel_LegalHold_IsValidForCreate(t *testing.T) {
 	tests := []struct {
-		name    string
-		lh      *LegalHold
-		wantErr bool
+		name     string
+		lh       *LegalHold
+		wantErr  bool
+		mmConfig *mattermostModel.Config
 	}{
 		{
 			name: "Valid",
@@ -198,11 +199,87 @@ func TestModel_LegalHold_IsValidForCreate(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "EndsAt before StartsAt",
+			lh: &LegalHold{
+				ID:          mattermostModel.NewId(),
+				Name:        "legalhold1",
+				DisplayName: "EndsAt before StartsAt Test",
+				UserIDs:     []string{mattermostModel.NewId(), mattermostModel.NewId()},
+				StartsAt:    90,
+				EndsAt:      80,
+			},
+			wantErr: true,
+		},
+		{
+			name: "Include public channels without compliance enabled",
+			lh: &LegalHold{
+				ID:                    mattermostModel.NewId(),
+				Name:                  "legalhold1",
+				DisplayName:           "Exclude public channels without compliance enabled Test",
+				UserIDs:               []string{mattermostModel.NewId(), mattermostModel.NewId()},
+				StartsAt:              100,
+				EndsAt:                0,
+				ExcludePublicChannels: false,
+			},
+			wantErr: true,
+			mmConfig: &mattermostModel.Config{
+				ComplianceSettings: mattermostModel.ComplianceSettings{
+					Enable: mattermostModel.NewBool(false),
+				},
+			},
+		},
+		{
+			name: "Include public channels with compliance enabled nil",
+			lh: &LegalHold{
+				ID:                    mattermostModel.NewId(),
+				Name:                  "legalhold1",
+				DisplayName:           "Exclude public channels without compliance enabled Test",
+				UserIDs:               []string{mattermostModel.NewId(), mattermostModel.NewId()},
+				StartsAt:              100,
+				EndsAt:                0,
+				ExcludePublicChannels: false,
+			},
+			wantErr: true,
+			mmConfig: &mattermostModel.Config{
+				ComplianceSettings: mattermostModel.ComplianceSettings{
+					Enable: nil,
+				},
+			},
+		},
+		{
+			name: "Exclude public channels with compliance enabled",
+			lh: &LegalHold{
+				ID:                    mattermostModel.NewId(),
+				Name:                  "legalhold1",
+				DisplayName:           "Exclude public channels without compliance enabled Test",
+				UserIDs:               []string{mattermostModel.NewId(), mattermostModel.NewId()},
+				StartsAt:              100,
+				EndsAt:                0,
+				ExcludePublicChannels: true,
+			},
+			wantErr: false,
+			mmConfig: &mattermostModel.Config{
+				ComplianceSettings: mattermostModel.ComplianceSettings{
+					Enable: mattermostModel.NewBool(true),
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.lh.IsValidForCreate()
+			// Default mmConfig set compliance to true, since exclude public channels is false by default
+			// in code.
+			if tt.mmConfig == nil {
+				tt.mmConfig = &mattermostModel.Config{
+					ComplianceSettings: mattermostModel.ComplianceSettings{
+						Enable: mattermostModel.NewBool(true),
+					},
+				}
+			}
+
+			err := tt.lh.IsValidForCreate(tt.mmConfig)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -422,6 +499,7 @@ func TestModel_UpdateLegalHold_IsValid(t *testing.T) {
 		name     string
 		ulh      UpdateLegalHold
 		expected string
+		mmConfig *mattermostModel.Config
 	}{
 		{
 			name: "Valid",
@@ -483,11 +561,36 @@ func TestModel_UpdateLegalHold_IsValid(t *testing.T) {
 			},
 			expected: "LegalHold must end at a valid time or zero",
 		},
+		{
+			name: "Exclude public channels without compliance enabled",
+			ulh: UpdateLegalHold{
+				ID:                    mattermostModel.NewId(),
+				UserIDs:               []string{mattermostModel.NewId()},
+				DisplayName:           "TestName",
+				ExcludePublicChannels: false,
+			},
+			mmConfig: &mattermostModel.Config{
+				ComplianceSettings: mattermostModel.ComplianceSettings{
+					Enable: mattermostModel.NewBool(false),
+				},
+			},
+			expected: "Compliance must be enabled on the Mattermost server in order to include public channels in a LegalHold",
+		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			err := testCase.ulh.IsValid()
+			// Default mmConfig set compliance to true, since exclude public channels is false by default
+			// in code.
+			if testCase.mmConfig == nil {
+				testCase.mmConfig = &mattermostModel.Config{
+					ComplianceSettings: mattermostModel.ComplianceSettings{
+						Enable: mattermostModel.NewBool(true),
+					},
+				}
+			}
+
+			err := testCase.ulh.IsValid(testCase.mmConfig)
 			if err != nil {
 				if err.Error() != testCase.expected {
 					t.Errorf("expected: %s, got: %s", testCase.expected, err.Error())

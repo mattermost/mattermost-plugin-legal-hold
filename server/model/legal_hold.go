@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 
+	"github.com/mattermost/mattermost-server/v6/model"
 	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/pkg/errors"
 
@@ -58,7 +59,7 @@ func (lh *LegalHold) DeepCopy() LegalHold {
 // failure. It does not guarantee that creation in the store will be successful,
 // as other issues such as non-unique ID value can still cause the LegalHold to
 // fail to save.
-func (lh *LegalHold) IsValidForCreate() error {
+func (lh *LegalHold) IsValidForCreate(config *model.Config) error {
 	if !mattermostModel.IsValidId(lh.ID) {
 		return fmt.Errorf("LegalHold ID is not valid: %s", lh.ID)
 	}
@@ -91,6 +92,14 @@ func (lh *LegalHold) IsValidForCreate() error {
 
 	if lh.EndsAt < 0 {
 		return errors.New("LegalHold must end at a valid time or zero")
+	}
+
+	if lh.EndsAt > 0 && lh.StartsAt > lh.EndsAt {
+		return errors.New("LegalHold must end after it starts")
+	}
+
+	if !lh.ExcludePublicChannels && (config.ComplianceSettings.Enable == nil || !*config.ComplianceSettings.Enable) {
+		return errors.New("Compliance must be enabled on the Mattermost server in order to include public channels in a LegalHold")
 	}
 
 	return nil
@@ -166,7 +175,7 @@ type UpdateLegalHold struct {
 	EndsAt                int64    `json:"ends_at"`
 }
 
-func (ulh UpdateLegalHold) IsValid() error {
+func (ulh UpdateLegalHold) IsValid(config *model.Config) error {
 	if !mattermostModel.IsValidId(ulh.ID) {
 		return fmt.Errorf("LegalHold ID is not valid: %s", ulh.ID)
 	}
@@ -183,6 +192,10 @@ func (ulh UpdateLegalHold) IsValid() error {
 		if !mattermostModel.IsValidId(userID) {
 			return errors.New("LegalHold users must have valid IDs")
 		}
+	}
+
+	if !ulh.ExcludePublicChannels && (config.ComplianceSettings.Enable == nil || !*config.ComplianceSettings.Enable) {
+		return errors.New("Compliance must be enabled on the Mattermost server in order to include public channels in a LegalHold")
 	}
 
 	if ulh.EndsAt < 0 {
