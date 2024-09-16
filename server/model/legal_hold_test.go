@@ -537,7 +537,7 @@ func TestModel_UpdateLegalHold_IsValid(t *testing.T) {
 				ExcludePublicChannels: false,
 			},
 			mmConfigComplianceEnabled: false,
-			expected:                  "Compliance must be enabled on the Mattermost server in order to include public channels in a LegalHold",
+			expected:                  "Compliance monitoring must be enabled on the Mattermost server in order to include public channels in a LegalHold",
 		},
 		{
 			name: "Include public channels and compliance enabled",
