@@ -529,7 +529,7 @@ func TestModel_UpdateLegalHold_IsValid(t *testing.T) {
 			expected: "LegalHold must end at a valid time or zero",
 		},
 		{
-			name: "Include public channels and compliance disabled",
+			name: "Include public channels and compliance disabled",
 			ulh: UpdateLegalHold{
 				ID:                    mattermostModel.NewId(),
 				UserIDs:               []string{mattermostModel.NewId()},
