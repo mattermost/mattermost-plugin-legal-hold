@@ -93,7 +93,9 @@ func (p *Plugin) createLegalHold(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := legalHold.IsValidForCreate(config); err != nil {
+	mmConfigComplianceEnabled := config.ComplianceSettings.Enable != nil && *config.ComplianceSettings.Enable
+
+	if err := legalHold.IsValidForCreate(mmConfigComplianceEnabled); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -194,7 +196,9 @@ func (p *Plugin) updateLegalHold(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = updateLegalHold.IsValid(config); err != nil {
+	mmConfigComplianceEnabled := config.ComplianceSettings.Enable != nil && *config.ComplianceSettings.Enable
+
+	if err = updateLegalHold.IsValid(mmConfigComplianceEnabled); err != nil {
 		http.Error(w, "LegalHold update data is not valid", http.StatusBadRequest)
 		p.Client.Log.Error(err.Error())
 		return

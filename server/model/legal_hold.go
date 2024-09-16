@@ -58,7 +58,7 @@ func (lh *LegalHold) DeepCopy() LegalHold {
 // failure. It does not guarantee that creation in the store will be successful,
 // as other issues such as non-unique ID value can still cause the LegalHold to
 // fail to save.
-func (lh *LegalHold) IsValidForCreate(config *mattermostModel.Config) error {
+func (lh *LegalHold) IsValidForCreate(mmConfigComplianceEnabled bool) error {
 	if !mattermostModel.IsValidId(lh.ID) {
 		return fmt.Errorf("LegalHold ID is not valid: %s", lh.ID)
 	}
@@ -97,7 +97,7 @@ func (lh *LegalHold) IsValidForCreate(config *mattermostModel.Config) error {
 		return errors.New("LegalHold must end after it starts")
 	}
 
-	if !lh.ExcludePublicChannels && (config.ComplianceSettings.Enable == nil || !*config.ComplianceSettings.Enable) {
+	if !lh.ExcludePublicChannels && !mmConfigComplianceEnabled {
 		return errors.New("Compliance must be enabled on the Mattermost server in order to include public channels in a LegalHold")
 	}
 
@@ -174,7 +174,7 @@ type UpdateLegalHold struct {
 	EndsAt                int64    `json:"ends_at"`
 }
 
-func (ulh UpdateLegalHold) IsValid(config *mattermostModel.Config) error {
+func (ulh UpdateLegalHold) IsValid(mmConfigComplianceEnabled bool) error {
 	if !mattermostModel.IsValidId(ulh.ID) {
 		return fmt.Errorf("LegalHold ID is not valid: %s", ulh.ID)
 	}
@@ -193,7 +193,7 @@ func (ulh UpdateLegalHold) IsValid(config *mattermostModel.Config) error {
 		}
 	}
 
-	if !ulh.ExcludePublicChannels && (config.ComplianceSettings.Enable == nil || !*config.ComplianceSettings.Enable) {
+	if !ulh.ExcludePublicChannels && !mmConfigComplianceEnabled {
 		return errors.New("Compliance must be enabled on the Mattermost server in order to include public channels in a LegalHold")
 	}
 
