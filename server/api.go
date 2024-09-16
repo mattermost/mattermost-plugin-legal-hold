@@ -318,9 +318,7 @@ func (p *Plugin) testAmazonS3Connection(w http.ResponseWriter, _ *http.Request) 
 		return
 	}
 
-	config := p.API.GetConfig()
-	compilanceEnabled := config.ComplianceSettings.Enable != nil && *config.ComplianceSettings.Enable
-	filesBackendSettings := FixedFileSettingsToFileBackendSettings(conf.AmazonS3BucketSettings.Settings, compilanceEnabled, true)
+	filesBackendSettings := FixedFileSettingsToFileBackendSettings(conf.AmazonS3BucketSettings.Settings, true)
 	filesBackend, err := filestore.NewFileBackend(filesBackendSettings)
 	if err != nil {
 		err = errors.Wrap(err, "unable to initialize the file store")
