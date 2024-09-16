@@ -3,7 +3,6 @@ package model
 import (
 	"fmt"
 
-	"github.com/mattermost/mattermost-server/v6/model"
 	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/pkg/errors"
 
@@ -59,7 +58,7 @@ func (lh *LegalHold) DeepCopy() LegalHold {
 // failure. It does not guarantee that creation in the store will be successful,
 // as other issues such as non-unique ID value can still cause the LegalHold to
 // fail to save.
-func (lh *LegalHold) IsValidForCreate(config *model.Config) error {
+func (lh *LegalHold) IsValidForCreate(config *mattermostModel.Config) error {
 	if !mattermostModel.IsValidId(lh.ID) {
 		return fmt.Errorf("LegalHold ID is not valid: %s", lh.ID)
 	}
@@ -175,7 +174,7 @@ type UpdateLegalHold struct {
 	EndsAt                int64    `json:"ends_at"`
 }
 
-func (ulh UpdateLegalHold) IsValid(config *model.Config) error {
+func (ulh UpdateLegalHold) IsValid(config *mattermostModel.Config) error {
 	if !mattermostModel.IsValidId(ulh.ID) {
 		return fmt.Errorf("LegalHold ID is not valid: %s", ulh.ID)
 	}
