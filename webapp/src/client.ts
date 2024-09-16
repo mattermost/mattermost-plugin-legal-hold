@@ -13,12 +13,12 @@ class APIClient {
     };
 
     getLegalHolds = () => {
-        const url = `${this.url}/legalhold/list`;
+        const url = `${this.url}/legalhold`;
         return this.doGet(url);
     };
 
     createLegalHold = (data: CreateLegalHold) => {
-        const url = `${this.url}/legalhold/create`;
+        const url = `${this.url}/legalhold`;
         return this.doWithBody(url, 'post', data);
     };
 
@@ -28,7 +28,7 @@ class APIClient {
     };
 
     updateLegalHold = (id: string, data: UpdateLegalHold) => {
-        const url = `${this.url}/legalhold/${id}/update`;
+        const url = `${this.url}/legalhold/${id}`;
         return this.doWithBody(url, 'put', data);
     };
 
