@@ -98,7 +98,7 @@ func (lh *LegalHold) IsValidForCreate(mmConfigComplianceEnabled bool) error {
 	}
 
 	if !lh.ExcludePublicChannels && !mmConfigComplianceEnabled {
-		return errors.New("Compliance must be enabled on the Mattermost server in order to include public channels in a LegalHold")
+		return errors.New("Compliance monitoring must be enabled on the Mattermost server in order to include public channels in a LegalHold")
 	}
 
 	return nil
@@ -194,7 +194,7 @@ func (ulh UpdateLegalHold) IsValid(mmConfigComplianceEnabled bool) error {
 	}
 
 	if !ulh.ExcludePublicChannels && !mmConfigComplianceEnabled {
-		return errors.New("Compliance must be enabled on the Mattermost server in order to include public channels in a LegalHold")
+		return errors.New("Compliance monitoring must be enabled on the Mattermost server in order to include public channels in a LegalHold")
 	}
 
 	if ulh.EndsAt < 0 {
