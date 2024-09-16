@@ -82,10 +82,6 @@ func (kvs Impl) GetLegalHoldByID(id string) (*model.LegalHold, error) {
 }
 
 func (kvs Impl) UpdateLegalHold(lh, oldValue model.LegalHold) (*model.LegalHold, error) {
-	if !mattermostModel.IsValidId(lh.ID) {
-		return nil, fmt.Errorf("legal hold does not have a valid id")
-	}
-
 	lh.UpdateAt = mattermostModel.GetMillis()
 
 	key := fmt.Sprintf("%s%s", legalHoldPrefix, lh.ID)
