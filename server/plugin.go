@@ -166,7 +166,7 @@ func (p *Plugin) Reconfigure() error {
 	}
 
 	// Reinitialise the filestore backend
-	filesBackendSettings := FixedFileSettingsToFileBackendSettings(serverFileSettings, true)
+	filesBackendSettings := FixedFileSettingsToFileBackendSettings(serverFileSettings)
 	filesBackend, err := filestore.NewFileBackend(filesBackendSettings)
 	if err != nil {
 		p.Client.Log.Error("unable to initialize the files storage", "err", err)
@@ -202,7 +202,7 @@ func (p *Plugin) Reconfigure() error {
 	return nil
 }
 
-func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings, skipVerify bool) filestore.FileBackendSettings {
+func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings) filestore.FileBackendSettings {
 	if *fileSettings.DriverName == model.ImageDriverLocal {
 		return filestore.FileBackendSettings{
 			DriverName: *fileSettings.DriverName,
@@ -238,6 +238,6 @@ func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings, ski
 		AmazonS3SSE:                        fileSettings.AmazonS3SSE != nil && *fileSettings.AmazonS3SSE,
 		AmazonS3Trace:                      fileSettings.AmazonS3Trace != nil && *fileSettings.AmazonS3Trace,
 		AmazonS3RequestTimeoutMilliseconds: *fileSettings.AmazonS3RequestTimeoutMilliseconds,
-		SkipVerify:                         skipVerify,
+		SkipVerify:                         false,
 	}
 }
