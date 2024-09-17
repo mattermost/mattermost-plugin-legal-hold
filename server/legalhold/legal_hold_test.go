@@ -131,21 +131,21 @@ func TestLegalHold_Hash(t *testing.T) {
 			name:           "empty input",
 			input:          "",
 			secret:         "foo",
-			expectedOutput: "f7fbba6e0636f890e56fbbf3283e524c6fa3204ae298382d624741d0dc6638326e282c41be5e4254d8820772c5518a2c5a8c0c7f7eda19594a7eb539453e1ed7",
+			expectedOutput: "1c96626e0b37265976336cc10499fe1f48f9e591d68a48814c8c937613795929634c615a3fee488fd77526a352d1809f7a4e5bc1075bdc8f52e7d6cae0775a46",
 			expectedError:  nil,
 		},
 		{
 			name:           "valid input",
 			input:          "Hello, World!",
 			secret:         "foo",
-			expectedOutput: "1964d4b69d3631a6ff90143c75ae1fb5c5c6045600c0dc52f1db1e2155028b56159d5d281479221f4d38fee22239dab46528424c2b122b62c97e75f01f409f4d",
+			expectedOutput: "408dce73e276f62b584901c4b6395ce19c49e0c54982bb3f972cbb28579086138741362f07302817db0b158a03ffbd63a99169a87a897343be63e201269d11ef",
 			expectedError:  nil,
 		},
 		{
 			name:           "valid input",
-			input:          "Hello, World!",
+			input:          "2",
 			secret:         "",
-			expectedOutput: "374d794a95cdcfd8b35993185fef9ba368f160d8daf432d08ba9f1ed1e5abe6cc69291e0fa2fe0006a52570ef18c19def4e617c33ce52ef0a6e5fbe318cb0387",
+			expectedOutput: "0b68cd17f7c117926dcfc0f993d723c09b2f8bd5b4689a0dc6ff4577db06ebd7fa3b70290a6b8e3ea89550b12b6f2e50403290d8e1e70bac4316396359b51cdd",
 			expectedError:  nil,
 		},
 	}
@@ -153,7 +153,7 @@ func TestLegalHold_Hash(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			reader := bytes.NewReader([]byte(tc.input))
-			result, err := hash(tc.secret, reader)
+			result, err := hashFromReader(tc.secret, reader)
 
 			if err != nil {
 				if tc.expectedError == nil {

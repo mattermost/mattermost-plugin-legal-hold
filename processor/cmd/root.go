@@ -23,10 +23,12 @@ var rootCmd = &cobra.Command{
 
 var legalHoldData string
 var outputPath string
+var legalHoldSecret string
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&legalHoldData, "legal-hold-data", "", "Path to the legal hold data file")
 	rootCmd.PersistentFlags().StringVar(&outputPath, "output-path", "", "Path where the output files will be written")
+	rootCmd.PersistentFlags().StringVar(&legalHoldSecret, "legal-hold-secret", "", "Secret to verify the legal hold data")
 }
 
 func Execute() {
@@ -36,7 +38,14 @@ func Execute() {
 	}
 }
 
-func Process(_ *cobra.Command, _ []string) {
+func Process(cmd *cobra.Command, _ []string) {
+	if legalHoldData == "" {
+		fmt.Println("Error: --legal-hold-data flag is required")
+		fmt.Println("")
+		_ = cmd.Help()
+		os.Exit(1)
+	}
+
 	fmt.Println("Running the Mattermost Legal Hold Processor")
 	fmt.Printf("- Input data: %s\n", legalHoldData)
 	fmt.Printf("- Procesed output will be written to: %s\n", outputPath)
@@ -75,6 +84,22 @@ func Process(_ *cobra.Command, _ []string) {
 		fmt.Printf("- Legal Hold: %s (%s)\n", hold.Name, hold.ID)
 	}
 	fmt.Println()
+
+	// Verify the legal hold data
+	if legalHoldSecret != "" {
+		fmt.Println("Secret key was provided, verifying legal holds...")
+
+		for _, hold := range legalHolds {
+			fmt.Printf("- Verifying Legal Hold *%s*: ", hold.Name)
+			err := parse.ParseHashes(hold.Path, legalHoldSecret)
+			if err != nil {
+				fmt.Printf("[Error] %v\n", err)
+				continue
+			} else {
+				fmt.Println("Verified")
+			}
+		}
+	}
 
 	// Process Each Legal Hold.
 	for _, hold := range legalHolds {
