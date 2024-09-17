@@ -9,26 +9,26 @@ class APIClient {
     private readonly client4 = new Client4();
 
     downloadUrl = (id: string) => {
-        return `${this.url}/legalhold/${id}/download`;
+        return `${this.url}/legalholds/${id}/download`;
     };
 
     getLegalHolds = () => {
-        const url = `${this.url}/legalhold`;
+        const url = `${this.url}/legalholds`;
         return this.doGet(url);
     };
 
     createLegalHold = (data: CreateLegalHold) => {
-        const url = `${this.url}/legalhold`;
+        const url = `${this.url}/legalholds`;
         return this.doWithBody(url, 'post', data);
     };
 
     releaseLegalHold = (id: string) => {
-        const url = `${this.url}/legalhold/${id}/release`;
+        const url = `${this.url}/legalholds/${id}/release`;
         return this.doWithBody(url, 'post', {});
     };
 
     updateLegalHold = (id: string, data: UpdateLegalHold) => {
-        const url = `${this.url}/legalhold/${id}`;
+        const url = `${this.url}/legalholds/${id}`;
         return this.doWithBody(url, 'put', data);
     };
 
