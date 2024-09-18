@@ -43,7 +43,7 @@ jobs:
           - 10110:10110
           - 10025:10025
       mattermost-server:
-        image: mattermost/mattermost-enterprise-edition:master
+        image: mattermostdevelopment/mattermost-enterprise-edition:master
         env:
           DB_HOST: postgres
           DB_PORT_NUMBER: 5432
@@ -55,6 +55,7 @@ jobs:
           CI_MINIO_HOST: minio
           IS_CI: true
           MM_LICENSE: ${{ secrets.MM_E2E_TEST_LICENSE_ONPREM_ENT }}
+          MM_SERVICEENVIRONMENT: test
           MM_CLUSTERSETTINGS_READONLYCONFIG: false
           MM_EMAILSETTINGS_SMTPSERVER: inbucket
           MM_EMAILSETTINGS_SMTPPORT: 10025
