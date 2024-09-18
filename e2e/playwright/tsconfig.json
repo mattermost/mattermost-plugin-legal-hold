@@ -7,6 +7,7 @@
         "noEmit": true,
         "baseUrl": ".",
         "paths": {
+            "@support/*": ["support/*"],
             "@mattermost/client/*": ["../../../mattermost/webapp/platform/client/lib/*"],
             "@mattermost/types/*": ["../../../mattermost/webapp/platform/types/lib/*"],
             "@e2e-support/*": ["../../../mattermost/e2e-tests/playwright/support/*"],
