@@ -27,7 +27,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
 
     const release = () => {
         props.releaseLegalHold(lh);
-    };
+    };        
 
     const usernames = props.users.map((user) => {
         if (user) {
@@ -119,6 +119,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                 >
                     <a
                         href={downloadUrl}
+                        download={true}
                         style={{
                             marginRight: '20px',
                             height: '24px',
