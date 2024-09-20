@@ -27,7 +27,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
 
     const release = () => {
         props.releaseLegalHold(lh);
-    };        
+    };
 
     const usernames = props.users.map((user) => {
         if (user) {
