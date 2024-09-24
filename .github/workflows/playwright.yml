@@ -10,11 +10,10 @@ on:
 
 env:
   TERM: xterm
-  GO_VERSION: 1.21
 
 jobs:
   playwright-run:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     services:
       postgres:
         image: mattermostdevelopment/mirrored-postgres:12
@@ -59,44 +58,34 @@ jobs:
           MM_CLUSTERSETTINGS_READONLYCONFIG: false
           MM_EMAILSETTINGS_SMTPSERVER: inbucket
           MM_EMAILSETTINGS_SMTPPORT: 10025
-          MM_EXPERIMENTALSETTINGS_USENEWSAMLLIBRARY: true
           MM_SQLSETTINGS_DATASOURCE: "postgres://mmuser:mostest@postgres:5432/mattermost_test?sslmode=disable&connect_timeout=10"
           MM_SQLSETTINGS_DRIVERNAME: postgres
           MM_PLUGINSETTINGS_ENABLEUPLOADS: true
           MM_SERVICESETTINGS_SITEURL: http://localhost:8065
           MM_PLUGINSETTINGS_AUTOMATICPREPACKAGEDPLUGINS: false
-          MM_ANNOUNCEMENTSETTINGS_ADMINNOTICESENABLED: false
-          MM_FEATUREFLAGS_AppsEnabled: true
-
         ports:
           - 8065:8065
-          - 4000:4000
     env:
-      TYPE: NONE
-      PULL_REQUEST: ""
-      HEADLESS: true
-      DASHBOARD_ENABLE: false
-      FULL_REPORT: false
       MM_SERVICESETTINGS_SITEURL: http://localhost:8065
       MM_ADMIN_EMAIL: sysadmin@sample.mattermost.com
       MM_ADMIN_USERNAME: sysadmin
       MM_ADMIN_PASSWORD: Sys@dmin-sample1
-      TEST_DATABASE_URL: postgres://mmuser:mostest@localhost:5432/mattermost_test
-      MM_SERVICESETTINGS_ENABLEDEVELOPER: true
     steps:
       - name: ci/checkout-repo
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          path: mattermost-plugin-legal-hold
 
       - name: ci/setup-go
         uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
         with:
-          go-version: "${{ env.GO_VERSION }}"
+          go-version-file: mattermost-plugin-legal-hold/go.mod
           cache: true
 
       - name: ci/setup-node
         uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
         with:
-          node-version-file: ".nvmrc"
+          node-version-file: "mattermost-plugin-legal-hold/.nvmrc"
 
       - name: ci/create-admin-user
         run: |
@@ -104,61 +93,55 @@ jobs:
           if test $STATUSCODE -ne 201; then exit 1; fi
 
       - name: ci/install-go-dependencies
+        working-directory: ./mattermost-plugin-legal-hold
         run: go mod tidy
 
       - name: ci/install-plugin-webapp-deps
-        run: cd webapp && npm ci
+        working-directory: ./mattermost-plugin-legal-hold/webapp
+        run: npm ci
 
       - name: ci/build-and-install-plugin
+        working-directory: ./mattermost-plugin-legal-hold
         run: make deploy
 
       - name: ci/checkout-mattermost-monorepo
-        run: |
-          git clone https://github.com/mattermost/mattermost.git ../mattermost
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          repository: mattermost/mattermost
+          path: mattermost
 
       - name: ci/setup-node-for-mattermost-monorepo
         uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
         with:
-          node-version-file: "../mattermost/.nvmrc"
+          node-version-file: "mattermost/.nvmrc"
 
       - name: ci/install-mattermost-monorepo-webapp-deps
-        run: |
-          cd ../mattermost/webapp
-          npm i
+        working-directory: ./mattermost/webapp
+        run: npm ci
 
       - name: ci/install-mattermost-monorepo-playwright-deps
-        run: |
-          cd ../mattermost/e2e-tests/playwright
-          npm i
-          npx playwright install --with-deps
-
-      - name: ci/setup-node-for-mattermost-plugin
-        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
-        with:
-          node-version-file: ".nvmrc"
+        working-directory: ./mattermost/e2e-tests/playwright
+        run: npm ci
 
       - name: ci/install-plugin-playwright-deps
-        run: |
-          cd e2e/playwright
-          npm ci
+        working-directory: ./mattermost-plugin-legal-hold/e2e/playwright
+        run: npm ci
 
       - name: ci/check
-        run: |
-          cd e2e/playwright
-          npm run check
+        working-directory: ./mattermost-plugin-legal-hold/e2e/playwright
+        run: npm run check
 
       - name: ci/run-playwright-tests
-        run: |
-          cd e2e/playwright
-          npm run test-ci
+        working-directory: ./mattermost-plugin-legal-hold/e2e/playwright
+        run: npm run test-ci
         env:
           PW_BASE_URL: ${{ env.MM_SERVICESETTINGS_SITEURL }}
           PW_ENSURE_PLUGINS_INSTALLED: com.mattermost.plugin-legal-hold
 
       - name: ci/move-artifacts
         if: success() || failure()
+        working-directory: ./mattermost-plugin-legal-hold/e2e/playwright
         run: |
-          cd e2e/playwright
           mkdir results
           mv playwright-report results
 
@@ -166,4 +149,4 @@ jobs:
         if: success() || failure()
         with:
           name: test-results
-          path: e2e/playwright/results
+          path: mattermost-plugin-legal-hold/e2e/playwright/results
