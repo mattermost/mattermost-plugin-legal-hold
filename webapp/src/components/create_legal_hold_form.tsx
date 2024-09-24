@@ -8,6 +8,7 @@ import {GenericModal} from '@/components/mattermost-webapp/generic_modal/generic
 import Input from '@/components/mattermost-webapp/input/input';
 
 import './create_legal_hold_form.scss';
+import { InputProps } from 'react-select';
 
 interface CreateLegalHoldFormProps {
     createLegalHold: (data: CreateLegalHold) => Promise<any>;
@@ -29,10 +30,20 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
     };
 
     const startsAtChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
+        // Check if date is valid
+        const inputValue = new Date(e.target.value);
+        if (Number.isNaN(inputValue.getTime())) {
+            e.target.value = '';
+        }
         setStartsAt(e.target.value);
     };
 
     const endsAtChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
+        // Check if date is valid
+        const inputValue = new Date(e.target.value);
+        if (Number.isNaN(inputValue.getTime())) {
+            e.target.value = '';
+        }
         setEndsAt(e.target.value);
     };
 
