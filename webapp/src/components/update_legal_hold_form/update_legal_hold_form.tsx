@@ -25,7 +25,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
     const [startsAt, setStartsAt] = useState('');
     const [endsAt, setEndsAt] = useState('');
     const [saving, setSaving] = useState(false);
-    const [excludePublicChannels, setExcludePublicChannels] = useState(false);
+    const [excludePublicChannels, setExcludePublicChannels] = useState(true);
     const [serverError, setServerError] = useState('');
 
     const displayNameChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -231,4 +231,3 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
 };
 
 export default UpdateLegalHoldForm;
-
