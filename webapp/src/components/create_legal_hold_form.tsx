@@ -8,7 +8,6 @@ import {GenericModal} from '@/components/mattermost-webapp/generic_modal/generic
 import Input from '@/components/mattermost-webapp/input/input';
 
 import './create_legal_hold_form.scss';
-import { InputProps } from 'react-select';
 
 interface CreateLegalHoldFormProps {
     createLegalHold: (data: CreateLegalHold) => Promise<any>;
