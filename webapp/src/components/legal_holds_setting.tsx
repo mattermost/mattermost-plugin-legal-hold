@@ -195,8 +195,8 @@ const LegalHoldsSetting = () => {
                     legalHold={activeLegalHold}
                     visible={showSecretModal}
                     onExited={() => {
-                        setShowSecretModal(false)
-                        setActiveLegalHold(null)
+                        setShowSecretModal(false);
+                        setActiveLegalHold(null);
                     }}
                 />
 
