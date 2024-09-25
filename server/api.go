@@ -203,7 +203,7 @@ func (p *Plugin) updateLegalHold(w http.ResponseWriter, r *http.Request) {
 	// Retrieve the legal hold we are modifying
 	originalLegalHold, err := p.KVStore.GetLegalHoldByID(legalholdID)
 	if err != nil {
-		http.Error(w, "failed to update legal hold", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		p.Client.Log.Error(err.Error())
 		return
 	}
