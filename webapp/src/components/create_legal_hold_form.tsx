@@ -21,7 +21,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
     const [startsAt, setStartsAt] = useState('');
     const [endsAt, setEndsAt] = useState('');
     const [saving, setSaving] = useState(false);
-    const [excludePublicChannels, setExcludePublicChannels] = useState(false);
+    const [includePublicChannels, setIncludePublicChannels] = useState(false);
     const [serverError, setServerError] = useState('');
 
     const displayNameChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,8 +36,8 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
         setEndsAt(e.target.value);
     };
 
-    const excludePublicChannelsChanged: (e: React.ChangeEvent<HTMLInputElement>) => void = (e) => {
-        setExcludePublicChannels(e.target.checked);
+    const includePublicChannelsChanged: (e: React.ChangeEvent<HTMLInputElement>) => void = (e) => {
+        setIncludePublicChannels(e.target.checked);
     };
 
     const resetForm = () => {
@@ -46,6 +46,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
         setEndsAt('');
         setUsers([]);
         setSaving(false);
+        setIncludePublicChannels(false);
         setServerError('');
     };
 
@@ -60,7 +61,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
             ends_at: (new Date(endsAt)).getTime(),
             starts_at: (new Date(startsAt)).getTime(),
             display_name: displayName,
-            exclude_public_channels: excludePublicChannels,
+            include_public_channels: includePublicChannels,
             name: slugify(displayName),
         };
 
@@ -152,14 +153,18 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
                     >
                         <input
                             type='checkbox'
-                            id='legal-hold-exclude-public-channels'
-                            checked={excludePublicChannels}
-                            onChange={excludePublicChannelsChanged}
+                            id='legal-hold-include-public-channels'
+                            checked={includePublicChannels}
+                            onChange={includePublicChannelsChanged}
                             className={'create-legal-hold-checkbox'}
                         />
-                        <label htmlFor={'legal-hold-exclude-public-channels'}>
-                            {'Exclude public channels'}
+                        <label htmlFor={'legal-hold-include-public-channels'}>
+                            {'Include public channels'}
                         </label>
+                    </div>
+                    <div style={{display: (includePublicChannels) ? 'block' : 'none'}}>
+                        <i className='icon icon-alert-outline'/>
+                        <span>{'It is possible for users to access public content without becoming members of a public channel. This setting only captures public channels the users are members of.'}</span>
                     </div>
                     <div
                         style={{
