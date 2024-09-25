@@ -199,7 +199,7 @@ func (p *Plugin) updateLegalHold(w http.ResponseWriter, r *http.Request) {
 	mmConfigComplianceEnabled := config.ComplianceSettings.Enable != nil && *config.ComplianceSettings.Enable
 
 	if err = updateLegalHold.IsValid(mmConfigComplianceEnabled); err != nil {
-		http.Error(w, "LegalHold update data is not valid", http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		p.Client.Log.Error(err.Error())
 		return
 	}
