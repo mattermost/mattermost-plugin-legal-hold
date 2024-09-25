@@ -175,26 +175,38 @@ const LegalHoldsSetting = () => {
                 <CreateLegalHoldForm
                     createLegalHold={createLegalHold}
                     visible={showCreateModal}
-                    onExited={() => setShowCreateModal(false)}
+                    onExited={() => {
+                        setShowCreateModal(false);
+                        setActiveLegalHold(null);
+                    }}
                 />
 
                 <UpdateLegalHoldForm
                     updateLegalHold={updateLegalHold}
                     visible={showUpdateModal}
-                    onExited={() => setShowUpdateModal(false)}
+                    onExited={() => {
+                        setShowUpdateModal(false);
+                        setActiveLegalHold(null);
+                    }}
                     legalHold={activeLegalHold}
                 />
 
                 <ShowSecretModal
                     legalHold={activeLegalHold}
                     visible={showSecretModal}
-                    onExited={() => setShowSecretModal(false)}
+                    onExited={() => {
+                        setShowSecretModal(false)
+                        setActiveLegalHold(null)
+                    }}
                 />
 
                 <ConfirmRelease
                     legalHold={activeLegalHold}
                     releaseLegalHold={releaseLegalHold}
-                    onExited={() => setShowReleaseModal(false)}
+                    onExited={() => {
+                        setShowReleaseModal(false);
+                        setActiveLegalHold(null);
+                    }}
                     visible={showReleaseModal}
                 />
 
