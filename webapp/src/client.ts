@@ -9,32 +9,32 @@ class APIClient {
     private readonly client4 = new Client4();
 
     downloadUrl = (id: string) => {
-        return `${this.url}/legalhold/${id}/download`;
+        return `${this.url}/legalholds/${id}/download`;
     };
 
     getLegalHolds = () => {
-        const url = `${this.url}/legalhold/list`;
+        const url = `${this.url}/legalholds`;
         return this.doGet(url);
     };
 
     createLegalHold = (data: CreateLegalHold) => {
-        const url = `${this.url}/legalhold/create`;
-        return this.doPost(url, data);
+        const url = `${this.url}/legalholds`;
+        return this.doWithBody(url, 'post', data);
     };
 
     releaseLegalHold = (id: string) => {
-        const url = `${this.url}/legalhold/${id}/release`;
-        return this.doPost(url, {});
+        const url = `${this.url}/legalholds/${id}/release`;
+        return this.doWithBody(url, 'post', {});
     };
 
     updateLegalHold = (id: string, data: UpdateLegalHold) => {
-        const url = `${this.url}/legalhold/${id}/update`;
-        return this.doPost(url, data);
+        const url = `${this.url}/legalholds/${id}`;
+        return this.doWithBody(url, 'put', data);
     };
 
     testAmazonS3Connection = () => {
         const url = `${this.url}/test_amazon_s3_connection`;
-        return this.doPost(url, {}) as Promise<{message: string}>;
+        return this.doWithBody(url, 'post', {}) as Promise<{message: string}>;
     };
 
     private doGet = async (url: string, headers = {}) => {
@@ -58,9 +58,9 @@ class APIClient {
         });
     };
 
-    private doPost = async (url: string, body: any, headers = {}) => {
+    private doWithBody = async (url: string, method: string, body: any, headers = {}) => {
         const options = {
-            method: 'post',
+            method,
             body: JSON.stringify(body),
             headers,
         };

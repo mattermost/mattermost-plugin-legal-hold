@@ -11,17 +11,18 @@ import (
 
 // LegalHold represents one legal hold.
 type LegalHold struct {
-	ID                   string   `json:"id"`
-	Name                 string   `json:"name"`
-	DisplayName          string   `json:"display_name"`
-	CreateAt             int64    `json:"create_at"`
-	UpdateAt             int64    `json:"update_at"`
-	UserIDs              []string `json:"user_ids"`
-	StartsAt             int64    `json:"starts_at"`
-	EndsAt               int64    `json:"ends_at"`
-	LastExecutionEndedAt int64    `json:"last_execution_ended_at"`
-	ExecutionLength      int64    `json:"execution_length"`
-	Secret               string   `json:"secret"`
+	ID                    string   `json:"id"`
+	Name                  string   `json:"name"`
+	DisplayName           string   `json:"display_name"`
+	CreateAt              int64    `json:"create_at"`
+	UpdateAt              int64    `json:"update_at"`
+	UserIDs               []string `json:"user_ids"`
+	StartsAt              int64    `json:"starts_at"`
+	EndsAt                int64    `json:"ends_at"`
+	ExcludePublicChannels bool     `json:"exclude_public_channels"`
+	LastExecutionEndedAt  int64    `json:"last_execution_ended_at"`
+	ExecutionLength       int64    `json:"execution_length"`
+	Secret                string   `json:"secret"`
 }
 
 // DeepCopy creates a deep copy of the LegalHold.
@@ -31,16 +32,17 @@ func (lh *LegalHold) DeepCopy() LegalHold {
 	}
 
 	newLegalHold := LegalHold{
-		ID:                   lh.ID,
-		Name:                 lh.Name,
-		DisplayName:          lh.DisplayName,
-		CreateAt:             lh.CreateAt,
-		UpdateAt:             lh.UpdateAt,
-		StartsAt:             lh.StartsAt,
-		EndsAt:               lh.EndsAt,
-		LastExecutionEndedAt: lh.LastExecutionEndedAt,
-		ExecutionLength:      lh.ExecutionLength,
-		Secret:               lh.Secret,
+		ID:                    lh.ID,
+		Name:                  lh.Name,
+		DisplayName:           lh.DisplayName,
+		CreateAt:              lh.CreateAt,
+		UpdateAt:              lh.UpdateAt,
+		StartsAt:              lh.StartsAt,
+		EndsAt:                lh.EndsAt,
+		ExcludePublicChannels: lh.ExcludePublicChannels,
+		LastExecutionEndedAt:  lh.LastExecutionEndedAt,
+		ExecutionLength:       lh.ExecutionLength,
+		Secret:                lh.Secret,
 	}
 
 	if len(lh.UserIDs) > 0 {
@@ -56,7 +58,7 @@ func (lh *LegalHold) DeepCopy() LegalHold {
 // failure. It does not guarantee that creation in the store will be successful,
 // as other issues such as non-unique ID value can still cause the LegalHold to
 // fail to save.
-func (lh *LegalHold) IsValidForCreate() error {
+func (lh *LegalHold) IsValidForCreate(mmConfigComplianceEnabled bool) error {
 	if !mattermostModel.IsValidId(lh.ID) {
 		return fmt.Errorf("LegalHold ID is not valid: %s", lh.ID)
 	}
@@ -89,6 +91,14 @@ func (lh *LegalHold) IsValidForCreate() error {
 
 	if lh.EndsAt < 0 {
 		return errors.New("LegalHold must end at a valid time or zero")
+	}
+
+	if lh.EndsAt > 0 && lh.StartsAt > lh.EndsAt {
+		return errors.New("LegalHold must end after it starts")
+	}
+
+	if !lh.ExcludePublicChannels && !mmConfigComplianceEnabled {
+		return errors.New("Compliance monitoring must be enabled on the Mattermost server in order to include public channels in a LegalHold")
 	}
 
 	return nil
@@ -126,42 +136,45 @@ func (lh *LegalHold) IsFinished() bool {
 
 // BasePath returns the base file storage path for this legal hold.
 func (lh *LegalHold) BasePath() string {
-	return fmt.Sprintf("legal_hold/%s_(%s)", lh.Name, lh.ID)
+	return fmt.Sprintf("legal_hold/%s_%s", lh.Name, lh.ID)
 }
 
 // CreateLegalHold holds the data that is specified in the API call to create a LegalHold.
 type CreateLegalHold struct {
-	Name        string   `json:"name"`
-	DisplayName string   `json:"display_name"`
-	UserIDs     []string `json:"user_ids"`
-	StartsAt    int64    `json:"starts_at"`
-	EndsAt      int64    `json:"ends_at"`
+	Name                  string   `json:"name"`
+	DisplayName           string   `json:"display_name"`
+	UserIDs               []string `json:"user_ids"`
+	StartsAt              int64    `json:"starts_at"`
+	EndsAt                int64    `json:"ends_at"`
+	ExcludePublicChannels bool     `json:"exclude_public_channels"`
 }
 
 // NewLegalHoldFromCreate creates and populates a new LegalHold instance from
 // the provided CreateLegalHold instance.
 func NewLegalHoldFromCreate(lhc CreateLegalHold) LegalHold {
 	return LegalHold{
-		ID:                   mattermostModel.NewId(),
-		Name:                 lhc.Name,
-		DisplayName:          lhc.DisplayName,
-		UserIDs:              lhc.UserIDs,
-		StartsAt:             lhc.StartsAt,
-		EndsAt:               lhc.EndsAt,
-		LastExecutionEndedAt: 0,
-		ExecutionLength:      86400000,
+		ID:                    mattermostModel.NewId(),
+		Name:                  lhc.Name,
+		DisplayName:           lhc.DisplayName,
+		UserIDs:               lhc.UserIDs,
+		StartsAt:              lhc.StartsAt,
+		EndsAt:                lhc.EndsAt,
+		ExcludePublicChannels: lhc.ExcludePublicChannels,
+		LastExecutionEndedAt:  0,
+		ExecutionLength:       86400000,
 	}
 }
 
 // UpdateLegalHold holds the data that is specified in the API call to update a LegalHold.
 type UpdateLegalHold struct {
-	ID          string   `json:"id"`
-	DisplayName string   `json:"display_name"`
-	UserIDs     []string `json:"user_ids"`
-	EndsAt      int64    `json:"ends_at"`
+	ID                    string   `json:"id"`
+	DisplayName           string   `json:"display_name"`
+	UserIDs               []string `json:"user_ids"`
+	ExcludePublicChannels bool     `json:"exclude_public_channels"`
+	EndsAt                int64    `json:"ends_at"`
 }
 
-func (ulh UpdateLegalHold) IsValid() error {
+func (ulh UpdateLegalHold) IsValid(mmConfigComplianceEnabled bool) error {
 	if !mattermostModel.IsValidId(ulh.ID) {
 		return fmt.Errorf("LegalHold ID is not valid: %s", ulh.ID)
 	}
@@ -180,6 +193,10 @@ func (ulh UpdateLegalHold) IsValid() error {
 		}
 	}
 
+	if !ulh.ExcludePublicChannels && !mmConfigComplianceEnabled {
+		return errors.New("Compliance monitoring must be enabled on the Mattermost server in order to include public channels in a LegalHold")
+	}
+
 	if ulh.EndsAt < 0 {
 		return errors.New("LegalHold must end at a valid time or zero")
 	}
@@ -191,4 +208,5 @@ func (lh *LegalHold) ApplyUpdates(updates UpdateLegalHold) {
 	lh.DisplayName = updates.DisplayName
 	lh.UserIDs = updates.UserIDs
 	lh.EndsAt = updates.EndsAt
+	lh.ExcludePublicChannels = updates.ExcludePublicChannels
 }

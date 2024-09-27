@@ -5,13 +5,14 @@ import {IntlProvider} from 'react-intl';
 import Client from '@/client';
 import {CreateLegalHold, LegalHold, UpdateLegalHold} from '@/types';
 
+import CreateLegalHoldButton from '@/components/create_legal_hold_button';
 import CreateLegalHoldForm from '@/components/create_legal_hold_form';
 import LegalHoldTable from '@/components/legal_hold_table';
-import CreateLegalHoldButton from '@/components/create_legal_hold_button';
-
-import LegalHoldIcon from '@/components/legal_hold_icon.svg';
 import UpdateLegalHoldForm from '@/components/update_legal_hold_form';
+import ShowSecretModal from '@/components/show_secret_modal';
+
 import ConfirmRelease from '@/components/confirm_release';
+import LegalHoldIcon from '@/components/legal_hold_icon.svg';
 
 const LegalHoldsSetting = () => {
     const [legalHoldsFetched, setLegalHoldsFetched] = useState(false);
@@ -20,6 +21,7 @@ const LegalHoldsSetting = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showUpdateModal, setShowUpdateModal] = useState(false);
     const [showReleaseModal, setShowReleaseModal] = useState(false);
+    const [showSecretModal, setShowSecretModal] = useState(false);
     const [activeLegalHold, setActiveLegalHold] = useState<LegalHold|null>(null);
 
     const createLegalHold = async (data: CreateLegalHold) => {
@@ -65,6 +67,11 @@ const LegalHoldsSetting = () => {
         setShowReleaseModal(true);
     };
 
+    const doShowSecretModal = (legalHold: LegalHold) => {
+        setActiveLegalHold(legalHold);
+        setShowSecretModal(true);
+    };
+
     useEffect(() => {
         const fetchLegalHolds = async () => {
             try {
@@ -83,7 +90,7 @@ const LegalHoldsSetting = () => {
         if (!legalHoldsFetched && !legalHoldsFetching) {
             fetchLegalHolds().catch(console.error); //eslint-disable-line no-console
         }
-    });
+    }, [legalHoldsFetched, legalHoldsFetching]);
 
     return (
         <IntlProvider locale='en-US'>
@@ -161,6 +168,7 @@ const LegalHoldsSetting = () => {
                         legalHolds={legalHolds}
                         releaseLegalHold={doShowReleaseModal}
                         showUpdateModal={doShowUpdateModal}
+                        showSecretModal={doShowSecretModal}
                     />
                 )}
 
@@ -175,6 +183,12 @@ const LegalHoldsSetting = () => {
                     visible={showUpdateModal}
                     onExited={() => setShowUpdateModal(false)}
                     legalHold={activeLegalHold}
+                />
+
+                <ShowSecretModal
+                    legalHold={activeLegalHold}
+                    visible={showSecretModal}
+                    onExited={() => setShowSecretModal(false)}
                 />
 
                 <ConfirmRelease

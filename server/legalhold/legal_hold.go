@@ -2,6 +2,7 @@ package legalhold
 
 import (
 	"bytes"
+	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/csv"
 	"encoding/json"
@@ -87,7 +88,7 @@ func (ex *Execution) GetChannels() error {
 			return appErr
 		}
 
-		channelIDs, err := ex.store.GetChannelIDsForUserDuring(userID, ex.ExecutionStartTime, ex.ExecutionEndTime)
+		channelIDs, err := ex.store.GetChannelIDsForUserDuring(userID, ex.ExecutionStartTime, ex.ExecutionEndTime, ex.LegalHold.ExcludePublicChannels)
 		if err != nil {
 			return err
 		}
@@ -193,7 +194,7 @@ func (ex *Execution) WritePostsBatchToFile(channelID string, posts []model.Legal
 
 	hashReader := strings.NewReader(csvContent)
 
-	h, err := hash(ex.LegalHold.Secret, hashReader)
+	h, err := hashFromReader(ex.LegalHold.Secret, hashReader)
 	if err != nil {
 		return err
 	}
@@ -236,7 +237,7 @@ func (ex *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPos
 			return err
 		}
 
-		h, err := hash(ex.LegalHold.Secret, hashReader)
+		h, err := hashFromReader(ex.LegalHold.Secret, hashReader)
 		if err != nil {
 			return err
 		}
@@ -335,7 +336,7 @@ func (ex *Execution) UpdateIndexes() error {
 
 	hashReader := bytes.NewReader(data)
 
-	h, err := hash(ex.LegalHold.Secret, hashReader)
+	h, err := hashFromReader(ex.LegalHold.Secret, hashReader)
 	if err != nil {
 		return err
 	}
@@ -441,15 +442,11 @@ func (ex *Execution) filePath(channelID string, batchCreateAt int64, batchPostID
 	)
 }
 
-func hash(secret string, reader io.Reader) (string, error) {
-	hasher := sha512.New()
+// hashFromReader returns the HMAC-SHA512 hash of the reader's contents.
+func hashFromReader(secret string, reader io.Reader) (string, error) {
+	hasher := hmac.New(sha512.New, []byte(secret))
 
-	_, err := hasher.Write([]byte(secret))
-	if err != nil {
-		return "", err
-	}
-
-	_, err = io.Copy(hasher, reader)
+	_, err := io.Copy(hasher, reader)
 	if err != nil {
 		return "", err
 	}

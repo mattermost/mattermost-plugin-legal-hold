@@ -39,11 +39,11 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 	router := mux.NewRouter()
 
 	// Routes called by the plugin's webapp
-	router.HandleFunc("/api/v1/legalhold/list", p.listLegalHolds).Methods(http.MethodGet)
-	router.HandleFunc("/api/v1/legalhold/create", p.createLegalHold).Methods(http.MethodPost)
-	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/release", p.releaseLegalHold).Methods(http.MethodPost)
-	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/update", p.updateLegalHold).Methods(http.MethodPost)
-	router.HandleFunc("/api/v1/legalhold/{legalhold_id:[A-Za-z0-9]+}/download", p.downloadLegalHold).Methods(http.MethodGet)
+	router.HandleFunc("/api/v1/legalholds", p.listLegalHolds).Methods(http.MethodGet)
+	router.HandleFunc("/api/v1/legalholds", p.createLegalHold).Methods(http.MethodPost)
+	router.HandleFunc("/api/v1/legalholds/{legalhold_id:[A-Za-z0-9]+}/release", p.releaseLegalHold).Methods(http.MethodPost)
+	router.HandleFunc("/api/v1/legalholds/{legalhold_id:[A-Za-z0-9]+}", p.updateLegalHold).Methods(http.MethodPut)
+	router.HandleFunc("/api/v1/legalholds/{legalhold_id:[A-Za-z0-9]+}/download", p.downloadLegalHold).Methods(http.MethodGet)
 	router.HandleFunc("/api/v1/test_amazon_s3_connection", p.testAmazonS3Connection).Methods(http.MethodPost)
 
 	// Other routes
@@ -86,7 +86,19 @@ func (p *Plugin) createLegalHold(w http.ResponseWriter, r *http.Request) {
 	}
 
 	legalHold := model.NewLegalHoldFromCreate(createLegalHold)
-	// TODO: Validate all the provided data here?
+
+	config := p.API.GetConfig()
+	if config == nil {
+		http.Error(w, "failed to get config", http.StatusInternalServerError)
+		return
+	}
+
+	mmConfigComplianceEnabled := config.ComplianceSettings.Enable != nil && *config.ComplianceSettings.Enable
+
+	if err := legalHold.IsValidForCreate(mmConfigComplianceEnabled); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	savedLegalHold, err := p.KVStore.CreateLegalHold(legalHold)
 	if err != nil {
@@ -178,7 +190,15 @@ func (p *Plugin) updateLegalHold(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = updateLegalHold.IsValid(); err != nil {
+	config := p.API.GetConfig()
+	if config == nil {
+		http.Error(w, "failed to get config", http.StatusInternalServerError)
+		return
+	}
+
+	mmConfigComplianceEnabled := config.ComplianceSettings.Enable != nil && *config.ComplianceSettings.Enable
+
+	if err = updateLegalHold.IsValid(mmConfigComplianceEnabled); err != nil {
 		http.Error(w, "LegalHold update data is not valid", http.StatusBadRequest)
 		p.Client.Log.Error(err.Error())
 		return
@@ -318,7 +338,7 @@ func (p *Plugin) testAmazonS3Connection(w http.ResponseWriter, _ *http.Request) 
 		return
 	}
 
-	filesBackendSettings := FixedFileSettingsToFileBackendSettings(conf.AmazonS3BucketSettings.Settings, false, true)
+	filesBackendSettings := FixedFileSettingsToFileBackendSettings(conf.AmazonS3BucketSettings.Settings)
 	filesBackend, err := filestore.NewFileBackend(filesBackendSettings)
 	if err != nil {
 		err = errors.Wrap(err, "unable to initialize the file store")

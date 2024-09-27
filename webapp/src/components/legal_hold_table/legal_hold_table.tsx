@@ -10,6 +10,7 @@ interface LegalHoldTableProps {
     },
     releaseLegalHold: Function,
     showUpdateModal: Function,
+    showSecretModal: Function,
 }
 
 const LegalHoldTable = (props: LegalHoldTableProps) => {
@@ -25,7 +26,7 @@ const LegalHoldTable = (props: LegalHoldTableProps) => {
         props.actions.getMissingProfilesByIds(
             user_ids,
         );
-    });
+    }, [props.actions, user_ids]);
 
     return (
         <div>
@@ -50,6 +51,7 @@ const LegalHoldTable = (props: LegalHoldTableProps) => {
                             key={index}
                             releaseLegalHold={props.releaseLegalHold}
                             showUpdateModal={props.showUpdateModal}
+                            showSecretModal={props.showSecretModal}
                         />
                     );
                 })}

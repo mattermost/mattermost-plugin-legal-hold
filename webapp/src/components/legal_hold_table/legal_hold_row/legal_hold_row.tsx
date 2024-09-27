@@ -10,12 +10,14 @@ import OverlayTrigger from '@/components/mattermost-webapp/overlay_trigger';
 
 import DownloadIcon from './download-outline_F0B8F.svg';
 import EditIcon from './pencil-outline_F0CB6.svg';
+import EyeLockIcon from './eye-outline_F06D0.svg';
 
 interface LegalHoldRowProps {
     legalHold: LegalHold;
     users: UserProfile[];
     releaseLegalHold: Function;
     showUpdateModal: Function;
+    showSecretModal: Function;
 }
 
 const LegalHoldRow = (props: LegalHoldRowProps) => {
@@ -54,8 +56,8 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     delayShow={300}
                     placement='top'
                     overlay={(
-                        <Tooltip id={'UpdateLegalHoldTooltip'}>
-                            {'Update Legal Hold'}
+                        <Tooltip id={'ShowLegalHoldSecret'}>
+                            {'Display legal hold secret'}
                         </Tooltip>
                     )}
                 >
@@ -82,6 +84,34 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     delayShow={300}
                     placement='top'
                     overlay={(
+                        <Tooltip id={'UpdateLegalHoldTooltip'}>
+                            {'Show Legal Hold Secret'}
+                        </Tooltip>
+                    )}
+                >
+                    <a
+                        href='#'
+                        onClick={() => props.showSecretModal(lh)}
+                        style={{
+                            marginRight: '10px',
+                            height: '24px',
+                        }}
+                    >
+                        <span
+                            style={{
+                                fill: 'rgba(0, 0, 0, 0.5)',
+                            }}
+                        >
+                            <EyeLockIcon/>
+                        </span>
+                    </a>
+                </OverlayTrigger>
+                <OverlayTrigger
+
+                    // @ts-ignore
+                    delayShow={300}
+                    placement='top'
+                    overlay={(
                         <Tooltip id={'DownloadLegalHoldTooltip'}>
                             {'Download Legal Hold'}
                         </Tooltip>
@@ -89,6 +119,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                 >
                     <a
                         href={downloadUrl}
+                        download={true}
                         style={{
                             marginRight: '20px',
                             height: '24px',
