@@ -162,7 +162,13 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
                             {'Include public channels'}
                         </label>
                     </div>
-                    <div style={{display: (includePublicChannels) ? 'block' : 'none'}}>
+                    <div
+                        style={{
+                            display: (includePublicChannels) ? 'block' : 'none',
+                            marginTop: '-20px',
+                            marginBottom: '20px',
+                        }}
+                    >
                         <i className='icon icon-alert-outline'/>
                         <span>{'It is possible for users to access public content without becoming members of a public channel. This setting only captures public channels that users are members of.'}</span>
                     </div>
