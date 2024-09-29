@@ -39,6 +39,7 @@ const LegalHoldsSetting = () => {
         try {
             const response = await Client.releaseLegalHold(id);
             setLegalHoldsFetched(false);
+            setActiveLegalHold(null);
             return response;
         } catch (error) {
             console.log(error); //eslint-disable-line no-console
@@ -50,6 +51,7 @@ const LegalHoldsSetting = () => {
         try {
             const response = await Client.updateLegalHold(data.id, data);
             setLegalHoldsFetched(false);
+            setActiveLegalHold(null);
             return response;
         } catch (error) {
             console.log(error); //eslint-disable-line no-console
@@ -177,7 +179,6 @@ const LegalHoldsSetting = () => {
                     visible={showCreateModal}
                     onExited={() => {
                         setShowCreateModal(false);
-                        setActiveLegalHold(null);
                     }}
                 />
 
@@ -186,7 +187,6 @@ const LegalHoldsSetting = () => {
                     visible={showUpdateModal}
                     onExited={() => {
                         setShowUpdateModal(false);
-                        setActiveLegalHold(null);
                     }}
                     legalHold={activeLegalHold}
                 />
@@ -196,7 +196,6 @@ const LegalHoldsSetting = () => {
                     visible={showSecretModal}
                     onExited={() => {
                         setShowSecretModal(false);
-                        setActiveLegalHold(null);
                     }}
                 />
 
@@ -205,7 +204,6 @@ const LegalHoldsSetting = () => {
                     releaseLegalHold={releaseLegalHold}
                     onExited={() => {
                         setShowReleaseModal(false);
-                        setActiveLegalHold(null);
                     }}
                     visible={showReleaseModal}
                 />
