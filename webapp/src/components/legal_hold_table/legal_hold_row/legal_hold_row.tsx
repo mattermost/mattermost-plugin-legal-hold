@@ -49,8 +49,8 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     delayShow={300}
                     placement='top'
                     overlay={(
-                        <Tooltip id={'ShowLegalHoldSecret'}>
-                            {'Display legal hold secret'}
+                        <Tooltip id={'UpdateLegalHoldTooltip'}>
+                            {'Update legal hold'}
                         </Tooltip>
                     )}
                 >
@@ -77,7 +77,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     delayShow={300}
                     placement='top'
                     overlay={(
-                        <Tooltip id={'UpdateLegalHoldTooltip'}>
+                        <Tooltip id={'ShowLegalHoldSecret'}>
                             {'Show Legal Hold Secret'}
                         </Tooltip>
                     )}
