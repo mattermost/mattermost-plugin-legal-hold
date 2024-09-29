@@ -29,13 +29,6 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
         props.releaseLegalHold(lh);
     };
 
-    const usernames = props.users.map((user) => {
-        if (user) {
-            return `@${user.username} `;
-        }
-        return 'loading...';
-    });
-
     const downloadUrl = Client.downloadUrl(lh.id);
 
     return (
