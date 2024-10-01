@@ -25,7 +25,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
     const [startsAt, setStartsAt] = useState('');
     const [endsAt, setEndsAt] = useState('');
     const [saving, setSaving] = useState(false);
-    const [excludePublicChannels, setExcludePublicChannels] = useState(false);
+    const [includePublicChannels, setIncludePublicChannels] = useState(false);
     const [serverError, setServerError] = useState('');
 
     const displayNameChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,17 +36,18 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
         setEndsAt(e.target.value);
     };
 
-    const excludePublicChannelsChanged: (e: React.ChangeEvent<HTMLInputElement>) => void = (e) => {
-        setExcludePublicChannels(e.target.checked);
+    const includePublicChannelsChanged: (e: React.ChangeEvent<HTMLInputElement>) => void = (e) => {
+        setIncludePublicChannels(e.target.checked);
     };
 
     const resetForm = () => {
+        setId('');
         setDisplayName('');
         setEndsAt('');
         setUsers([]);
-        setSaving(false);
         setServerError('');
-        setId('');
+        setIncludePublicChannels(false);
+        setSaving(false);
     };
 
     // Populate initial form field values when the Legal Hold being edited changes.
@@ -59,7 +60,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
             setId(props.legalHold.id);
             setDisplayName(props.legalHold?.display_name);
             setUsers(props.users);
-            setExcludePublicChannels(props.legalHold.exclude_public_channels);
+            setIncludePublicChannels(props.legalHold.include_public_channels);
 
             if (props.legalHold.starts_at) {
                 const startsAtString = dayjs(props.legalHold.starts_at).format('YYYY-MM-DD');
@@ -87,7 +88,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
             id: props.legalHold.id,
             user_ids: users.map((user) => user.id),
             ends_at: (new Date(endsAt)).getTime(),
-            exclude_public_channels: excludePublicChannels,
+            include_public_channels: includePublicChannels,
             display_name: displayName,
         };
 
@@ -179,14 +180,24 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
                     >
                         <input
                             type='checkbox'
-                            id='legal-hold-exclude-public-channels'
-                            checked={excludePublicChannels}
-                            onChange={excludePublicChannelsChanged}
+                            id='legal-hold-include-public-channels'
+                            checked={includePublicChannels}
+                            onChange={includePublicChannelsChanged}
                             className={'create-legal-hold-checkbox'}
                         />
-                        <label htmlFor={'legal-hold-exclude-public-channels'}>
-                            {'Exclude public channels'}
+                        <label htmlFor={'legal-hold-include-public-channels'}>
+                            {'Include public channels'}
                         </label>
+                    </div>
+                    <div
+                        style={{
+                            display: (includePublicChannels) ? 'block' : 'none',
+                            marginTop: '-20px',
+                            marginBottom: '20px',
+                        }}
+                    >
+                        <i className='icon icon-alert-outline'/>
+                        <span>{'It is possible for users to access public content without becoming members of a public channel. This setting only captures public channels the users are members of.'}</span>
                     </div>
                     <div
                         style={{
@@ -231,4 +242,3 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
 };
 
 export default UpdateLegalHoldForm;
-

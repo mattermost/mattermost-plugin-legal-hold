@@ -29,13 +29,6 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
         props.releaseLegalHold(lh);
     };
 
-    const usernames = props.users.map((user) => {
-        if (user) {
-            return `@${user.username} `;
-        }
-        return 'loading...';
-    });
-
     const downloadUrl = Client.downloadUrl(lh.id);
 
     return (
@@ -56,8 +49,8 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     delayShow={300}
                     placement='top'
                     overlay={(
-                        <Tooltip id={'ShowLegalHoldSecret'}>
-                            {'Display legal hold secret'}
+                        <Tooltip id={'UpdateLegalHoldTooltip'}>
+                            {'Update legal hold'}
                         </Tooltip>
                     )}
                 >
@@ -84,7 +77,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     delayShow={300}
                     placement='top'
                     overlay={(
-                        <Tooltip id={'UpdateLegalHoldTooltip'}>
+                        <Tooltip id={'ShowLegalHoldSecret'}>
                             {'Show Legal Hold Secret'}
                         </Tooltip>
                     )}

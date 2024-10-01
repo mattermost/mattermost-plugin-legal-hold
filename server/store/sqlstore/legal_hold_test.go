@@ -119,7 +119,7 @@ func TestSQLStore_LegalHold_GetChannelIDsForUserDuring(t *testing.T) {
 	require.NoError(t, th.mmStore.ChannelMemberHistory().LogLeaveEvent(th.User1.Id, channels[9].Id, endTwo-1000))
 
 	// Check channel IDs for first window.
-	firstWindowChannelIDs, err := th.Store.GetChannelIDsForUserDuring(th.User1.Id, startOne, endOne, false)
+	firstWindowChannelIDs, err := th.Store.GetChannelIDsForUserDuring(th.User1.Id, startOne, endOne, true)
 	expectedOne := []string{
 		channels[1].Id,
 		channels[2].Id,
@@ -133,7 +133,7 @@ func TestSQLStore_LegalHold_GetChannelIDsForUserDuring(t *testing.T) {
 	require.ElementsMatch(t, firstWindowChannelIDs, expectedOne)
 
 	// Check channel IDs for second window.
-	secondWindowChannelIDs, err := th.Store.GetChannelIDsForUserDuring(th.User1.Id, startTwo, endTwo, false)
+	secondWindowChannelIDs, err := th.Store.GetChannelIDsForUserDuring(th.User1.Id, startTwo, endTwo, true)
 	expectedTwo := []string{
 		channels[3].Id,
 		channels[4].Id,
@@ -168,7 +168,7 @@ func TestLegalHold_GetChannelIDsForUserDuring_ExcludePublic(t *testing.T) {
 	require.NoError(t, th.mmStore.ChannelMemberHistory().LogJoinEvent(th.User1.Id, dmChannel.Id, start+1000))
 
 	// Check channel IDs
-	channelIDs, err := th.Store.GetChannelIDsForUserDuring(th.User1.Id, start, end, true)
+	channelIDs, err := th.Store.GetChannelIDsForUserDuring(th.User1.Id, start, end, false)
 	require.NoError(t, err)
 	require.ElementsMatch(t, channelIDs, []string{privateChannel.Id, dmChannel.Id, groupDM.Id})
 }

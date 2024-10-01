@@ -44,11 +44,11 @@ const LegalHoldTable = (props: LegalHoldTableProps) => {
                 <div style={{fontWeight: 'bold'}}>{'End Date'}</div>
                 <div style={{fontWeight: 'bold'}}>{'Users'}</div>
                 <div style={{fontWeight: 'bold'}}>{'Actions'}</div>
-                {legalHolds.map((legalHold, index) => {
+                {legalHolds.map((legalHold) => {
                     return (
                         <LegalHoldRow
                             legalHold={legalHold}
-                            key={index}
+                            key={'legalhold_' + legalHold.id}
                             releaseLegalHold={props.releaseLegalHold}
                             showUpdateModal={props.showUpdateModal}
                             showSecretModal={props.showSecretModal}

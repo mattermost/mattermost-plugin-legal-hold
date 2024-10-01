@@ -39,6 +39,7 @@ const LegalHoldsSetting = () => {
         try {
             const response = await Client.releaseLegalHold(id);
             setLegalHoldsFetched(false);
+            setActiveLegalHold(null);
             return response;
         } catch (error) {
             console.log(error); //eslint-disable-line no-console
@@ -50,6 +51,7 @@ const LegalHoldsSetting = () => {
         try {
             const response = await Client.updateLegalHold(data.id, data);
             setLegalHoldsFetched(false);
+            setActiveLegalHold(null);
             return response;
         } catch (error) {
             console.log(error); //eslint-disable-line no-console
@@ -175,26 +177,34 @@ const LegalHoldsSetting = () => {
                 <CreateLegalHoldForm
                     createLegalHold={createLegalHold}
                     visible={showCreateModal}
-                    onExited={() => setShowCreateModal(false)}
+                    onExited={() => {
+                        setShowCreateModal(false);
+                    }}
                 />
 
                 <UpdateLegalHoldForm
                     updateLegalHold={updateLegalHold}
                     visible={showUpdateModal}
-                    onExited={() => setShowUpdateModal(false)}
+                    onExited={() => {
+                        setShowUpdateModal(false);
+                    }}
                     legalHold={activeLegalHold}
                 />
 
                 <ShowSecretModal
                     legalHold={activeLegalHold}
                     visible={showSecretModal}
-                    onExited={() => setShowSecretModal(false)}
+                    onExited={() => {
+                        setShowSecretModal(false);
+                    }}
                 />
 
                 <ConfirmRelease
                     legalHold={activeLegalHold}
                     releaseLegalHold={releaseLegalHold}
-                    onExited={() => setShowReleaseModal(false)}
+                    onExited={() => {
+                        setShowReleaseModal(false);
+                    }}
                     visible={showReleaseModal}
                 />
 

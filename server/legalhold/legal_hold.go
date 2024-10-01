@@ -88,7 +88,7 @@ func (ex *Execution) GetChannels() error {
 			return appErr
 		}
 
-		channelIDs, err := ex.store.GetChannelIDsForUserDuring(userID, ex.ExecutionStartTime, ex.ExecutionEndTime, ex.LegalHold.ExcludePublicChannels)
+		channelIDs, err := ex.store.GetChannelIDsForUserDuring(userID, ex.ExecutionStartTime, ex.ExecutionEndTime, ex.LegalHold.IncludePublicChannels)
 		if err != nil {
 			return err
 		}
