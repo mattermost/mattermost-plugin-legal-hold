@@ -9,7 +9,7 @@ import (
 	"github.com/mattermost/mattermost-plugin-legal-hold/processor/model"
 )
 
-func ParseHashes(lhPath, secret string) error {
+func ParseHashes(tempPath, lhPath, secret string) error {
 	var hashes []model.Hash
 
 	fileHandle, err := os.Open(filepath.Join(lhPath, model.HashesPath))
@@ -23,7 +23,12 @@ func ParseHashes(lhPath, secret string) error {
 	}
 
 	for _, hash := range hashes {
-		fileHash, err := model.HashReader(secret, fileHandle)
+		hashReader, err := os.Open(filepath.Join(tempPath, hash.Path))
+		if err != nil {
+			return fmt.Errorf("error opening file: %w", err)
+		}
+
+		fileHash, err := model.HashReader(secret, hashReader)
 		if err != nil {
 			return fmt.Errorf("error reading hash: %w", err)
 		}

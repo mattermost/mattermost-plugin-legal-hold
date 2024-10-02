@@ -91,7 +91,7 @@ func Process(cmd *cobra.Command, _ []string) {
 
 		for _, hold := range legalHolds {
 			fmt.Printf("- Verifying Legal Hold *%s*: ", hold.Name)
-			err := parse.ParseHashes(hold.Path, legalHoldSecret)
+			err := parse.ParseHashes(tempPath, hold.Path, legalHoldSecret)
 			if err != nil {
 				fmt.Printf("[Error] %v\n", err)
 				continue
