@@ -242,7 +242,7 @@ func (ex *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPos
 			return err
 		}
 
-		err = ex.WriteFileHash(fileInfo.Path, h)
+		err = ex.WriteFileHash(path, h)
 		if err != nil {
 			return err
 		}
@@ -380,11 +380,24 @@ func (ex *Execution) WriteFileHashes() error {
 			return err
 		}
 
-		buf.Write(data)
-
-		writer := csv.NewWriter(&buf)
+		// Read the hashes already present on the file and update the ones that are already there
+		var hashes HashList
+		err = gocsv.UnmarshalWithoutHeaders(bytes.NewReader(data), &hashes)
+		if err != nil {
+			return fmt.Errorf("error parsing hashes csv file: %w", err)
+		}
 		for path, hash := range ex.hashes {
-			err2 := writer.Write([]string{path, hash})
+			if hashes.Exists(path) {
+				hashes = hashes.Replace(path, hash)
+			} else {
+				hashes = hashes.Add(path, hash)
+			}
+		}
+
+		// Write the updated hashes to the file
+		writer := csv.NewWriter(&buf)
+		for _, h := range hashes {
+			err2 := writer.Write([]string{h.Path, h.Hash})
 			if err2 != nil {
 				return err2
 			}
