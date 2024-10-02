@@ -65,48 +65,6 @@ For large legal holds, the download process can take more time than the HTTP req
 
 Keep in mind that the same applies for reverse proxies, which may have their own timeout settings. If you are using a reverse proxy, you may need to adjust the timeout settings there as well.
 
-## Development
+## Testing
 
 In order to run the plugin's scheduled job on demand for testing, you can send a request to the `/api/v1/legalhold/run` endpoint, as explained in this pull request: https://github.com/mattermost/mattermost-plugin-legal-hold/pull/43
-
-This plugin contains both a server and web app portion. Read our documentation about the [Developer Workflow](https://developers.mattermost.com/integrate/plugins/developer-workflow/) and [Developer Setup](https://developers.mattermost.com/integrate/plugins/developer-setup/) for more information about developing and extending plugins.
-
-## How to Release
-
-To trigger a release, follow these steps:
-
-1. **For Patch Release:** Run the following command:
-    ```
-    make patch
-    ```
-   This will release a patch change.
-
-2. **For Minor Release:** Run the following command:
-    ```
-    make minor
-    ```
-   This will release a minor change.
-
-3. **For Major Release:** Run the following command:
-    ```
-    make major
-    ```
-   This will release a major change.
-
-4. **For Patch Release Candidate (RC):** Run the following command:
-    ```
-    make patch-rc
-    ```
-   This will release a patch release candidate.
-
-5. **For Minor Release Candidate (RC):** Run the following command:
-    ```
-    make minor-rc
-    ```
-   This will release a minor release candidate.
-
-6. **For Major Release Candidate (RC):** Run the following command:
-    ```
-    make major-rc
-    ```
-   This will release a major release candidate.
