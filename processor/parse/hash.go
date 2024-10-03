@@ -1,29 +1,30 @@
 package parse
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/gocarina/gocsv"
 	"github.com/mattermost/mattermost-plugin-legal-hold/processor/model"
 )
 
 func ParseHashes(tempPath, lhPath, secret string) error {
-	var hashes []model.Hash
+	var hashes map[string]string
 
 	fileHandle, err := os.Open(filepath.Join(lhPath, model.HashesPath))
 	if err != nil {
-		return fmt.Errorf("error opening hashes csv file: %w", err)
+		return fmt.Errorf("error opening hashes.json file: %w", err)
 	}
 
-	err = gocsv.UnmarshalWithoutHeaders(fileHandle, &hashes)
+	decoder := json.NewDecoder(fileHandle)
+	err = decoder.Decode(&hashes)
 	if err != nil {
-		return fmt.Errorf("error parsing hashes csv file: %w", err)
+		return fmt.Errorf("error decoding hashes.json file: %w", err)
 	}
 
-	for _, hash := range hashes {
-		hashReader, err := os.Open(filepath.Join(tempPath, hash.Path))
+	for path, hash := range hashes {
+		hashReader, err := os.Open(filepath.Join(tempPath, path))
 		if err != nil {
 			return fmt.Errorf("error opening file: %w", err)
 		}
@@ -33,8 +34,8 @@ func ParseHashes(tempPath, lhPath, secret string) error {
 			return fmt.Errorf("error reading hash: %w", err)
 		}
 
-		if fileHash != hash.Hash {
-			return fmt.Errorf("hash mismatch for file: %s", hash.Path)
+		if fileHash != hash {
+			return fmt.Errorf("hash mismatch for file: %s", path)
 		}
 	}
 

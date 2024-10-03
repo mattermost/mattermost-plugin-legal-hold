@@ -90,7 +90,7 @@ func Process(cmd *cobra.Command, _ []string) {
 		fmt.Println("Secret key was provided, verifying legal holds...")
 
 		for _, hold := range legalHolds {
-			fmt.Printf("- Verifying Legal Hold *%s*: ", hold.Name)
+			fmt.Printf("- Verifying Legal Hold (%s): ", hold.Name)
 			err := parse.ParseHashes(tempPath, hold.Path, legalHoldSecret)
 			if err != nil {
 				fmt.Printf("[Error] %v\n", err)
@@ -99,6 +99,7 @@ func Process(cmd *cobra.Command, _ []string) {
 				fmt.Println("Verified")
 			}
 		}
+		fmt.Println()
 	}
 
 	// Process Each Legal Hold.
