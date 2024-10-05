@@ -253,9 +253,8 @@ func (j *LegalHoldJob) runWithHold(legalHold *model.LegalHold) {
 			if legalHold.LastExecutionEndedAt >= now {
 				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s is not yet ready to be executed again.", legalHold.ID))
 				return
-			} else {
-				j.client.Log.Debug(fmt.Sprintf("Last Execution Ended At: %d, now: %d", legalHold.LastExecutionEndedAt, now))
 			}
+			j.client.Log.Debug(fmt.Sprintf("Last Execution Ended At: %d, now: %d", legalHold.LastExecutionEndedAt, now))
 
 			j.client.Log.Debug(fmt.Sprintf("Creating manually triggered Legal Hold Execution for legal hold: %s", legalHold.ID))
 			lhe := legalhold.NewExecution(*legalHold, j.papi, j.sqlstore, j.filebackend)
