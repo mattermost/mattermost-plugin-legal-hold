@@ -24,6 +24,7 @@ const ConfirmRun = (props: ConfirmRunProps) => {
         setSaving(true);
         props.runLegalHold(props.legalHold.id).then((_) => {
             props.onExited();
+            setSaving(false);
         }).catch((error) => {
             setSaving(false);
             setServerError(error.toString());
