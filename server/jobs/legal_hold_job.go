@@ -194,10 +194,9 @@ func (j *LegalHoldJob) runWithHold(legalHold *model.LegalHold) {
 	settings = j.settings.Clone()
 	j.mux.Unlock()
 
-	j.client.Log.Info("Processing all Legal Holds")
-
 	// No legal hold specified, run as scheduled for all holds.
 	if legalHold == nil {
+		j.client.Log.Info("Processing all Legal Holds")
 		// Retrieve the legal holds from the store.
 		legalHolds, err := j.kvstore.GetAllLegalHolds()
 		if err != nil {
@@ -244,36 +243,46 @@ func (j *LegalHoldJob) runWithHold(legalHold *model.LegalHold) {
 		// Just one legal hold specified - force run it now.
 		j.client.Log.Debug(fmt.Sprintf("Manually triggered legal hold run for legal hold: %s", legalHold.ID))
 		now := mattermostModel.GetMillis()
-		if legalHold.IsFinished() {
-			j.client.Log.Debug(fmt.Sprintf("Legal Hold %s has ended and therefore does not executing.", legalHold.ID))
-			return
-		}
 
-		if legalHold.LastExecutionEndedAt >= now {
-			j.client.Log.Debug(fmt.Sprintf("Legal Hold %s is not yet ready to be executed again.", legalHold.ID))
-			return
-		}
-
-		j.client.Log.Debug(fmt.Sprintf("Creating manually triggered Legal Hold Execution for legal hold: %s", legalHold.ID))
-		lhe := legalhold.NewExecution(*legalHold, j.papi, j.sqlstore, j.filebackend)
-
-		if end, err := lhe.Execute(); err != nil {
-			j.client.Log.Error("An error occurred executing the legal hold.", err)
-		} else {
-			old, err := j.kvstore.GetLegalHoldByID(legalHold.ID)
-			if err != nil {
-				j.client.Log.Error("Failed to fetch the LegalHold prior to updating", err)
+		for {
+			if legalHold.IsFinished() {
+				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s has ended and therefore does not executing.", legalHold.ID))
 				return
 			}
-			lh := *old
-			lh.LastExecutionEndedAt = end
-			newLH, err := j.kvstore.UpdateLegalHold(lh, *old)
-			if err != nil {
-				j.client.Log.Error("Failed to update legal hold", err)
+
+			if legalHold.LastExecutionEndedAt >= now {
+				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s is not yet ready to be executed again.", legalHold.ID))
 				return
+			} else {
+				j.client.Log.Debug(fmt.Sprintf("Last Execution Ended At: %d, now: %d", legalHold.LastExecutionEndedAt, now))
 			}
-			lh = *newLH
-			j.client.Log.Info(fmt.Sprintf("%v", lh))
+
+			j.client.Log.Debug(fmt.Sprintf("Creating manually triggered Legal Hold Execution for legal hold: %s", legalHold.ID))
+			lhe := legalhold.NewExecution(*legalHold, j.papi, j.sqlstore, j.filebackend)
+
+			if lhe.ExecutionEndTime > now {
+				j.client.Log.Info(fmt.Sprintf("Legal Hold %s: limiting execution end time to ensure it is not in the future.", legalHold.ID))
+				lhe.ExecutionEndTime = now
+			}
+
+			if end, err := lhe.Execute(); err != nil {
+				j.client.Log.Error("An error occurred executing the legal hold.", err)
+			} else {
+				old, err := j.kvstore.GetLegalHoldByID(legalHold.ID)
+				if err != nil {
+					j.client.Log.Error("Failed to fetch the LegalHold prior to updating", err)
+					return
+				}
+				lh := *old
+				lh.LastExecutionEndedAt = end
+				newLH, err := j.kvstore.UpdateLegalHold(lh, *old)
+				if err != nil {
+					j.client.Log.Error("Failed to update legal hold", err)
+					return
+				}
+				legalHold = newLH
+				j.client.Log.Info(fmt.Sprintf("%v", legalHold))
+			}
 		}
 	}
 
