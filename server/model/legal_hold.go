@@ -19,7 +19,7 @@ type LegalHold struct {
 	UserIDs               []string `json:"user_ids"`
 	StartsAt              int64    `json:"starts_at"`
 	EndsAt                int64    `json:"ends_at"`
-	ExcludePublicChannels bool     `json:"exclude_public_channels"`
+	IncludePublicChannels bool     `json:"include_public_channels"`
 	LastExecutionEndedAt  int64    `json:"last_execution_ended_at"`
 	ExecutionLength       int64    `json:"execution_length"`
 	Secret                string   `json:"secret"`
@@ -39,7 +39,7 @@ func (lh *LegalHold) DeepCopy() LegalHold {
 		UpdateAt:              lh.UpdateAt,
 		StartsAt:              lh.StartsAt,
 		EndsAt:                lh.EndsAt,
-		ExcludePublicChannels: lh.ExcludePublicChannels,
+		IncludePublicChannels: lh.IncludePublicChannels,
 		LastExecutionEndedAt:  lh.LastExecutionEndedAt,
 		ExecutionLength:       lh.ExecutionLength,
 		Secret:                lh.Secret,
@@ -93,6 +93,10 @@ func (lh *LegalHold) IsValidForCreate() error {
 		return errors.New("LegalHold must end at a valid time or zero")
 	}
 
+	if lh.EndsAt > 0 && lh.StartsAt > lh.EndsAt {
+		return errors.New("LegalHold must end after it starts")
+	}
+
 	return nil
 }
 
@@ -138,7 +142,7 @@ type CreateLegalHold struct {
 	UserIDs               []string `json:"user_ids"`
 	StartsAt              int64    `json:"starts_at"`
 	EndsAt                int64    `json:"ends_at"`
-	ExcludePublicChannels bool     `json:"exclude_public_channels"`
+	IncludePublicChannels bool     `json:"include_public_channels"`
 }
 
 // NewLegalHoldFromCreate creates and populates a new LegalHold instance from
@@ -151,7 +155,7 @@ func NewLegalHoldFromCreate(lhc CreateLegalHold) LegalHold {
 		UserIDs:               lhc.UserIDs,
 		StartsAt:              lhc.StartsAt,
 		EndsAt:                lhc.EndsAt,
-		ExcludePublicChannels: lhc.ExcludePublicChannels,
+		IncludePublicChannels: lhc.IncludePublicChannels,
 		LastExecutionEndedAt:  0,
 		ExecutionLength:       86400000,
 	}
@@ -162,7 +166,7 @@ type UpdateLegalHold struct {
 	ID                    string   `json:"id"`
 	DisplayName           string   `json:"display_name"`
 	UserIDs               []string `json:"user_ids"`
-	ExcludePublicChannels bool     `json:"exclude_public_channels"`
+	IncludePublicChannels bool     `json:"include_public_channels"`
 	EndsAt                int64    `json:"ends_at"`
 }
 
@@ -196,5 +200,5 @@ func (lh *LegalHold) ApplyUpdates(updates UpdateLegalHold) {
 	lh.DisplayName = updates.DisplayName
 	lh.UserIDs = updates.UserIDs
 	lh.EndsAt = updates.EndsAt
-	lh.ExcludePublicChannels = updates.ExcludePublicChannels
+	lh.IncludePublicChannels = updates.IncludePublicChannels
 }

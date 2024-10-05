@@ -166,8 +166,7 @@ func (p *Plugin) Reconfigure() error {
 	}
 
 	// Reinitialise the filestore backend
-	// FIXME: Boolean flags shouldn't be hard coded.
-	filesBackendSettings := FixedFileSettingsToFileBackendSettings(serverFileSettings, false, true)
+	filesBackendSettings := FixedFileSettingsToFileBackendSettings(serverFileSettings)
 	filesBackend, err := filestore.NewFileBackend(filesBackendSettings)
 	if err != nil {
 		p.Client.Log.Error("unable to initialize the files storage", "err", err)
@@ -175,6 +174,17 @@ func (p *Plugin) Reconfigure() error {
 	}
 
 	if err = filesBackend.TestConnection(); err != nil {
+		pluginConfig := p.Client.Configuration.GetPluginConfig()
+
+		// Disable the S3 settings in case the AWS config is invalid
+		pluginConfig["amazons3bucketsettings"].(map[string]interface{})["Enable"] = false
+
+		confErr := p.Client.Configuration.SavePluginConfig(pluginConfig)
+		if confErr != nil {
+			p.Client.Log.Error("Error while saving plugin config.", "Error", confErr.Error())
+			return confErr
+		}
+
 		err = errors.Wrap(err, "connection test for filestore failed")
 		p.Client.Log.Error(err.Error())
 		return err
@@ -203,7 +213,7 @@ func (p *Plugin) Reconfigure() error {
 	return nil
 }
 
-func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings, enableComplianceFeature bool, skipVerify bool) filestore.FileBackendSettings {
+func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings) filestore.FileBackendSettings {
 	if *fileSettings.DriverName == model.ImageDriverLocal {
 		return filestore.FileBackendSettings{
 			DriverName: *fileSettings.DriverName,
@@ -236,9 +246,9 @@ func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings, ena
 		AmazonS3Endpoint:                   *fileSettings.AmazonS3Endpoint,
 		AmazonS3SSL:                        fileSettings.AmazonS3SSL != nil && *fileSettings.AmazonS3SSL,
 		AmazonS3SignV2:                     fileSettings.AmazonS3SignV2 != nil && *fileSettings.AmazonS3SignV2,
-		AmazonS3SSE:                        fileSettings.AmazonS3SSE != nil && *fileSettings.AmazonS3SSE && enableComplianceFeature,
+		AmazonS3SSE:                        fileSettings.AmazonS3SSE != nil && *fileSettings.AmazonS3SSE,
 		AmazonS3Trace:                      fileSettings.AmazonS3Trace != nil && *fileSettings.AmazonS3Trace,
 		AmazonS3RequestTimeoutMilliseconds: *fileSettings.AmazonS3RequestTimeoutMilliseconds,
-		SkipVerify:                         skipVerify,
+		SkipVerify:                         false,
 	}
 }

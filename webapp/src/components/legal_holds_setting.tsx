@@ -8,11 +8,12 @@ import {CreateLegalHold, LegalHold, UpdateLegalHold} from '@/types';
 import CreateLegalHoldButton from '@/components/create_legal_hold_button';
 import CreateLegalHoldForm from '@/components/create_legal_hold_form';
 import LegalHoldTable from '@/components/legal_hold_table';
+import ShowSecretModal from '@/components/show_secret_modal';
 
 import ConfirmRelease from '@/components/confirm_release';
 import LegalHoldIcon from '@/components/legal_hold_icon.svg';
 import UpdateLegalHoldForm from '@/components/update_legal_hold_form';
-import ConfirmRun from "@/components/confirm_run";
+import ConfirmRun from '@/components/confirm_run';
 
 const LegalHoldsSetting = () => {
     const [legalHoldsFetched, setLegalHoldsFetched] = useState(false);
@@ -22,6 +23,7 @@ const LegalHoldsSetting = () => {
     const [showUpdateModal, setShowUpdateModal] = useState(false);
     const [showReleaseModal, setShowReleaseModal] = useState(false);
     const [showRunModal, setShowRunModal] = useState(false);
+    const [showSecretModal, setShowSecretModal] = useState(false);
     const [activeLegalHold, setActiveLegalHold] = useState<LegalHold|null>(null);
 
     const createLegalHold = async (data: CreateLegalHold) => {
@@ -39,6 +41,7 @@ const LegalHoldsSetting = () => {
         try {
             const response = await Client.releaseLegalHold(id);
             setLegalHoldsFetched(false);
+            setActiveLegalHold(null);
             return response;
         } catch (error) {
             console.log(error); //eslint-disable-line no-console
@@ -50,6 +53,7 @@ const LegalHoldsSetting = () => {
         try {
             const response = await Client.updateLegalHold(data.id, data);
             setLegalHoldsFetched(false);
+            setActiveLegalHold(null);
             return response;
         } catch (error) {
             console.log(error); //eslint-disable-line no-console
@@ -81,7 +85,12 @@ const LegalHoldsSetting = () => {
     const doShowRunModal = (legalHold: LegalHold) => {
         setActiveLegalHold(legalHold);
         setShowRunModal(true);
-    }
+    };
+
+    const doShowSecretModal = (legalHold: LegalHold) => {
+        setActiveLegalHold(legalHold);
+        setShowSecretModal(true);
+    };
 
     useEffect(() => {
         const fetchLegalHolds = async () => {
@@ -180,26 +189,41 @@ const LegalHoldsSetting = () => {
                         releaseLegalHold={doShowReleaseModal}
                         showUpdateModal={doShowUpdateModal}
                         runLegalHold={doShowRunModal}
+                        showSecretModal={doShowSecretModal}
                     />
                 )}
 
                 <CreateLegalHoldForm
                     createLegalHold={createLegalHold}
                     visible={showCreateModal}
-                    onExited={() => setShowCreateModal(false)}
+                    onExited={() => {
+                        setShowCreateModal(false);
+                    }}
                 />
 
                 <UpdateLegalHoldForm
                     updateLegalHold={updateLegalHold}
                     visible={showUpdateModal}
-                    onExited={() => setShowUpdateModal(false)}
+                    onExited={() => {
+                        setShowUpdateModal(false);
+                    }}
                     legalHold={activeLegalHold}
+                />
+
+                <ShowSecretModal
+                    legalHold={activeLegalHold}
+                    visible={showSecretModal}
+                    onExited={() => {
+                        setShowSecretModal(false);
+                    }}
                 />
 
                 <ConfirmRelease
                     legalHold={activeLegalHold}
                     releaseLegalHold={releaseLegalHold}
-                    onExited={() => setShowReleaseModal(false)}
+                    onExited={() => {
+                        setShowReleaseModal(false);
+                    }}
                     visible={showReleaseModal}
                 />
 

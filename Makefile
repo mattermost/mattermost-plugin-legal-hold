@@ -92,11 +92,11 @@ endif
 processor:
 	rm -rf $(PROCESSOR_DIR)/bin;
 	mkdir -p $(PROCESSOR_DIR)/bin;
-	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-linux-amd64;
-	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-linux-arm64;
-	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-darwin-amd64;
-	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-darwin-arm64;
-	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-windows-amd64.exe;
+	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-v$(PLUGIN_VERSION)-linux-amd64;
+	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-v$(PLUGIN_VERSION)-linux-arm64;
+	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-v$(PLUGIN_VERSION)-darwin-amd64;
+	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-v$(PLUGIN_VERSION)-darwin-arm64;
+	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-v$(PLUGIN_VERSION)-windows-amd64.exe;
 
 ## Ensures NPM dependencies are installed without having to run this all the time.
 webapp/node_modules: $(wildcard webapp/package.json)
@@ -208,7 +208,8 @@ detach: setup-attach
 .PHONY: test
 test: webapp/node_modules
 ifneq ($(HAS_SERVER),)
-	$(GO) test -v $(GO_TEST_FLAGS) ./server/...
+	TEST_DB_DRIVER_NAME=postgres $(GO) test -v $(GO_TEST_FLAGS) ./server/...
+	TEST_DB_DRIVER_NAME=mysql $(GO) test -v $(GO_TEST_FLAGS) ./server/...
 endif
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && $(NPM) run test;

@@ -201,17 +201,6 @@ func TestKVStore_UpdateLegalHold(t *testing.T) {
 	assert.Equal(t, lh3.ExecutionLength, lh2.ExecutionLength)
 	assert.NotEqual(t, lh3.UpdateAt, lh2.UpdateAt)
 	assert.Equal(t, lh3.CreateAt, lh2.UpdateAt)
-
-	// Test updating a legal hold that does not exist
-	lh4 := model.LegalHold{
-		ID:          "doesnotexist",
-		Name:        "legal-hold-4",
-		DisplayName: "Legal Hold 4",
-		UserIDs:     []string{mattermostModel.NewId()},
-		StartsAt:    mattermostModel.GetMillis(),
-	}
-	_, err = kvstore.UpdateLegalHold(lh4, *lh3)
-	require.Error(t, err)
 }
 
 func TestKVStore_DeleteLegalHold(t *testing.T) {

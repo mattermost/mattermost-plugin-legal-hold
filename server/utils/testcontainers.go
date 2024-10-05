@@ -63,7 +63,7 @@ func createTestDBMySQL(ctx context.Context, databaseName string) (string, TearDo
 		return mysqlContainer.Terminate(ctx)
 	}
 
-	connStr, err := mysqlContainer.ConnectionString(ctx, "sslmode=disable", "readTimeout=30s", "writeTimeout=30s", "charset=utf8mb4,utf8")
+	connStr, err := mysqlContainer.ConnectionString(ctx, "readTimeout=30s", "writeTimeout=30s", "charset=utf8mb4,utf8")
 	if err != nil {
 		return "", nil, errors.Wrap(err, "cannot generate connection string for mysql")
 	}

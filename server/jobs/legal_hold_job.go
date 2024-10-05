@@ -237,6 +237,7 @@ func (j *LegalHoldJob) runWithHold(legalHold *model.LegalHold) {
 					lh = *newLH
 					j.client.Log.Info(fmt.Sprintf("%v", lh))
 				}
+				j.client.Log.Info("legal hold executed", "legal_hold_id", lh.ID, "legal_hold_name", lh.Name)
 			}
 		}
 	} else {
