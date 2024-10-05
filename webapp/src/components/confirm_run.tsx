@@ -41,8 +41,8 @@ const ConfirmRun = (props: ConfirmRunProps) => {
                 <React.Fragment>
                     {'You have requested to run the following Legal Hold: '}
                     <strong>{'"'}{lh.display_name}{'"'}</strong>
-                    {'This will schedule the legal hold to run as soon as possible, updating it to the current point ' +
-                     'in time. In a few minutes you will be able to download the legal hold data.'}
+                    {'. This will schedule the legal hold to run as soon as possible, updating it to the current point ' +
+                     'in time. In a few minutes you will be able to download the new legal hold data.'}
                 </React.Fragment>
             );
         }
