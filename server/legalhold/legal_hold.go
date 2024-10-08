@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha512"
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -37,7 +36,7 @@ type Execution struct {
 	channelIDs []string
 
 	index  model.LegalHoldIndex
-	hashes map[string]string
+	hashes model.HashList
 }
 
 // NewExecution creates a new Execution that is ready to use.
@@ -242,7 +241,7 @@ func (ex *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPos
 			return err
 		}
 
-		err = ex.WriteFileHash(fileInfo.Path, h)
+		err = ex.WriteFileHash(path, h)
 		if err != nil {
 			return err
 		}
@@ -352,46 +351,44 @@ func (ex *Execution) WriteFileHash(path, hash string) error {
 }
 
 func (ex *Execution) WriteFileHashes() error {
-	hashesFilePath := fmt.Sprintf("%s/hashes.csv", ex.basePath())
+	hashesFilePath := fmt.Sprintf("%s/hashes.json", ex.basePath())
 
 	if exists, err := ex.fileBackend.FileExists(hashesFilePath); err != nil {
-		return err
+		return fmt.Errorf("failed to check if hashes file exists: %w", err)
 	} else if !exists {
-		var buf bytes.Buffer
-		writer := csv.NewWriter(&buf)
-		for path, hash := range ex.hashes {
-			err2 := writer.Write([]string{path, hash})
-			if err2 != nil {
-				return err2
-			}
+		// If the file does not exist, just write the hashes we have into it
+
+		hashesFileContent, err := json.MarshalIndent(ex.hashes, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal hashes: %w", err)
 		}
-		writer.Flush()
 
-		lineReader := bytes.NewReader(buf.Bytes())
-
-		_, err = ex.fileBackend.WriteFile(lineReader, hashesFilePath)
+		_, err = ex.fileBackend.WriteFile(bytes.NewReader(hashesFileContent), hashesFilePath)
 		if err != nil {
 			return err
 		}
 	} else {
-		var buf bytes.Buffer
 		data, err := ex.fileBackend.ReadFile(hashesFilePath)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to open hashes.json file: %w", err)
 		}
 
-		buf.Write(data)
-
-		writer := csv.NewWriter(&buf)
+		var currentHashes model.HashList
+		err = json.Unmarshal(data, &currentHashes)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal hashes.json file: %w", err)
+		}
 		for path, hash := range ex.hashes {
-			err2 := writer.Write([]string{path, hash})
-			if err2 != nil {
-				return err2
-			}
+			currentHashes[path] = hash
 		}
-		writer.Flush()
 
-		lineReader := bytes.NewReader(buf.Bytes())
+		// Write the updated hashes to the file
+		hashesFileContent, err := json.MarshalIndent(currentHashes, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal updated hashes: %w", err)
+		}
+
+		lineReader := bytes.NewReader(hashesFileContent)
 
 		_, err = ex.fileBackend.WriteFile(lineReader, hashesFilePath)
 		if err != nil {

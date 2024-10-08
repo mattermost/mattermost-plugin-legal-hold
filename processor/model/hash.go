@@ -7,12 +7,9 @@ import (
 	"io"
 )
 
-const HashesPath = "hashes.csv"
+const HashesPath = "hashes.json"
 
-type Hash struct {
-	Path string `csv:"path"`
-	Hash string `csv:"hash"`
-}
+type HashList map[string]string
 
 // HashReader returns the HMAC-SHA512 hash of the reader's contents.
 func HashReader(secret string, reader io.Reader) (string, error) {

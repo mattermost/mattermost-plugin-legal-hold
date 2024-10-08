@@ -88,16 +88,24 @@ func Process(cmd *cobra.Command, _ []string) {
 	// Verify the legal hold data
 	if legalHoldSecret != "" {
 		fmt.Println("Secret key was provided, verifying legal holds...")
+		var errorsOnVerify bool
 
 		for _, hold := range legalHolds {
-			fmt.Printf("- Verifying Legal Hold *%s*: ", hold.Name)
-			err := parse.ParseHashes(hold.Path, legalHoldSecret)
+			fmt.Printf("- Verifying Legal Hold (%s): ", hold.Name)
+			err := parse.ParseHashes(tempPath, hold.Path, legalHoldSecret)
 			if err != nil {
 				fmt.Printf("[Error] %v\n", err)
+				errorsOnVerify = true
 				continue
 			} else {
 				fmt.Println("Verified")
 			}
+		}
+		fmt.Println()
+
+		if errorsOnVerify {
+			fmt.Println("Failed to verify the authenticity of the legal holds. Exiting.")
+			os.Exit(1)
 		}
 	}
 
