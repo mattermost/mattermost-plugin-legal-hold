@@ -19,10 +19,10 @@ test('create a legal hold successfully', async ({pw, pages}) => {
     // instansiate page model objects
     legalHoldPluginPage = new LegalHoldPluginPage(page);
 
-    //scroll to legal hold page
+    //scroll to legal hold page from system console
     await legalHoldPluginPage.legalHoldPlugin.click();
 
-    //click the create new button and modal is displayed
+    //click create new button and modal is displayed
     await legalHoldPluginPage.createNewButton.click();
     await expect(legalHoldPluginPage.createModal).toBeVisible();
 
@@ -33,7 +33,7 @@ test('create a legal hold successfully', async ({pw, pages}) => {
     await legalHoldPluginPage.selectUsername(user.username);
     await legalHoldPluginPage.enterStartDate('2024-10-28');
 
-    //submit and check that modal is gone
+    //submit and check that modal is not visible
     await legalHoldPluginPage.legalHoldButton.click();
     await expect(legalHoldPluginPage.createModal).not.toBeVisible();
 });
