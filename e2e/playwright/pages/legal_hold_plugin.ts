@@ -19,10 +19,10 @@ export class LegalHoldPluginPage {
     constructor(page: Page) {
         this.page = page;
 
-        //legal hold option on system console
+        // legal hold option on system console
         this.legalHoldPlugin = page.getByRole('link', {name: 'Legal Hold Plugin'});
 
-        //create new button
+        // create new button
         this.createNewButton = page.getByText('create new').first();
 
         // legal hold modal fields
@@ -33,7 +33,7 @@ export class LegalHoldPluginPage {
         this.usernameDropdown = page.locator('#react-select-2-input');
         this.startDate = page.getByPlaceholder('Starting from');
 
-        //create button
+        // create button
         this.legalHoldButton = page.getByRole('button', {name: 'Create legal hold'});
     }
 
@@ -42,12 +42,8 @@ export class LegalHoldPluginPage {
     }
 
     async selectUsername(username: string) {
-        await this.usernameDropdown.fill(username.charAt(0));
+        await this.usernameDropdown.fill(username.charAt(1));
         await this.page.getByRole('option', {name: username}).click();
-    }
-
-    async enterStartDate(date: string) {
-        await this.startDate.fill(date);
     }
 }
 export default LegalHoldPluginPage;
