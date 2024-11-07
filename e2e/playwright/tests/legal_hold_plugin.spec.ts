@@ -30,11 +30,17 @@ test('create a legal hold successfully', async ({pw, pages}) => {
     // fill in  details
     await legalHoldPluginPage.nameField.click();
     await legalHoldPluginPage.enterLegalHoldName('Sample Legal Hold');
-    await legalHoldPluginPage.username.click();
+    await legalHoldPluginPage.usernameField.click();
     await legalHoldPluginPage.selectUsername(user.username);
     await legalHoldPluginPage.startDate.fill(today);
 
     // submit and check that modal is not visible
     await legalHoldPluginPage.legalHoldButton.click();
     await expect(legalHoldPluginPage.createModal).not.toBeVisible();
+
+    // verify created plugin name, start and end date and user
+    await expect(legalHoldPluginPage.verifyName).toHaveText('Sample Legal Hold');
+    await expect(legalHoldPluginPage.verifyEndDate).toBeVisible();
+    await expect(legalHoldPluginPage.verifyStartDate).toBeVisible();
+    await expect(legalHoldPluginPage.verifyUsers).toBeVisible();
 });

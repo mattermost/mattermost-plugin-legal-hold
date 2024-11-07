@@ -5,8 +5,12 @@ test('Admin user is able to access the plugin successfully', async ({pw, pages})
     const {adminUser} = await pw.initSetup();
     const {page} = await pw.testBrowser.login(adminUser);
 
+    // # Enable Plugin
+    //await adminClient.enablePlugin('com.mattermost.plugin-legal-hold');
+
     // # Visit system console
     const systemConsolePage = new pages.SystemConsolePage(page);
+
     await systemConsolePage.goto();
     await systemConsolePage.toBeVisible();
 
