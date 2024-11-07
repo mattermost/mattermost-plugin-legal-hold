@@ -1,7 +1,7 @@
 import {test, expect} from '@e2e-support/test_fixture';
 import LegalHoldPluginPage from '../pages/legal_hold_plugin';
 
-test('create a legal hold successfully', async ({pw, pages}) => {
+test('Admin user can create a legal hold successfully', async ({pw, pages}) => {
     // login as admin user
     const {adminUser, adminClient, user} = await pw.initSetup();
     const {page} = await pw.testBrowser.login(adminUser);
