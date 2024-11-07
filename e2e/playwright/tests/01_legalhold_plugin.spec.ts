@@ -19,5 +19,5 @@ test('Admin user is able to access the plugin successfully', async ({pw, pages})
     await page.getByTestId('saveSetting').click();
 
     // * Verify that the plugin is active
-    await expect(page.getByTestId('create')).toHaveCount(1);
+    await expect(page.getByTestId('create')).toHaveCount(2);
 });
