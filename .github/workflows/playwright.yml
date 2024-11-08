@@ -138,15 +138,10 @@ jobs:
           PW_BASE_URL: ${{ env.MM_SERVICESETTINGS_SITEURL }}
           PW_ENSURE_PLUGINS_INSTALLED: com.mattermost.plugin-legal-hold
 
-      - name: ci/move-artifacts
-        if: success() || failure()
-        working-directory: ./mattermost-plugin-legal-hold/e2e/playwright
-        run: |
-          mkdir results
-          mv playwright-report results
-
       - uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4.3.0
         if: success() || failure()
         with:
           name: test-results
-          path: mattermost-plugin-legal-hold/e2e/playwright/results
+          path: |
+            mattermost-plugin-legal-hold/e2e/playwright/results
+            mattermost-plugin-legal-hold/e2e/playwright/test-results

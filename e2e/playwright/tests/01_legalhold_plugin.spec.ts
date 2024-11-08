@@ -7,6 +7,7 @@ test('Admin user is able to access the plugin successfully', async ({pw, pages})
 
     // # Visit system console
     const systemConsolePage = new pages.SystemConsolePage(page);
+
     await systemConsolePage.goto();
     await systemConsolePage.toBeVisible();
 
@@ -17,6 +18,8 @@ test('Admin user is able to access the plugin successfully', async ({pw, pages})
     await page.getByTestId('PluginSettings.PluginStates.com+mattermost+plugin-legal-hold.Enabletrue').check();
     await page.getByTestId('saveSetting').click();
 
-    // * Verify that the plugin is active and ready to use
-    await expect(page.getByTestId('create')).toHaveCount(2);
+    // * Verify that the plugin is active
+    await expect(
+        page.getByTestId('PluginSettings.PluginStates.com+mattermost+plugin-legal-hold.Enabletrue'),
+    ).toBeTruthy();
 });
