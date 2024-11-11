@@ -21,6 +21,11 @@ export class LegalHoldPluginPage {
     readonly verifyStartDate: Locator;
     readonly verifyEndDate: Locator;
 
+    readonly verifyHoldOnPage: Locator;
+    readonly releasebutton: Locator;
+    readonly modalreleaseButton: Locator;
+    readonly verifyRelease: Locator;
+
     constructor(page: Page) {
         this.page = page;
 
@@ -46,6 +51,16 @@ export class LegalHoldPluginPage {
         this.verifyUsers = page.getByText('1 users').first();
         this.verifyStartDate = page.getByText('Date').first();
         this.verifyEndDate = page.getByText('Never').first();
+
+        //click release button on page
+        this.verifyHoldOnPage = page.locator('a:nth-child(4)').nth(0);
+        this.releasebutton = page.locator('a:nth-child(4)').first();
+
+        // confirm release on modal
+        this.modalreleaseButton = page.getByRole('button', {name: 'Release'});
+
+        // verify release
+        this.verifyRelease = page.getByRole('button', {name: 'Release'});
     }
 
     async enterLegalHoldName(name: string) {
