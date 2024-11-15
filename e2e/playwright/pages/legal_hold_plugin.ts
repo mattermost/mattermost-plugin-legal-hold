@@ -24,7 +24,8 @@ export class LegalHoldPluginPage {
     readonly verifyHoldOnPage: Locator;
     readonly releaseButton: Locator;
     readonly modalReleaseButton: Locator;
-    readonly verifyRelease: Locator;
+
+    readonly updateHold: Locator;
 
     constructor(page: Page) {
         this.page = page;
@@ -59,8 +60,8 @@ export class LegalHoldPluginPage {
         // confirm release on modal
         this.modalReleaseButton = page.getByRole('button', {name: 'Release'});
 
-        // verify release
-        this.verifyRelease = page.getByRole('button', {name: 'Release'});
+        //update hold icon
+        this.updateHold = page.locator('div:nth-child(10) > a').first();
     }
 
     async enterLegalHoldName(name: string) {
