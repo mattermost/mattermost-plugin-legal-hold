@@ -21,6 +21,12 @@ export class LegalHoldPluginPage {
     readonly verifyStartDate: Locator;
     readonly verifyEndDate: Locator;
 
+    readonly verifyHoldOnPage: Locator;
+    readonly releaseButton: Locator;
+    readonly modalReleaseButton: Locator;
+
+    readonly updateHold: Locator;
+
     constructor(page: Page) {
         this.page = page;
 
@@ -46,6 +52,16 @@ export class LegalHoldPluginPage {
         this.verifyUsers = page.getByText('1 users').first();
         this.verifyStartDate = page.getByText('Date').first();
         this.verifyEndDate = page.getByText('Never').first();
+
+        // click release button on page
+        this.verifyHoldOnPage = page.getByText('New Hold').first();
+        this.releaseButton = page.getByRole('link', {name: 'Release'});
+
+        // confirm release on modal
+        this.modalReleaseButton = page.getByRole('button', {name: 'Release'});
+
+        //update hold icon
+        this.updateHold = page.locator('div:nth-child(10) > a').first();
     }
 
     async enterLegalHoldName(name: string) {
@@ -56,5 +72,10 @@ export class LegalHoldPluginPage {
         await this.usernameDropdown.fill(username);
         await this.page.getByRole('option', {name: username}).click();
     }
+
+    releaseHold(legalHoldName: string): Locator {
+        return this.page.locator(`div:has-text("${legalHoldName}")`).getByRole('link', {name: 'Release'}).first();
+    }
 }
+
 export default LegalHoldPluginPage;
