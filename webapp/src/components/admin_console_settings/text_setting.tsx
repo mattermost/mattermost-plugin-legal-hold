@@ -18,6 +18,7 @@ const TextSetting = (props: Props) => {
         >
             <input
                 id={props.id}
+                data-testid={`${props.id}-input`}
                 className='form-control'
                 type='text'
                 value={props.value}

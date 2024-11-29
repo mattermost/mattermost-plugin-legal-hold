@@ -31,6 +31,7 @@ const LegalHoldTable = (props: LegalHoldTableProps) => {
     return (
         <div>
             <div
+                aria-label='Legal Holds Table'
                 style={{
                     display: 'grid',
                     gridTemplateColumns: 'auto auto auto auto auto',
@@ -39,11 +40,26 @@ const LegalHoldTable = (props: LegalHoldTableProps) => {
                     alignItems: 'center',
                 }}
             >
-                <div style={{fontWeight: 'bold'}}>{'Name'}</div>
-                <div style={{fontWeight: 'bold'}}>{'Start Date'}</div>
-                <div style={{fontWeight: 'bold'}}>{'End Date'}</div>
-                <div style={{fontWeight: 'bold'}}>{'Users'}</div>
-                <div style={{fontWeight: 'bold'}}>{'Actions'}</div>
+                <div
+                    aria-label='name header'
+                    style={{fontWeight: 'bold'}}
+                >{'Name'}</div>
+                <div
+                    aria-label='start date header'
+                    style={{fontWeight: 'bold'}}
+                >{'Start Date'}</div>
+                <div
+                    aria-label='end date header'
+                    style={{fontWeight: 'bold'}}
+                >{'End Date'}</div>
+                <div
+                    aria-label='users header'
+                    style={{fontWeight: 'bold'}}
+                >{'Users'}</div>
+                <div
+                    aria-label='actions header'
+                    style={{fontWeight: 'bold'}}
+                >{'Actions'}</div>
                 {legalHolds.map((legalHold) => {
                     return (
                         <LegalHoldRow

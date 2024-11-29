@@ -1,80 +1,119 @@
-import {type Locator, type Page} from '@playwright/test';
+import {expect, type Locator, type Page} from '@playwright/test';
 
 export class LegalHoldPluginPage {
     readonly page: Page;
 
-    readonly legalHoldPlugin: Locator;
+    readonly createModal: CreateModal;
+    readonly releaseModal: ReleaseModal;
 
     readonly createNewButton: Locator;
-    readonly createModal: Locator;
-
-    readonly nameField: Locator;
-    readonly legalHoldName: Locator;
-    readonly usernameField: Locator;
-    readonly usernameDropdown: Locator;
-    readonly startDate: Locator;
-
-    readonly legalHoldButton: Locator;
-
-    readonly verifyName: Locator;
-    readonly verifyUsers: Locator;
-    readonly verifyStartDate: Locator;
-    readonly verifyEndDate: Locator;
-
-    readonly verifyHoldOnPage: Locator;
-    readonly releaseButton: Locator;
-    readonly modalReleaseButton: Locator;
-
-    readonly updateHold: Locator;
 
     constructor(page: Page) {
         this.page = page;
 
-        // legal hold option on system console
-        this.legalHoldPlugin = page.getByRole('link', {name: 'Legal Hold Plugin'});
-
         // create new button
-        this.createNewButton = page.getByText('create new').first();
+        this.createNewButton = page.getByTestId('createNewLegalHoldOnTop');
 
-        // legal hold modal fields
-        this.createModal = page.getByText('Create a new legal hold');
-        this.nameField = page.getByPlaceholder('Name');
-        this.legalHoldName = page.getByPlaceholder('New Legal Hold...');
-        this.usernameField = page.locator('.css-19bb58m input:first-of-type');
-        this.usernameDropdown = page.locator('#react-select-2-input');
-        this.startDate = page.getByPlaceholder('Starting from');
+        // create modal
+        this.createModal = new CreateModal(page.getByRole('dialog', {name: 'Create a new legal hold'}));
 
-        // create button
-        this.legalHoldButton = page.getByRole('button', {name: 'Create legal hold'});
-
-        // check plugin name is present
-        this.verifyName = page.getByText('Sample Legal Hold').first();
-        this.verifyUsers = page.getByText('1 users').first();
-        this.verifyStartDate = page.getByText('Date').first();
-        this.verifyEndDate = page.getByText('Never').first();
-
-        // click release button on page
-        this.verifyHoldOnPage = page.getByText('New Hold').first();
-        this.releaseButton = page.getByRole('link', {name: 'Release'});
-
-        // confirm release on modal
-        this.modalReleaseButton = page.getByRole('button', {name: 'Release'});
-
-        //update hold icon
-        this.updateHold = page.locator('div:nth-child(10) > a').first();
-    }
-
-    async enterLegalHoldName(name: string) {
-        await this.legalHoldName.fill(name);
+        // release modal
+        this.releaseModal = new ReleaseModal(page.getByRole('dialog', {name: 'Release Legal Hold'}));
     }
 
     async selectUsername(username: string) {
-        await this.usernameDropdown.fill(username);
+        await this.createModal.usernameInput.fill(username);
         await this.page.getByRole('option', {name: username}).click();
     }
 
-    releaseHold(legalHoldName: string): Locator {
-        return this.page.locator(`div:has-text("${legalHoldName}")`).getByRole('link', {name: 'Release'}).first();
+    getLegalHold(name: string): Locator {
+        return this.page.getByText(name);
+    }
+
+    async getLegalHoldId(name: string) {
+        const legalHold = await this.getLegalHold(name);
+        return await legalHold.getAttribute('data-legalholdid');
+    }
+
+    async getStartDate(name: string) {
+        const id = await this.getLegalHoldId(name);
+        return this.page.getByTestId(`start-date-${id}`);
+    }
+
+    async getEndDate(name: string) {
+        const id = await this.getLegalHoldId(name);
+        return this.page.getByTestId(`end-date-${id}`);
+    }
+
+    async getUsers(name: string) {
+        const id = await this.getLegalHoldId(name);
+        return this.page.getByTestId(`users-${id}`);
+    }
+
+    getUpdateButton(name: string): Locator {
+        return this.page.getByLabel(`${name} update button`);
+    }
+
+    getShowSecretButton(name: string): Locator {
+        return this.page.getByLabel(`${name} show secret button`);
+    }
+
+    getDownloadButton(name: string): Locator {
+        return this.page.getByLabel(`${name} download button`);
+    }
+
+    getReleaseButton(name: string): Locator {
+        return this.page.getByRole('button', {name: `${name} release button`});
+    }
+}
+
+class CreateModal {
+    readonly container: Locator;
+
+    readonly nameInput: Locator;
+    readonly usernamePlaceholder: Locator;
+    readonly usernameInput: Locator;
+    readonly includePublicChannelsCheckbox: Locator;
+    readonly startingFromInput: Locator;
+    readonly endingAtInput: Locator;
+    readonly cancelButton: Locator;
+    readonly createButton: Locator;
+
+    constructor(container: Locator) {
+        this.container = container;
+
+        this.nameInput = container.getByPlaceholder('Name');
+        this.usernamePlaceholder = container.locator('.css-19bb58m input:first-of-type');
+        this.usernameInput = container.locator('#react-select-2-input');
+        this.includePublicChannelsCheckbox = container.getByRole('checkbox', {name: 'Include public channels'});
+        this.startingFromInput = container.getByPlaceholder('Starting from');
+        this.endingAtInput = container.getByPlaceholder('Ending at');
+        this.cancelButton = container.getByRole('button', {name: 'Cancel'});
+        this.createButton = container.getByRole('button', {name: 'Create legal hold'});
+    }
+
+    async toBeVisible() {
+        await expect(this.container).toBeVisible();
+    }
+}
+
+class ReleaseModal {
+    readonly container: Locator;
+
+    readonly body: Locator;
+    readonly cancelButton: Locator;
+    readonly releaseButton: Locator;
+
+    constructor(container: Locator) {
+        this.container = container;
+
+        this.body = container.locator('.modal-body');
+        this.cancelButton = container.getByRole('button', {name: 'Cancel'});
+        this.releaseButton = container.getByRole('button', {name: 'Release'});
+    }
+
+    async toBeVisible() {
+        await expect(this.container).toBeVisible();
     }
 }
 

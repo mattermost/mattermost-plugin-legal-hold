@@ -12,5 +12,6 @@ testConfig.outputDir = __dirname + '/test-results';
 
 const projects = testConfig.projects?.map((p) => ({...p, dependencies: ['setup']})) || [];
 testConfig.projects = [{name: 'setup', testMatch: /test\.setup\.ts/} as PlaywrightTestConfig].concat(projects);
+testConfig.use = {...testConfig.use, timezoneId: Intl.DateTimeFormat().resolvedOptions().timeZone};
 
 export default testConfig;
