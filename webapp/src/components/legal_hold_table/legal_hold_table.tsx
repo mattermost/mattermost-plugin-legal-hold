@@ -10,6 +10,7 @@ interface LegalHoldTableProps {
     },
     releaseLegalHold: Function,
     showUpdateModal: Function,
+    runLegalHold: Function,
     showSecretModal: Function,
 }
 
@@ -67,6 +68,7 @@ const LegalHoldTable = (props: LegalHoldTableProps) => {
                             key={'legalhold_' + legalHold.id}
                             releaseLegalHold={props.releaseLegalHold}
                             showUpdateModal={props.showUpdateModal}
+                            runLegalHold={props.runLegalHold}
                             showSecretModal={props.showSecretModal}
                         />
                     );
