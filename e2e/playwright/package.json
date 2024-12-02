@@ -12,7 +12,8 @@
         "prettier": "prettier . --check",
         "prettier:fix": "prettier --write .",
         "check": "npm run tsc && npm run lint && npm run prettier",
-        "codegen": "cross-env npx playwright codegen $PW_BASE_URL"
+        "codegen": "cross-env npx playwright codegen $PW_BASE_URL",
+        "playwright-ui": "npm run playwright-ui --prefix ../../../mattermost/e2e-tests/playwright -- --config=../../../mattermost-plugin-legal-hold/e2e/playwright/playwright.config.ts"
     },
     "devDependencies": {
         "@types/node": "22.6.1",

@@ -13,6 +13,8 @@ const BaseSetting = (props: Props) => {
             className='form-group'
         >
             <label
+                data-testid={`${props.id}-label`}
+                htmlFor={props.id}
                 className='control-label col-sm-4'
             >
                 {props.name && `${props.name}:`}

@@ -18,6 +18,7 @@ const BooleanSetting = (props: Props) => {
         >
             <label className='radio-inline'>
                 <input
+                    data-testid={`${props.id}-true`}
                     type='radio'
                     onChange={() => props.onChange(true)}
                     checked={props.value}
@@ -27,6 +28,7 @@ const BooleanSetting = (props: Props) => {
             </label>
             <label className='radio-inline'>
                 <input
+                    data-testid={`${props.id}-false`}
                     type='radio'
                     onChange={() => props.onChange(false)}
                     checked={!props.value}
