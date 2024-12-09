@@ -22,7 +22,7 @@ test('Admin user can create a legal hold successfully', async ({pw, pages}) => {
     // Create legal hold
     const legalHoldName = `New Hold ${getRandomId()}`;
     const today = new Date();
-    const isoString = today.toISOString().split('T')[0]
+    const isoString = today.toISOString().split('T')[0];
     await createLegalHold(pluginPage, legalHoldName, [user.username], isoString);
 
     // Verify legal hold is created and details are correct
