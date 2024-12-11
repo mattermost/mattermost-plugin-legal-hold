@@ -54,7 +54,7 @@ export default class UsersInput extends React.Component {
     };
 
     debouncedSearchProfiles = debounce((term, callback) => {
-        this.props.actions.searchProfiles(term).then(({data}) => {
+        this.props.actions.searchProfiles(term, {allow_inactive: true}).then(({data}) => {
             callback(data);
         }).catch(() => {
             // eslint-disable-next-line no-console

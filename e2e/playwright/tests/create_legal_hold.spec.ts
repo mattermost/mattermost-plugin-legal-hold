@@ -21,13 +21,14 @@ test('Admin user can create a legal hold successfully', async ({pw, pages}) => {
 
     // Create legal hold
     const legalHoldName = `New Hold ${getRandomId()}`;
-    const today = new Date().toISOString().split('T')[0];
-    await createLegalHold(pluginPage, legalHoldName, [user.username], today);
+    const today = new Date();
+    const isoString = today.toISOString().split('T')[0];
+    await createLegalHold(pluginPage, legalHoldName, [user.username], isoString);
 
     // Verify legal hold is created and details are correct
     await expect(pluginPage.getLegalHold(legalHoldName)).toBeVisible();
-    const [year, month, day] = today.split('-');
-    expect(await pluginPage.getStartDate(legalHoldName)).toHaveText(`${month}/${day}/${year}`);
+    const dateString = today.toLocaleDateString('en-US');
+    expect(await pluginPage.getStartDate(legalHoldName)).toHaveText(dateString);
     expect(await pluginPage.getEndDate(legalHoldName)).toHaveText('Never');
     expect(await pluginPage.getUsers(legalHoldName)).toHaveText('1 users');
 });

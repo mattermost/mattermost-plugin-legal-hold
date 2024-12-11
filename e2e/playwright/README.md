@@ -7,7 +7,7 @@ What this script does:
 -   `cd mattermost`
 -   Install webapp dependencies - `cd webapp && npm i`
 -   Install Playwright test dependencies - `cd ../e2e-tests/playwright && npm i`
--   Install Playwright - `npx install playwright`
+-   Install Playwright - `npx playwright install`
 -   Install Legal Hold plugin e2e dependencies - `cd ../../../mattermost-plugin-legal-hold/e2e/playwright && npm i`
 -   Build and deploy plugin with e2e support - `make deploy`
 
