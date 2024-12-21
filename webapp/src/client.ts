@@ -27,6 +27,11 @@ class APIClient {
         return this.doWithBody(url, 'post', {});
     };
 
+    runLegalHold = (id: string) => {
+        const url = `${this.url}/legalhold/${id}/run`;
+        return this.doWithBody(url, 'post', {});
+    };
+
     updateLegalHold = (id: string, data: UpdateLegalHold) => {
         const url = `${this.url}/legalholds/${id}`;
         return this.doWithBody(url, 'put', data);

@@ -17,6 +17,7 @@ interface LegalHoldRowProps {
     users: UserProfile[];
     releaseLegalHold: Function;
     showUpdateModal: Function;
+    runLegalHold: Function;
     showSecretModal: Function;
 }
 
@@ -27,6 +28,10 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
 
     const release = () => {
         props.releaseLegalHold(lh);
+    };
+
+    const run = () => {
+        props.runLegalHold(lh);
     };
 
     const downloadUrl = Client.downloadUrl(lh.id);
@@ -144,6 +149,11 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     onClick={release}
                     className={'btn btn-danger'}
                 >{'Release'}</a>
+                <a
+                    href='#'
+                    onClick={run}
+                    className={'btn btn-info'}
+                >{'Run Now'}</a>
             </div>
         </React.Fragment>
     );
