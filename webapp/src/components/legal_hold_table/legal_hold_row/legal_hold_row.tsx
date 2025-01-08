@@ -131,7 +131,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                         href={downloadUrl}
                         download={true}
                         style={{
-                            marginRight: '20px',
+                            marginRight: '10px',
                             height: '24px',
                         }}
                     >
