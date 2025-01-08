@@ -154,6 +154,20 @@ func (j *LegalHoldJob) RunFromAPI() {
 	j.run()
 }
 
+func (j *LegalHoldJob) RunSingleLegalHold(legalHoldID string) error {
+	// Retrieve the single legal hold from the store
+	legalHold, err := j.kvstore.GetLegalHoldByID(legalHoldID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch legal hold: %w", err)
+	}
+	if legalHold == nil {
+		return fmt.Errorf("legal hold not found: %s", legalHoldID)
+	}
+
+	j.runWith([]model.LegalHold{*legalHold}, true)
+	return nil
+}
+
 func (j *LegalHoldJob) run() {
 	j.mux.Lock()
 	oldRunner := j.runner
