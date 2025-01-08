@@ -155,6 +155,13 @@ func (ex *Execution) ExportData() error {
 				break
 			}
 
+			// Update LastMessageAt if we have newer messages
+			for _, post := range posts {
+				if post.PostCreateAt > ex.LegalHold.LastMessageAt {
+					ex.LegalHold.LastMessageAt = post.PostCreateAt
+				}
+			}
+
 			err = ex.WritePostsBatchToFile(channelID, posts)
 			if err != nil {
 				return err

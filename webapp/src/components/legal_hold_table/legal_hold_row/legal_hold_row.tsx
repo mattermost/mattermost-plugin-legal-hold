@@ -48,6 +48,9 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
             <div data-testid={`last-run-${lh.id}`}>
                 {lh.last_execution_ended_at ? new Date(lh.last_execution_ended_at).toLocaleString() : 'Never'}
             </div>
+            <div data-testid={`last-message-${lh.id}`}>
+                {lh.last_message_at ? new Date(lh.last_message_at).toLocaleString() : 'No messages'}
+            </div>
             <div
                 style={{
                     display: 'inline-flex',
