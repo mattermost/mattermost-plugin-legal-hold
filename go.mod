@@ -4,6 +4,8 @@ go 1.21
 
 toolchain go1.22.1
 
+require fyne.io/fyne/v2 v2.4.4
+
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/gocarina/gocsv v0.0.0-20230616125104-99d496ca653d
