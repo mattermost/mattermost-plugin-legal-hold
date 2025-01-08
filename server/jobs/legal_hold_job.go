@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"strings"
 	"sync"
 	"time"
 
@@ -221,6 +222,10 @@ func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 			lhe := legalhold.NewExecution(lh, j.papi, j.sqlstore, j.filebackend)
 
 			if end, err := lhe.Execute(); err != nil {
+				if strings.Contains(err.Error(), "another execution is already running") {
+					j.client.Log.Debug("Another execution is already running for this legal hold", "legal_hold_id", lh.ID)
+					continue
+				}
 				j.client.Log.Error("An error occurred executing the legal hold.", err)
 			} else {
 				old, err := j.kvstore.GetLegalHoldByID(lh.ID)

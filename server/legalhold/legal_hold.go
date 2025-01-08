@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/gocarina/gocsv"
+	"github.com/mattermost/mattermost-plugin-api/cluster"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 
@@ -55,7 +56,17 @@ func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQ
 
 // Execute executes the Execution.
 func (ex *Execution) Execute() (int64, error) {
-	err := ex.GetChannels()
+	// Lock multiple executions using a cluster mutex
+	mutexKey := fmt.Sprintf("legal_hold_%s_execution", ex.LegalHold.ID)
+	mutex, err := cluster.NewMutex(ex.papi, mutexKey)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create cluster mutex: %w", err)
+	}
+
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	err = ex.GetChannels()
 	if err != nil {
 		return 0, err
 	}
