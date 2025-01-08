@@ -3,6 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+
+	"github.com/mattermost/mattermost-plugin-legal-hold/processor/cmd"
+	"github.com/mattermost/mattermost-plugin-legal-hold/processor/model"
 )
 
 // processLegalHold executes the legal hold processing with progress updates
@@ -16,10 +20,18 @@ func processLegalHold(dataPath, outputPath, secret string) error {
 		return fmt.Errorf("output path must be a directory: %s", outputPath)
 	}
 
-	// TODO: We need to modify the existing cmd.Process function to:
-	// 1. Accept these parameters directly instead of using cobra
-	// 2. Provide progress updates that can be shown in the GUI
-	// 3. Handle errors appropriately for GUI display
+	// Create a LegalHold instance from the directory
+	hold := model.LegalHold{
+		Path: dataPath,
+		Name: filepath.Base(dataPath),
+		ID:   filepath.Base(dataPath), // Using directory name as ID
+	}
+
+	// Process the legal hold using the existing cmd package
+	err := cmd.ProcessLegalHold(hold, outputPath)
+	if err != nil {
+		return fmt.Errorf("failed to process legal hold: %w", err)
+	}
 
 	return nil
 }
