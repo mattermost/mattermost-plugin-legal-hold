@@ -186,18 +186,18 @@ func (j *LegalHoldJob) run() {
 	settings = j.settings.Clone()
 	j.mux.Unlock()
 
-	j.client.Log.Info("Processing all Legal Holds")
-
 	// Retrieve the legal holds from the store.
 	legalHolds, err := j.kvstore.GetAllLegalHolds()
 	if err != nil {
 		j.client.Log.Error("Failed to fetch legal holds from store", err)
 	}
 
+	j.client.Log.Info("Processing all Legal Holds", "count", len(legalHolds))
+
 	for _, lh := range legalHolds {
 		for {
 			if lh.IsFinished() {
-				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s has ended and therefore does not executing.", lh.ID))
+				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s has ended and therefore will not execute.", lh.ID))
 				break
 			}
 

@@ -94,6 +94,8 @@ func (ex *Execution) GetChannels() error {
 
 		ex.channelIDs = append(ex.channelIDs, channelIDs...)
 
+		ex.papi.LogDebug("Legal hold executor - GetChannels", "user_id", userID, "channel_count", len(channelIDs))
+
 		// Add to channels index
 		for _, channelID := range channelIDs {
 			if idx, ok := ex.index.Users[userID]; !ok {
@@ -144,6 +146,8 @@ func (ex *Execution) ExportData() error {
 				break
 			}
 
+			ex.papi.LogDebug("Legal hold executor - ExportData", "channel_id", channelID, "post_count", len(posts))
+
 			err = ex.WritePostsBatchToFile(channelID, posts)
 			if err != nil {
 				return err
@@ -159,6 +163,8 @@ func (ex *Execution) ExportData() error {
 				}
 				fileIDs = append(fileIDs, postFileIDs...)
 			}
+
+			ex.papi.LogDebug("Legal hold executor - ExportData", "channel_id", channelID, "file_count", len(fileIDs))
 
 			err = ex.ExportFiles(channelID, posts[0].PostCreateAt, posts[0].PostID, fileIDs)
 			if err != nil {
