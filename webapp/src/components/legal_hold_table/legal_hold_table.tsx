@@ -11,6 +11,7 @@ interface LegalHoldTableProps {
     releaseLegalHold: Function,
     showUpdateModal: Function,
     showSecretModal: Function,
+    runLegalHold: (id: string) => Promise<void>;
 }
 
 const LegalHoldTable = (props: LegalHoldTableProps) => {
@@ -68,6 +69,7 @@ const LegalHoldTable = (props: LegalHoldTableProps) => {
                             releaseLegalHold={props.releaseLegalHold}
                             showUpdateModal={props.showUpdateModal}
                             showSecretModal={props.showSecretModal}
+                            runLegalHold={(id: string) => props.runLegalHold(id)}
                         />
                     );
                 })}

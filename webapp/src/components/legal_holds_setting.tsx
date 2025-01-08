@@ -24,6 +24,16 @@ const LegalHoldsSetting = () => {
     const [showSecretModal, setShowSecretModal] = useState(false);
     const [activeLegalHold, setActiveLegalHold] = useState<LegalHold|null>(null);
 
+    const doRunLegalHold = async (id: string) => {
+        try {
+            const response = await Client.runLegalHold(id);
+            return response;
+        } catch (error) {
+            console.log(error); //eslint-disable-line no-console
+            throw error;
+        }
+    };
+
     const createLegalHold = async (data: CreateLegalHold) => {
         try {
             const response = await Client.createLegalHold(data);
@@ -173,6 +183,7 @@ const LegalHoldsSetting = () => {
                         releaseLegalHold={doShowReleaseModal}
                         showUpdateModal={doShowUpdateModal}
                         showSecretModal={doShowSecretModal}
+                        runLegalHold={doRunLegalHold}
                     />
                 )}
 

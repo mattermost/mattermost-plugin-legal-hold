@@ -1,8 +1,7 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {UserProfile} from 'mattermost-redux/types/users';
 
 import {LegalHold} from '@/types';
-import Client from '@/client';
 
 import Tooltip from '@/components/mattermost-webapp/tooltip';
 
@@ -11,6 +10,9 @@ import OverlayTrigger from '@/components/mattermost-webapp/overlay_trigger';
 import DownloadIcon from './download-outline_F0B8F.svg';
 import EditIcon from './pencil-outline_F0CB6.svg';
 import EyeLockIcon from './eye-outline_F06D0.svg';
+import RunIcon from './play-outline.svg';
+import RunConfirmationModal from './run_confirmation_modal';
+import RunErrorModal from './run_error_modal';
 
 interface LegalHoldRowProps {
     legalHold: LegalHold;
@@ -18,9 +20,12 @@ interface LegalHoldRowProps {
     releaseLegalHold: Function;
     showUpdateModal: Function;
     showSecretModal: Function;
+    runLegalHold: (id: string) => Promise<void>;
 }
 
 const LegalHoldRow = (props: LegalHoldRowProps) => {
+    const [showRunConfirmModal, setShowRunConfirmModal] = useState(false);
+    const [showRunErrorModal, setShowRunErrorModal] = useState(false);
     const lh = props.legalHold;
     const startsAt = (new Date(lh.starts_at)).toLocaleDateString();
     const endsAt = lh.ends_at === 0 ? 'Never' : (new Date(lh.ends_at)).toLocaleDateString();
@@ -29,7 +34,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
         props.releaseLegalHold(lh);
     };
 
-    const downloadUrl = Client.downloadUrl(lh.id);
+    const downloadUrl = `/plugins/com.mattermost.plugin-legal-hold/api/v1/legalholds/${lh.id}/download`;
 
     return (
         <React.Fragment>
@@ -136,6 +141,36 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                         </span>
                     </a>
                 </OverlayTrigger>
+                <OverlayTrigger
+
+                    // @ts-ignore
+                    delayShow={300}
+                    placement='top'
+                    overlay={(
+                        <Tooltip id={'RunLegalHoldTooltip'}>
+                            {'Run Legal Hold Now'}
+                        </Tooltip>
+                    )}
+                >
+                    <a
+                        data-testid={`run-${lh.id}`}
+                        aria-label={`${lh.display_name} run button`}
+                        href='#'
+                        onClick={() => setShowRunConfirmModal(true)}
+                        style={{
+                            marginRight: '20px',
+                            height: '24px',
+                        }}
+                    >
+                        <span
+                            style={{
+                                fill: 'rgba(0, 0, 0, 0.5)',
+                            }}
+                        >
+                            <RunIcon/>
+                        </span>
+                    </a>
+                </OverlayTrigger>
                 <a
                     data-testid={`release-${lh.id}`}
                     role='button'
@@ -145,6 +180,22 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     className={'btn btn-danger'}
                 >{'Release'}</a>
             </div>
+            <RunConfirmationModal
+                show={showRunConfirmModal}
+                onHide={() => setShowRunConfirmModal(false)}
+                onConfirm={() => {
+                    setShowRunConfirmModal(false);
+                    props.runLegalHold(lh.id).then(() => {
+                        // Success - do nothing as the message from the API is enough
+                    }).catch(() => {
+                        setShowRunErrorModal(true);
+                    });
+                }}
+            />
+            <RunErrorModal
+                show={showRunErrorModal}
+                onHide={() => setShowRunErrorModal(false)}
+            />
         </React.Fragment>
     );
 };
