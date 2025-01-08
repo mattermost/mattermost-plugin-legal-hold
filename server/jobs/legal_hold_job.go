@@ -16,6 +16,7 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/config"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/legalhold"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/kvstore"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 )
@@ -162,6 +163,17 @@ func (j *LegalHoldJob) run() {
 		return
 	}
 
+	// Retrieve the legal holds from the store.
+	legalHolds, err := j.kvstore.GetAllLegalHolds()
+	if err != nil {
+		j.client.Log.Error("Failed to fetch legal holds from store", err)
+		return
+	}
+
+	j.runWith(legalHolds, false)
+}
+
+func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 	j.client.Log.Info("Running Legal Hold Job")
 	exitSignal := make(chan struct{})
 	ctx, canceller := context.WithCancel(context.Background())
@@ -188,12 +200,6 @@ func (j *LegalHoldJob) run() {
 
 	j.client.Log.Info("Processing all Legal Holds")
 
-	// Retrieve the legal holds from the store.
-	legalHolds, err := j.kvstore.GetAllLegalHolds()
-	if err != nil {
-		j.client.Log.Error("Failed to fetch legal holds from store", err)
-	}
-
 	for _, lh := range legalHolds {
 		for {
 			if lh.IsFinished() {
@@ -201,8 +207,13 @@ func (j *LegalHoldJob) run() {
 				break
 			}
 
-			if !lh.NeedsExecuting(mattermostModel.GetMillis()) {
+			now := mattermostModel.GetMillis()
+			if !forceRun && !lh.NeedsExecuting(now) {
 				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s is not yet ready to be executed again.", lh.ID))
+				break
+			}
+			if forceRun && lh.LastExecutionEndedAt >= now {
+				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s was already executed after the current time.", lh.ID))
 				break
 			}
 
