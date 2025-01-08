@@ -1,19 +1,37 @@
 Mattermost Legal Hold Processor
 ===============================
 
-This command line tool processes exported data from the Mattermost Legal Hold plugin
-into human-readable HTML pages.
+This tool processes exported data from the Mattermost Legal Hold plugin
+into human-readable HTML pages. It's available in both command-line and GUI versions.
 
-You can build it by running `go build`.
+Command Line Usage
+----------------
 
-Then download your legal hold export Zip file,
-and invoke the command as follows:
-
+Build the command-line version:
 ```shell
-$ ./processor --legal-hold-data ./legalholddata.zip --output-path ./path/to/where/you/want/the/html/output --legal-hold-secret "your secret"
+go build
 ```
 
-At the end, it'll print out a link to the `index.html` page.
-Open that link in your browser and you can browse the legal
-hold data in human-readable form. Use Ctrl+F in your
-browser to search for particular text strings.
+Extract your legal hold export Zip file to a directory, then run:
+```shell
+$ ./processor --legal-hold-data ./legal-hold-directory --output-path ./output-directory --legal-hold-secret "your secret"
+```
+
+GUI Usage
+--------
+
+Build and run the GUI version:
+```shell
+cd processor/gui
+go build
+./gui
+```
+
+The GUI allows you to:
+1. Select the directory containing your extracted legal hold data
+2. Choose an output directory for the processed files
+3. Optionally provide a secret key
+4. Process the legal hold with visual progress updates
+
+For both versions, when processing completes, open the generated `index.html` in your browser
+to browse the legal hold data. Use Ctrl+F/Cmd+F to search for specific text.
