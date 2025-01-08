@@ -27,11 +27,11 @@ func main() {
 
 	// File picker buttons
 	selectDataBtn := widget.NewButton("Browse...", func() {
-		dialog.ShowFileOpen(func(uri fyne.URIReadCloser, err error) {
+		dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
 			if uri == nil {
 				return
 			}
-			dataEntry.SetText(uri.URI().Path())
+			dataEntry.SetText(uri.Path())
 		}, w)
 	})
 
