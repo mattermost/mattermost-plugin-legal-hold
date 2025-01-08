@@ -35,7 +35,7 @@ const LegalHoldTable = (props: LegalHoldTableProps) => {
                 aria-label='Legal Holds Table'
                 style={{
                     display: 'grid',
-                    gridTemplateColumns: 'auto auto auto auto auto',
+                    gridTemplateColumns: 'auto auto auto auto auto auto',
                     columnGap: '10px',
                     rowGap: '10px',
                     alignItems: 'center',
@@ -57,6 +57,10 @@ const LegalHoldTable = (props: LegalHoldTableProps) => {
                     aria-label='users header'
                     style={{fontWeight: 'bold'}}
                 >{'Users'}</div>
+                <div
+                    aria-label='actions header'
+                    style={{fontWeight: 'bold'}}
+                >{'Last Run'}</div>
                 <div
                     aria-label='actions header'
                     style={{fontWeight: 'bold'}}
