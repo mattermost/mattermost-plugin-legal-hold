@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"path/filepath"
+	"os"
 )
 
 // processLegalHold executes the legal hold processing with progress updates
