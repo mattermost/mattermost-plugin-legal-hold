@@ -1,11 +1,5 @@
 package main
 
-import (
-	"fmt"
-	
-	"github.com/mattermost/mattermost-plugin-legal-hold/processor/cmd"
-)
-
 // processLegalHold executes the legal hold processing with progress updates
 func processLegalHold(dataPath, outputPath, secret string) error {
 	// TODO: We need to modify the existing cmd.Process function to:
