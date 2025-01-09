@@ -2,6 +2,7 @@ package legalhold
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/json"
@@ -20,6 +21,7 @@ import (
 )
 
 const PostExportBatchLimit = 10000
+const executionGlobalTimeout = 120 * 60 * 1000 // 2 hours
 
 // Execution represents one execution of a LegalHold, i.e. a daily (or other duration)
 // batch process to hold all data relating to that particular LegalHold. It is defined by the
@@ -63,7 +65,12 @@ func (ex *Execution) Execute() (int64, error) {
 		return 0, fmt.Errorf("failed to create cluster mutex: %w", err)
 	}
 
-	mutex.Lock()
+	ctx, cancel := context.WithTimeout(context.Background(), executionGlobalTimeout)
+	defer cancel()
+
+	if err := mutex.LockWithContext(ctx); err != nil {
+		return 0, fmt.Errorf("failed to lock cluster mutex: %w", err)
+	}
 	defer mutex.Unlock()
 
 	err = ex.GetChannels()
