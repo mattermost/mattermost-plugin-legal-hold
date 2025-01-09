@@ -13,6 +13,7 @@ import ShowSecretModal from '@/components/show_secret_modal';
 
 import ConfirmRelease from '@/components/confirm_release';
 import LegalHoldIcon from '@/components/legal_hold_icon.svg';
+import RefreshIcon from '@/components/legal_holds_setting/refresh-outline.svg';
 
 const LegalHoldsSetting = () => {
     const [legalHoldsFetched, setLegalHoldsFetched] = useState(false);
@@ -109,8 +110,8 @@ const LegalHoldsSetting = () => {
             <div
                 style={{
                     padding: '28px 32px',
-                    border: '1px solid rgba(var(--sys-center-channel-color-rgb), 0.08)',
-                    background: 'var(--sys-center-channel-bg)',
+                    border: '1px solid rgba(0, 0, 0, 0.08)',
+                    background: '#ffffff',
                     borderRadius: '4px',
                     boxShadow: '0 2px 3px rgba(0, 0, 0, 0.08)',
                     marginBottom: '24px',
@@ -134,10 +135,31 @@ const LegalHoldsSetting = () => {
                     >
                         {'Legal Holds'}
                     </div>
-                    <CreateLegalHoldButton
-                        onClick={() => setShowCreateModal(true)}
-                        dataTestId='createNewLegalHoldOnTop'
-                    />
+                    <div style={{display: 'flex', gap: '8px'}}>
+                        <button
+                            className='btn btn-link'
+                            onClick={() => setLegalHoldsFetched(false)}
+                            aria-label='Refresh legal holds'
+                            style={{
+                                padding: '0 5px',
+                                height: '36px',
+                            }}
+                        >
+                            <span
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    fill: 'rgba(0, 0, 0, 0.5)',
+                                }}
+                            >
+                                <RefreshIcon/>
+                            </span>
+                        </button>
+                        <CreateLegalHoldButton
+                            onClick={() => setShowCreateModal(true)}
+                            dataTestId='createNewLegalHoldOnTop'
+                        />
+                    </div>
                 </div>
                 <hr/>
 
