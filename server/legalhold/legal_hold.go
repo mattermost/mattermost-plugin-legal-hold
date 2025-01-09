@@ -61,8 +61,7 @@ func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQ
 // Execute executes the Execution.
 func (ex *Execution) Execute() (int64, error) {
 	// Set status to executing
-	ex.LegalHold.Status = model.LegalHoldStatusExecuting
-	_, err := ex.store.kvstore.UpdateLegalHold(ex.LegalHold, ex.LegalHold)
+	err := ex.kvstore.UpdateLegalHoldStatus(ex.LegalHold.ID, model.LegalHoldStatusExecuting)
 	if err != nil {
 		return 0, fmt.Errorf("failed to update legal hold status: %w", err)
 	}
@@ -103,8 +102,7 @@ func (ex *Execution) Execute() (int64, error) {
 	}
 
 	// Set status back to idle
-	ex.LegalHold.Status = model.LegalHoldStatusIdle
-	_, err = ex.store.kvstore.UpdateLegalHold(ex.LegalHold, ex.LegalHold)
+	err = ex.kvstore.UpdateLegalHoldStatus(ex.LegalHold.ID, model.LegalHoldStatusIdle)
 	if err != nil {
 		return 0, fmt.Errorf("failed to update legal hold status: %w", err)
 	}
