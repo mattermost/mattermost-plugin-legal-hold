@@ -10,20 +10,28 @@ import (
 )
 
 // LegalHold represents one legal hold.
+type LegalHoldStatus string
+
+const (
+	LegalHoldStatusIdle      LegalHoldStatus = "idle"
+	LegalHoldStatusExecuting LegalHoldStatus = "executing"
+)
+
 type LegalHold struct {
-	ID                    string   `json:"id"`
-	Name                  string   `json:"name"`
-	DisplayName           string   `json:"display_name"`
-	CreateAt              int64    `json:"create_at"`
-	UpdateAt              int64    `json:"update_at"`
-	UserIDs               []string `json:"user_ids"`
-	StartsAt              int64    `json:"starts_at"`
-	EndsAt                int64    `json:"ends_at"`
-	IncludePublicChannels bool     `json:"include_public_channels"`
-	LastExecutionEndedAt  int64    `json:"last_execution_ended_at"`
-	LastMessageAt         int64    `json:"last_message_at"`
-	ExecutionLength       int64    `json:"execution_length"`
-	Secret                string   `json:"secret"`
+	ID                    string          `json:"id"`
+	Name                  string          `json:"name"`
+	DisplayName           string          `json:"display_name"`
+	CreateAt              int64           `json:"create_at"`
+	UpdateAt              int64           `json:"update_at"`
+	UserIDs               []string        `json:"user_ids"`
+	StartsAt              int64           `json:"starts_at"`
+	EndsAt                int64           `json:"ends_at"`
+	IncludePublicChannels bool            `json:"include_public_channels"`
+	LastExecutionEndedAt  int64           `json:"last_execution_ended_at"`
+	LastMessageAt         int64           `json:"last_message_at"`
+	ExecutionLength       int64           `json:"execution_length"`
+	Secret                string          `json:"secret"`
+	Status                LegalHoldStatus `json:"status"`
 }
 
 // DeepCopy creates a deep copy of the LegalHold.
@@ -44,6 +52,7 @@ func (lh *LegalHold) DeepCopy() LegalHold {
 		LastExecutionEndedAt:  lh.LastExecutionEndedAt,
 		ExecutionLength:       lh.ExecutionLength,
 		Secret:                lh.Secret,
+		Status:                lh.Status,
 	}
 
 	if len(lh.UserIDs) > 0 {
@@ -159,6 +168,7 @@ func NewLegalHoldFromCreate(lhc CreateLegalHold) LegalHold {
 		IncludePublicChannels: lhc.IncludePublicChannels,
 		LastExecutionEndedAt:  0,
 		ExecutionLength:       86400000,
+		Status:                LegalHoldStatusIdle,
 	}
 }
 

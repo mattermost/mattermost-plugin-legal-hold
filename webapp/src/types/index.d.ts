@@ -9,6 +9,7 @@ export interface LegalHold {
     secret: string;
     last_execution_ended_at: number;
     last_message_at: number;
+    status: 'idle' | 'executing';
 }
 
 export interface CreateLegalHold {
