@@ -233,7 +233,7 @@ func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 			}
 
 			j.client.Log.Debug(fmt.Sprintf("Creating Legal Hold Execution for legal hold: %s", lh.ID))
-			lhe := legalhold.NewExecution(lh, j.papi, j.sqlstore, j.filebackend)
+			lhe := legalhold.NewExecution(lh, j.papi, j.sqlstore, j.kvstore, j.filebackend)
 
 			if end, err := lhe.Execute(); err != nil {
 				if strings.Contains(err.Error(), "another execution is already running") {

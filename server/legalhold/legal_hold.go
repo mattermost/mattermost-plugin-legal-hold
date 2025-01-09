@@ -34,6 +34,7 @@ type Execution struct {
 
 	papi        plugin.API
 	store       *sqlstore.SQLStore
+	kvstore     kvstore.KVStore
 	fileBackend filestore.FileBackend
 
 	channelIDs []string
@@ -43,12 +44,13 @@ type Execution struct {
 }
 
 // NewExecution creates a new Execution that is ready to use.
-func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQLStore, fileBackend filestore.FileBackend) Execution {
+func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQLStore, kvstore kvstore.KVStore, fileBackend filestore.FileBackend) Execution {
 	return Execution{
 		LegalHold:          legalHold,
 		ExecutionStartTime: legalHold.NextExecutionStartTime(),
 		ExecutionEndTime:   legalHold.NextExecutionEndTime(),
 		store:              store,
+		kvstore:            kvstore,
 		fileBackend:        fileBackend,
 		index:              model.NewLegalHoldIndex(),
 		papi:               papi,
@@ -58,6 +60,13 @@ func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQ
 
 // Execute executes the Execution.
 func (ex *Execution) Execute() (int64, error) {
+	// Set status to executing
+	ex.LegalHold.Status = model.LegalHoldStatusExecuting
+	_, err := ex.store.kvstore.UpdateLegalHold(ex.LegalHold, ex.LegalHold)
+	if err != nil {
+		return 0, fmt.Errorf("failed to update legal hold status: %w", err)
+	}
+
 	// Lock multiple executions using a cluster mutex
 	mutexKey := fmt.Sprintf("legal_hold_%s_execution", ex.LegalHold.ID)
 	mutex, err := cluster.NewMutex(ex.papi, mutexKey)
@@ -91,6 +100,13 @@ func (ex *Execution) Execute() (int64, error) {
 	err = ex.WriteFileHashes()
 	if err != nil {
 		return 0, err
+	}
+
+	// Set status back to idle
+	ex.LegalHold.Status = model.LegalHoldStatusIdle
+	_, err = ex.store.kvstore.UpdateLegalHold(ex.LegalHold, ex.LegalHold)
+	if err != nil {
+		return 0, fmt.Errorf("failed to update legal hold status: %w", err)
 	}
 
 	return ex.ExecutionEndTime, nil
