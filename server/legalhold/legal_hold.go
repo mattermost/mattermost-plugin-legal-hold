@@ -16,6 +16,7 @@ import (
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/kvstore"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
 )
@@ -60,12 +61,6 @@ func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQ
 
 // Execute executes the Execution.
 func (ex *Execution) Execute() (int64, error) {
-	// Set status to executing
-	err := ex.kvstore.UpdateLegalHoldStatus(ex.LegalHold.ID, model.LegalHoldStatusExecuting)
-	if err != nil {
-		return 0, fmt.Errorf("failed to update legal hold status: %w", err)
-	}
-
 	// Lock multiple executions using a cluster mutex
 	mutexKey := fmt.Sprintf("legal_hold_%s_execution", ex.LegalHold.ID)
 	mutex, err := cluster.NewMutex(ex.papi, mutexKey)
@@ -79,7 +74,21 @@ func (ex *Execution) Execute() (int64, error) {
 	if err := mutex.LockWithContext(ctx); err != nil {
 		return 0, fmt.Errorf("failed to lock cluster mutex: %w", err)
 	}
-	defer mutex.Unlock()
+	defer func() {
+		mutex.Unlock()
+
+		// Set status back to idle
+		_, err := ex.kvstore.UpdateLegalHoldStatus(ex.LegalHold.ID, model.LegalHoldStatusIdle)
+		if err != nil {
+			ex.papi.LogError(fmt.Sprintf("failed to update legal hold status: %v", err))
+		}
+	}()
+
+	// Set status to executing
+	_, err = ex.kvstore.UpdateLegalHoldStatus(ex.LegalHold.ID, model.LegalHoldStatusExecuting)
+	if err != nil {
+		return 0, fmt.Errorf("failed to update legal hold status: %w", err)
+	}
 
 	err = ex.GetChannels()
 	if err != nil {
@@ -99,12 +108,6 @@ func (ex *Execution) Execute() (int64, error) {
 	err = ex.WriteFileHashes()
 	if err != nil {
 		return 0, err
-	}
-
-	// Set status back to idle
-	err = ex.kvstore.UpdateLegalHoldStatus(ex.LegalHold.ID, model.LegalHoldStatusIdle)
-	if err != nil {
-		return 0, fmt.Errorf("failed to update legal hold status: %w", err)
 	}
 
 	return ex.ExecutionEndTime, nil
