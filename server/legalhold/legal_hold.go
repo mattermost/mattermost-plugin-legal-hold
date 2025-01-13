@@ -112,6 +112,7 @@ func (ex *Execution) Execute() (*model.LegalHold, error) {
 
 	// Update the LegalHold with execution results
 	ex.LegalHold.LastExecutionEndedAt = ex.ExecutionEndTime
+	ex.LegalHold.Status = model.LegalHoldStatusIdle
 	return &ex.LegalHold, nil
 }
 

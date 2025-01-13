@@ -178,6 +178,8 @@ func (j *LegalHoldJob) run() {
 		return
 	}
 
+	j.client.Log.Info("Processing all Legal Holds")
+
 	// Retrieve the legal holds from the store.
 	legalHolds, err := j.kvstore.GetAllLegalHolds()
 	if err != nil {
@@ -213,8 +215,6 @@ func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 	settings = j.settings.Clone()
 	j.mux.Unlock()
 
-	j.client.Log.Info("Processing all Legal Holds")
-
 	for _, lh := range legalHolds {
 		for {
 			if lh.IsFinished() {
@@ -242,7 +242,18 @@ func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 				}
 				j.client.Log.Error("An error occurred executing the legal hold.", err)
 			} else {
-				newLH, err := j.kvstore.UpdateLegalHold(*updatedLH, lh)
+				// Update legal hold with the new execution details (last execution time and last message)
+				// Also set it to IDLE again since the execution has ended.
+				old, err := j.kvstore.GetLegalHoldByID(lh.ID)
+				if err != nil {
+					j.client.Log.Error("Failed to fetch the LegalHold prior to updating", err)
+					continue
+				}
+				lh = *old
+				lh.LastExecutionEndedAt = updatedLH.LastExecutionEndedAt
+				lh.LastMessageAt = updatedLH.LastMessageAt
+				lh.Status = model.LegalHoldStatusIdle
+				newLH, err := j.kvstore.UpdateLegalHold(lh, *old)
 				if err != nil {
 					j.client.Log.Error("Failed to update legal hold", err)
 					continue
