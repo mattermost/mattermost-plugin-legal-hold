@@ -78,14 +78,14 @@ func (ex *Execution) Execute() (int64, error) {
 		mutex.Unlock()
 
 		// Set status back to idle
-		_, err := ex.kvstore.UpdateLegalHoldStatus(ex.LegalHold.ID, model.LegalHoldStatusIdle)
+		err := ex.kvstore.UpdateLegalHoldStatus(ex.LegalHold.ID, model.LegalHoldStatusIdle)
 		if err != nil {
 			ex.papi.LogError(fmt.Sprintf("failed to update legal hold status: %v", err))
 		}
 	}()
 
 	// Set status to executing
-	_, err = ex.kvstore.UpdateLegalHoldStatus(ex.LegalHold.ID, model.LegalHoldStatusExecuting)
+	err = ex.kvstore.UpdateLegalHoldStatus(ex.LegalHold.ID, model.LegalHoldStatusExecuting)
 	if err != nil {
 		return 0, fmt.Errorf("failed to update legal hold status: %w", err)
 	}
