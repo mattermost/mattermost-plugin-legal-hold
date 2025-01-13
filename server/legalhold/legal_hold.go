@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/gocarina/gocsv"
 	"github.com/mattermost/mattermost-plugin-api/cluster"
@@ -68,7 +69,7 @@ func (ex *Execution) Execute() (*model.LegalHold, error) {
 		return nil, fmt.Errorf("failed to create cluster mutex: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), executionGlobalTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), executionGlobalTimeout*time.Second)
 	defer cancel()
 
 	if err := mutex.LockWithContext(ctx); err != nil {
