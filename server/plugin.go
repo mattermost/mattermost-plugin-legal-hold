@@ -49,7 +49,7 @@ type Plugin struct {
 	jobManager *jobs.JobManager
 
 	// legalHoldJob runs the legal hold jobs
-	legalHoldJob *jobs.LegalHoldJob
+	legalHoldJob jobs.LegalHoldJobInterface
 
 	// router holds the HTTP router for the plugin's rest API
 	router *mux.Router
