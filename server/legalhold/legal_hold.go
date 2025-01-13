@@ -59,20 +59,20 @@ func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQ
 	}
 }
 
-// Execute executes the Execution.
-func (ex *Execution) Execute() (int64, error) {
+// Execute executes the Execution and returns the updated LegalHold.
+func (ex *Execution) Execute() (*model.LegalHold, error) {
 	// Lock multiple executions using a cluster mutex
 	mutexKey := fmt.Sprintf("legal_hold_%s_execution", ex.LegalHold.ID)
 	mutex, err := cluster.NewMutex(ex.papi, mutexKey)
 	if err != nil {
-		return 0, fmt.Errorf("failed to create cluster mutex: %w", err)
+		return nil, fmt.Errorf("failed to create cluster mutex: %w", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), executionGlobalTimeout)
 	defer cancel()
 
 	if err := mutex.LockWithContext(ctx); err != nil {
-		return 0, fmt.Errorf("failed to lock cluster mutex: %w", err)
+		return nil, fmt.Errorf("failed to lock cluster mutex: %w", err)
 	}
 	defer func() {
 		mutex.Unlock()
@@ -87,30 +87,32 @@ func (ex *Execution) Execute() (int64, error) {
 	// Set status to executing
 	err = ex.kvstore.UpdateLegalHoldStatus(ex.LegalHold.ID, model.LegalHoldStatusExecuting)
 	if err != nil {
-		return 0, fmt.Errorf("failed to update legal hold status: %w", err)
+		return nil, fmt.Errorf("failed to update legal hold status: %w", err)
 	}
 
 	err = ex.GetChannels()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	err = ex.ExportData()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	err = ex.UpdateIndexes()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	err = ex.WriteFileHashes()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	return ex.ExecutionEndTime, nil
+	// Update the LegalHold with execution results
+	ex.LegalHold.LastExecutionEndedAt = ex.ExecutionEndTime
+	return &ex.LegalHold, nil
 }
 
 // GetChannels populates the list of channels that the Execution needs to cover within the

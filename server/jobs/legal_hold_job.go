@@ -235,21 +235,14 @@ func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 			j.client.Log.Debug(fmt.Sprintf("Creating Legal Hold Execution for legal hold: %s", lh.ID))
 			lhe := legalhold.NewExecution(lh, j.papi, j.sqlstore, j.kvstore, j.filebackend)
 
-			if end, err := lhe.Execute(); err != nil {
+			if updatedLH, err := lhe.Execute(); err != nil {
 				if strings.Contains(err.Error(), "another execution is already running") {
 					j.client.Log.Debug("Another execution is already running for this legal hold", "legal_hold_id", lh.ID)
 					continue
 				}
 				j.client.Log.Error("An error occurred executing the legal hold.", err)
 			} else {
-				old, err := j.kvstore.GetLegalHoldByID(lh.ID)
-				if err != nil {
-					j.client.Log.Error("Failed to fetch the LegalHold prior to updating", err)
-					continue
-				}
-				lh = *old
-				lh.LastExecutionEndedAt = end
-				newLH, err := j.kvstore.UpdateLegalHold(lh, *old)
+				newLH, err := j.kvstore.UpdateLegalHold(*updatedLH, lh)
 				if err != nil {
 					j.client.Log.Error("Failed to update legal hold", err)
 					continue
