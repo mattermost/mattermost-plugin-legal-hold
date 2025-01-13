@@ -32,9 +32,6 @@ const getLastRunDisplay = (lh: LegalHold) => {
     return lh.last_execution_ended_at ? new Date(lh.last_execution_ended_at).toLocaleString() : 'Never';
 };
 
-const getLastMessageDisplay = (lh: LegalHold) => {
-    return lh.last_message_at ? new Date(lh.last_message_at).toLocaleString() : 'No messages';
-};
 
 const LegalHoldRow = (props: LegalHoldRowProps) => {
     const [showRunConfirmModal, setShowRunConfirmModal] = useState(false);
@@ -78,9 +75,6 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                 style={{cursor: 'pointer'}}
             >
                 {getLastRunDisplay(lh)}
-            </div>
-            <div data-testid={`last-message-${lh.id}`}>
-                {getLastMessageDisplay(lh)}
             </div>
             <div
                 style={{
