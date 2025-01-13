@@ -12,6 +12,7 @@ interface LegalHoldTableProps {
     showUpdateModal: Function,
     showSecretModal: Function,
     runLegalHold: (id: string) => Promise<void>;
+    refresh: () => void;
 }
 
 const LegalHoldTable = (props: LegalHoldTableProps) => {
@@ -78,6 +79,7 @@ const LegalHoldTable = (props: LegalHoldTableProps) => {
                             showUpdateModal={props.showUpdateModal}
                             showSecretModal={props.showSecretModal}
                             runLegalHold={(id: string) => props.runLegalHold(id)}
+                            refresh={props.refresh}
                         />
                     );
                 })}

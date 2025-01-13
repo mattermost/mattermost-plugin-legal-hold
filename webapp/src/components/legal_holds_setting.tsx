@@ -206,6 +206,7 @@ const LegalHoldsSetting = () => {
                         showUpdateModal={doShowUpdateModal}
                         showSecretModal={doShowSecretModal}
                         runLegalHold={doRunLegalHold}
+                        refresh={() => setLegalHoldsFetched(false)}
                     />
                 )}
 

@@ -21,6 +21,7 @@ interface LegalHoldRowProps {
     showUpdateModal: Function;
     showSecretModal: Function;
     runLegalHold: (id: string) => Promise<void>;
+    refresh: () => void;
 }
 
 const getLastRunDisplay = (lh: LegalHold) => {
@@ -215,7 +216,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                 onConfirm={() => {
                     setShowRunConfirmModal(false);
                     props.runLegalHold(lh.id).then(() => {
-                        // Success - do nothing as the message from the API is enough
+                        props.refresh();
                     }).catch(() => {
                         setShowRunErrorModal(true);
                     });
