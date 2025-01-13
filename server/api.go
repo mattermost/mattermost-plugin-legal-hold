@@ -45,6 +45,7 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 	router.HandleFunc("/api/v1/legalholds/{legalhold_id:[A-Za-z0-9]+}", p.updateLegalHold).Methods(http.MethodPut)
 	router.HandleFunc("/api/v1/legalholds/{legalhold_id:[A-Za-z0-9]+}/download", p.downloadLegalHold).Methods(http.MethodGet)
 	router.HandleFunc("/api/v1/legalholds/{legalhold_id:[A-Za-z0-9]+}/run", p.runSingleLegalHold).Methods(http.MethodPost)
+	router.HandleFunc("/api/v1/legalholds/{legalhold_id:[A-Za-z0-9]+}/resetstatus", p.resetLegalHoldStatus).Methods(http.MethodPost)
 	router.HandleFunc("/api/v1/test_amazon_s3_connection", p.testAmazonS3Connection).Methods(http.MethodPost)
 
 	// Other routes
@@ -354,6 +355,38 @@ func (p *Plugin) runSingleLegalHold(w http.ResponseWriter, r *http.Request) {
 }
 
 // testAmazonS3Connection tests the plugin's custom Amazon S3 connection
+func (p *Plugin) resetLegalHoldStatus(w http.ResponseWriter, r *http.Request) {
+	legalholdID, err := RequireLegalHoldID(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = p.KVStore.UpdateLegalHoldStatus(legalholdID, model.LegalHoldStatusIdle)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to reset legal hold status: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	response := struct {
+		Message string `json:"message"`
+	}{
+		Message: fmt.Sprintf("Successfully reset status for Legal Hold %s", legalholdID),
+	}
+
+	b, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, "Error encoding json", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(b)
+	if err != nil {
+		p.API.LogError("failed to write http response", err.Error())
+	}
+}
+
 func (p *Plugin) testAmazonS3Connection(w http.ResponseWriter, _ *http.Request) {
 	type messageResponse struct {
 		Message string `json:"message"`
