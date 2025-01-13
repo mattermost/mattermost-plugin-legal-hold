@@ -32,7 +32,6 @@ const getLastRunDisplay = (lh: LegalHold) => {
     return lh.last_execution_ended_at ? new Date(lh.last_execution_ended_at).toLocaleString() : 'Never';
 };
 
-
 const LegalHoldRow = (props: LegalHoldRowProps) => {
     const [showRunConfirmModal, setShowRunConfirmModal] = useState(false);
     const [showRunErrorModal, setShowRunErrorModal] = useState(false);
@@ -63,11 +62,11 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     setResetClickCount(newCount);
                     if (newCount === 5) {
                         setResetClickCount(0);
-                        Client.resetLegalHoldStatus(lh.id)
-                            .then(() => {
+                        Client.resetLegalHoldStatus(lh.id).
+                            then(() => {
                                 props.refresh();
-                            })
-                            .catch(() => {
+                            }).
+                            catch(() => {
                                 // Silently fail
                             });
                     }
