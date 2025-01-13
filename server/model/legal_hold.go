@@ -124,7 +124,7 @@ func (lh *LegalHold) NextExecutionStartTime() int64 {
 	return utils.Max(lh.LastExecutionEndedAt, lh.StartsAt)
 }
 
-// NextExecutionEndTime returns th etime at which the next execution of this
+// NextExecutionEndTime returns the time at which the next execution of this
 // LegalHold should end.
 func (lh *LegalHold) NextExecutionEndTime() int64 {
 	endTime := lh.NextExecutionStartTime() + lh.ExecutionLength
@@ -167,7 +167,7 @@ func NewLegalHoldFromCreate(lhc CreateLegalHold) LegalHold {
 		EndsAt:                lhc.EndsAt,
 		IncludePublicChannels: lhc.IncludePublicChannels,
 		LastExecutionEndedAt:  0,
-		ExecutionLength:       86400000,
+		ExecutionLength:       86400000, // 24 hours
 		Status:                LegalHoldStatusIdle,
 	}
 }
