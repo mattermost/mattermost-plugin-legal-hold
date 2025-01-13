@@ -183,6 +183,9 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                         href='#'
                         onClick={(e) => {
                             e.preventDefault();
+                            if (lh.status === 'executing') {
+                                return;
+                            }
                             setShowRunConfirmModal(true);
                         }}
                         style={{
