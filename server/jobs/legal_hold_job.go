@@ -227,7 +227,7 @@ func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s is not yet ready to be executed again.", lh.ID))
 				break
 			}
-			if forceRun && lh.LastExecutionEndedAt >= now {
+			if !forceRun && lh.LastExecutionEndedAt >= now {
 				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s was already executed after the current time.", lh.ID))
 				break
 			}
