@@ -2,23 +2,28 @@ package legalhold
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/gocarina/gocsv"
+	"github.com/mattermost/mattermost-plugin-api/cluster"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/kvstore"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
 )
 
 const PostExportBatchLimit = 10000
+const executionGlobalTimeout = 48 * time.Hour
 
 // Execution represents one execution of a LegalHold, i.e. a daily (or other duration)
 // batch process to hold all data relating to that particular LegalHold. It is defined by the
@@ -31,6 +36,7 @@ type Execution struct {
 
 	papi        plugin.API
 	store       *sqlstore.SQLStore
+	kvstore     kvstore.KVStore
 	fileBackend filestore.FileBackend
 
 	channelIDs []string
@@ -40,12 +46,13 @@ type Execution struct {
 }
 
 // NewExecution creates a new Execution that is ready to use.
-func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQLStore, fileBackend filestore.FileBackend) Execution {
+func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQLStore, kvstore kvstore.KVStore, fileBackend filestore.FileBackend) Execution {
 	return Execution{
 		LegalHold:          legalHold,
 		ExecutionStartTime: legalHold.NextExecutionStartTime(),
 		ExecutionEndTime:   legalHold.NextExecutionEndTime(),
 		store:              store,
+		kvstore:            kvstore,
 		fileBackend:        fileBackend,
 		index:              model.NewLegalHoldIndex(),
 		papi:               papi,
@@ -53,29 +60,70 @@ func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQ
 	}
 }
 
-// Execute executes the Execution.
-func (ex *Execution) Execute() (int64, error) {
-	err := ex.GetChannels()
+// Execute executes the Execution and returns the updated LegalHold.
+func (ex *Execution) Execute() (*model.LegalHold, error) {
+	now := time.Now().Unix()
+
+	// Lock multiple executions using a cluster mutex
+	mutexKey := fmt.Sprintf("legal_hold_%s_execution", ex.LegalHold.ID)
+	mutex, err := cluster.NewMutex(ex.papi, mutexKey)
 	if err != nil {
-		return 0, err
+		return nil, fmt.Errorf("failed to create cluster mutex: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), executionGlobalTimeout)
+	defer cancel()
+
+	if lockErr := mutex.LockWithContext(ctx); lockErr != nil {
+		return nil, fmt.Errorf("failed to lock cluster mutex: %w", lockErr)
+	}
+	defer func() {
+		mutex.Unlock()
+
+		// Set status back to idle
+		statusErr := ex.kvstore.UpdateLegalHoldStatus(ex.LegalHold.ID, model.LegalHoldStatusIdle)
+		if statusErr != nil {
+			ex.papi.LogError(fmt.Sprintf("failed to update legal hold status: %v", statusErr))
+		}
+	}()
+
+	// Set status to executing
+	err = ex.kvstore.UpdateLegalHoldStatus(ex.LegalHold.ID, model.LegalHoldStatusExecuting)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update legal hold status: %w", err)
+	}
+
+	err = ex.GetChannels()
+	if err != nil {
+		return nil, err
 	}
 
 	err = ex.ExportData()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	err = ex.UpdateIndexes()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	err = ex.WriteFileHashes()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	return ex.ExecutionEndTime, nil
+	// Update the LegalHold with execution results
+	ex.LegalHold.LastExecutionEndedAt = ex.ExecutionEndTime
+
+	// Ensure that the LastExecutionEndedAt is not in the future, useful when running the job manually
+	if ex.ExecutionEndTime > now {
+		ex.LegalHold.LastExecutionEndedAt = now
+	}
+
+	ex.LegalHold.Status = model.LegalHoldStatusIdle
+
+	return &ex.LegalHold, nil
 }
 
 // GetChannels populates the list of channels that the Execution needs to cover within the
@@ -152,6 +200,9 @@ func (ex *Execution) ExportData() error {
 			if err != nil {
 				return err
 			}
+
+			// Update LastMessageAt with the last CreatedAt post
+			ex.LegalHold.LastMessageAt = posts[len(posts)-1].PostCreateAt
 
 			// Extract the FileIDs to export
 			var fileIDs []string

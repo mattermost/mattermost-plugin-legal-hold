@@ -81,6 +81,29 @@ func (kvs Impl) GetLegalHoldByID(id string) (*model.LegalHold, error) {
 	return &legalHold, nil
 }
 
+func (kvs Impl) UpdateLegalHoldStatus(id string, status model.LegalHoldStatus) error {
+	lh, err := kvs.GetLegalHoldByID(id)
+	if err != nil {
+		return fmt.Errorf("failed to get legal hold: %w", err)
+	}
+	if lh == nil {
+		return fmt.Errorf("legal hold not found: %s", id)
+	}
+
+	oldValue := *lh
+	lh.Status = status
+	lh.UpdateAt = mattermostModel.GetMillis()
+
+	key := fmt.Sprintf("%s%s", legalHoldPrefix, lh.ID)
+	saved, err := kvs.client.KV.Set(key, lh, pluginapi.SetAtomic(oldValue))
+	if !saved && err != nil {
+		return errors.Wrap(err, "database error occurred updating legal hold status")
+	} else if !saved && err == nil {
+		return errors.New("could not update legal hold status as it has already been updated by someone else")
+	}
+	return nil
+}
+
 func (kvs Impl) UpdateLegalHold(lh, oldValue model.LegalHold) (*model.LegalHold, error) {
 	lh.UpdateAt = mattermostModel.GetMillis()
 
