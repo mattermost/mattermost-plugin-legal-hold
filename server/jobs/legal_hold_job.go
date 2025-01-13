@@ -216,51 +216,49 @@ func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 	j.mux.Unlock()
 
 	for _, lh := range legalHolds {
-		for {
-			if lh.IsFinished() {
-				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s has ended and therefore does not executing.", lh.ID))
-				break
-			}
+		if lh.IsFinished() {
+			j.client.Log.Debug(fmt.Sprintf("Legal Hold %s has ended and therefore does not executing.", lh.ID))
+			continue
+		}
 
-			now := mattermostModel.GetMillis()
-			if !forceRun && !lh.NeedsExecuting(now) {
-				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s is not yet ready to be executed again.", lh.ID))
-				break
-			}
-			if !forceRun && lh.LastExecutionEndedAt >= now {
-				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s was already executed after the current time.", lh.ID))
-				break
-			}
+		now := mattermostModel.GetMillis()
+		if !forceRun && !lh.NeedsExecuting(now) {
+			j.client.Log.Debug(fmt.Sprintf("Legal Hold %s is not yet ready to be executed again.", lh.ID))
+			continue
+		}
+		if !forceRun && lh.LastExecutionEndedAt >= now {
+			j.client.Log.Debug(fmt.Sprintf("Legal Hold %s was already executed after the current time.", lh.ID))
+			continue
+		}
 
-			j.client.Log.Debug(fmt.Sprintf("Creating Legal Hold Execution for legal hold: %s", lh.ID))
-			lhe := legalhold.NewExecution(lh, j.papi, j.sqlstore, j.kvstore, j.filebackend)
+		j.client.Log.Debug(fmt.Sprintf("Creating Legal Hold Execution for legal hold: %s", lh.ID))
+		lhe := legalhold.NewExecution(lh, j.papi, j.sqlstore, j.kvstore, j.filebackend)
 
-			if updatedLH, err := lhe.Execute(); err != nil {
-				if strings.Contains(err.Error(), "another execution is already running") {
-					j.client.Log.Debug("Another execution is already running for this legal hold", "legal_hold_id", lh.ID)
-					continue
-				}
-				j.client.Log.Error("An error occurred executing the legal hold.", err)
-			} else {
-				// Update legal hold with the new execution details (last execution time and last message)
-				// Also set it to IDLE again since the execution has ended.
-				old, err := j.kvstore.GetLegalHoldByID(lh.ID)
-				if err != nil {
-					j.client.Log.Error("Failed to fetch the LegalHold prior to updating", err)
-					continue
-				}
-				lh = *old
-				lh.LastExecutionEndedAt = updatedLH.LastExecutionEndedAt
-				lh.LastMessageAt = updatedLH.LastMessageAt
-				lh.Status = model.LegalHoldStatusIdle
-				newLH, err := j.kvstore.UpdateLegalHold(lh, *old)
-				if err != nil {
-					j.client.Log.Error("Failed to update legal hold", err)
-					continue
-				}
-				lh = *newLH
-				j.client.Log.Info("legal hold executed", "legal_hold_id", lh.ID, "legal_hold_name", lh.Name)
+		if updatedLH, err := lhe.Execute(); err != nil {
+			if strings.Contains(err.Error(), "another execution is already running") {
+				j.client.Log.Debug("Another execution is already running for this legal hold", "legal_hold_id", lh.ID)
+				continue
 			}
+			j.client.Log.Error("An error occurred executing the legal hold.", err)
+		} else {
+			// Update legal hold with the new execution details (last execution time and last message)
+			// Also set it to IDLE again since the execution has ended.
+			old, err := j.kvstore.GetLegalHoldByID(lh.ID)
+			if err != nil {
+				j.client.Log.Error("Failed to fetch the LegalHold prior to updating", err)
+				continue
+			}
+			lh = *old
+			lh.LastExecutionEndedAt = updatedLH.LastExecutionEndedAt
+			lh.LastMessageAt = updatedLH.LastMessageAt
+			lh.Status = model.LegalHoldStatusIdle
+			newLH, err := j.kvstore.UpdateLegalHold(lh, *old)
+			if err != nil {
+				j.client.Log.Error("Failed to update legal hold", err)
+				continue
+			}
+			lh = *newLH
+			j.client.Log.Info("legal hold executed", "legal_hold_id", lh.ID, "legal_hold_name", lh.Name)
 		}
 	}
 	_ = ctx
