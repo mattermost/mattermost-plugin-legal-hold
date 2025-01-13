@@ -46,7 +46,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
             <div data-testid={`end-date-${lh.id}`}>{endsAt}</div>
             <div data-testid={`users-${lh.id}`}>{props.users.length} {'users'}</div>
             <div data-testid={`last-run-${lh.id}`}>
-                {lh.last_execution_ended_at ? new Date(lh.last_execution_ended_at).toLocaleString() : 'Never'}
+                {lh.status === 'executing' ? 'Running...' : (lh.last_execution_ended_at ? new Date(lh.last_execution_ended_at).toLocaleString() : 'Never')}
             </div>
             <div data-testid={`last-message-${lh.id}`}>
                 {lh.last_message_at ? new Date(lh.last_message_at).toLocaleString() : 'No messages'}
