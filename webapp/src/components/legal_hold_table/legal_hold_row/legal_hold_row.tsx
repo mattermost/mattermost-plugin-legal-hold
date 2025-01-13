@@ -131,11 +131,18 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     <a
                         data-testid={`download-${lh.id}`}
                         aria-label={`${lh.display_name} download button`}
-                        href={downloadUrl}
+                        href={lh.last_message_at === 0 ? '#' : downloadUrl}
                         download={true}
+                        onClick={(e) => {
+                            if (lh.last_message_at === 0) {
+                                e.preventDefault();
+                            }
+                        }}
                         style={{
                             marginRight: '10px',
                             height: '24px',
+                            opacity: lh.last_message_at === 0 ? '0.5' : '1',
+                            cursor: lh.last_message_at === 0 ? 'not-allowed' : 'pointer',
                         }}
                     >
                         <span
@@ -162,10 +169,17 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                         data-testid={`run-${lh.id}`}
                         aria-label={`${lh.display_name} run button`}
                         href='#'
-                        onClick={() => setShowRunConfirmModal(true)}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            if (lh.status !== 'executing') {
+                                setShowRunConfirmModal(true);
+                            }
+                        }}
                         style={{
                             marginRight: '20px',
                             height: '24px',
+                            opacity: lh.status === 'executing' ? '0.5' : '1',
+                            cursor: lh.status === 'executing' ? 'not-allowed' : 'pointer',
                         }}
                     >
                         <span
