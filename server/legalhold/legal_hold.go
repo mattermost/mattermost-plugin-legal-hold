@@ -72,16 +72,16 @@ func (ex *Execution) Execute() (*model.LegalHold, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), executionGlobalTimeout*time.Second)
 	defer cancel()
 
-	if err := mutex.LockWithContext(ctx); err != nil {
-		return nil, fmt.Errorf("failed to lock cluster mutex: %w", err)
+	if lockErr := mutex.LockWithContext(ctx); lockErr != nil {
+		return nil, fmt.Errorf("failed to lock cluster mutex: %w", lockErr)
 	}
 	defer func() {
 		mutex.Unlock()
 
 		// Set status back to idle
-		err := ex.kvstore.UpdateLegalHoldStatus(ex.LegalHold.ID, model.LegalHoldStatusIdle)
-		if err != nil {
-			ex.papi.LogError(fmt.Sprintf("failed to update legal hold status: %v", err))
+		statusErr := ex.kvstore.UpdateLegalHoldStatus(ex.LegalHold.ID, model.LegalHoldStatusIdle)
+		if statusErr != nil {
+			ex.papi.LogError(fmt.Sprintf("failed to update legal hold status: %v", statusErr))
 		}
 	}()
 
