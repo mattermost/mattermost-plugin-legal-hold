@@ -45,7 +45,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
         props.releaseLegalHold(lh);
     };
 
-    const downloadUrl = `/plugins/com.mattermost.plugin-legal-hold/api/v1/legalholds/${lh.id}/download`;
+    const downloadUrl = Client.downloadUrl(lh.id);
 
     return (
         <React.Fragment>
@@ -56,7 +56,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
             <div data-testid={`start-date-${lh.id}`}>{startsAt}</div>
             <div data-testid={`end-date-${lh.id}`}>{endsAt}</div>
             <div data-testid={`users-${lh.id}`}>{props.users.length} {'users'}</div>
-            <div 
+            <div
                 data-testid={`last-run-${lh.id}`}
                 onClick={() => {
                     const newCount = resetClickCount + 1;

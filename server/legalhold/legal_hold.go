@@ -23,7 +23,7 @@ import (
 )
 
 const PostExportBatchLimit = 10000
-const executionGlobalTimeout = 120 * 60 * 1000 // 2 hours
+const executionGlobalTimeout = 48 * time.Hour
 
 // Execution represents one execution of a LegalHold, i.e. a daily (or other duration)
 // batch process to hold all data relating to that particular LegalHold. It is defined by the
@@ -62,6 +62,8 @@ func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQ
 
 // Execute executes the Execution and returns the updated LegalHold.
 func (ex *Execution) Execute() (*model.LegalHold, error) {
+	now := time.Now().Unix()
+
 	// Lock multiple executions using a cluster mutex
 	mutexKey := fmt.Sprintf("legal_hold_%s_execution", ex.LegalHold.ID)
 	mutex, err := cluster.NewMutex(ex.papi, mutexKey)
@@ -69,7 +71,7 @@ func (ex *Execution) Execute() (*model.LegalHold, error) {
 		return nil, fmt.Errorf("failed to create cluster mutex: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), executionGlobalTimeout*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), executionGlobalTimeout)
 	defer cancel()
 
 	if lockErr := mutex.LockWithContext(ctx); lockErr != nil {
@@ -113,7 +115,14 @@ func (ex *Execution) Execute() (*model.LegalHold, error) {
 
 	// Update the LegalHold with execution results
 	ex.LegalHold.LastExecutionEndedAt = ex.ExecutionEndTime
+
+	// Ensure that the LastExecutionEndedAt is not in the future, useful when running the job manually
+	if ex.ExecutionEndTime > now {
+		ex.LegalHold.LastExecutionEndedAt = now
+	}
+
 	ex.LegalHold.Status = model.LegalHoldStatusIdle
+
 	return &ex.LegalHold, nil
 }
 
@@ -185,19 +194,15 @@ func (ex *Execution) ExportData() error {
 				break
 			}
 
-			// Update LastMessageAt if we have newer messages
-			for _, post := range posts {
-				if post.PostCreateAt > ex.LegalHold.LastMessageAt {
-					ex.LegalHold.LastMessageAt = post.PostCreateAt
-				}
-			}
-
 			ex.papi.LogDebug("Legal hold executor - ExportData", "channel_id", channelID, "post_count", len(posts))
 
 			err = ex.WritePostsBatchToFile(channelID, posts)
 			if err != nil {
 				return err
 			}
+
+			// Update LastMessageAt with the last CreatedAt post
+			ex.LegalHold.LastMessageAt = posts[len(posts)-1].PostCreateAt
 
 			// Extract the FileIDs to export
 			var fileIDs []string
