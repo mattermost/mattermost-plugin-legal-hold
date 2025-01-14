@@ -50,73 +50,21 @@ func Process(cmd *cobra.Command, _ []string) {
 	fmt.Printf("- Input data: %s\n", legalHoldData)
 	fmt.Printf("- Procesed output will be written to: %s\n", outputPath)
 	fmt.Println()
-	fmt.Println("Let's begin...")
-	fmt.Println()
 
-	// Extract the zip file
-	fmt.Println("Extracting data to temporary directory...")
-
-	tempPath := filepath.Join(outputPath, "temp")
-
-	err := os.MkdirAll(tempPath, 0755)
-	if err != nil {
-		fmt.Printf("Error while creating temporary directory: %v\n", err)
+	opts := model.LegalHoldProcessOptions{
+		LegalHoldData:   legalHoldData,
+		OutputPath:      outputPath,
+		LegalHoldSecret: legalHoldSecret,
 	}
 
-	// Clean up the temporary directory when we're done.
-	defer func() {
-		os.RemoveAll(tempPath)
-	}()
-
-	if err := ExtractZip(legalHoldData, tempPath); err != nil {
-		fmt.Printf("Error while extracting: %v\n", err)
+	result, err := ProcessLegalHolds(opts)
+	if err != nil {
+		fmt.Printf("Error processing legal holds: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Create a list of legal holds.
-	fmt.Println("Identifying Legal Holds in output data...")
-	legalHolds, err := parse.ListLegalHolds(tempPath)
-	if err != nil {
-		fmt.Printf("Error while listing legal holds: %v\n", err)
-		os.Exit(1)
-	}
-	for _, hold := range legalHolds {
-		fmt.Printf("- Legal Hold: %s (%s)\n", hold.Name, hold.ID)
-	}
-	fmt.Println()
-
-	// Verify the legal hold data
-	if legalHoldSecret != "" {
-		fmt.Println("Secret key was provided, verifying legal holds...")
-		var errorsOnVerify bool
-
-		for _, hold := range legalHolds {
-			fmt.Printf("- Verifying Legal Hold (%s): ", hold.Name)
-			err := parse.ParseHashes(tempPath, hold.Path, legalHoldSecret)
-			if err != nil {
-				fmt.Printf("[Error] %v\n", err)
-				errorsOnVerify = true
-				continue
-			} else {
-				fmt.Println("Verified")
-			}
-		}
-		fmt.Println()
-
-		if errorsOnVerify {
-			fmt.Println("Failed to verify the authenticity of the legal holds. Exiting.")
-			os.Exit(1)
-		}
-	}
-
-	// Process Each Legal Hold.
-	for _, hold := range legalHolds {
-		err = ProcessLegalHold(hold, outputPath)
-		if err != nil {
-			fmt.Printf("Error while processing legal hold: %v\n", err)
-			os.Exit(1)
-		}
-	}
+	fmt.Printf("Successfully processed %d legal holds\n", len(result.LegalHolds))
+	fmt.Printf("Processed %d files\n", result.FilesCount)
 }
 
 // ExtractZip extracts all files from the specified zip archive and saves them to the given output path.
@@ -138,6 +86,90 @@ func ExtractZip(zipPath string, outputPath string) error {
 		}
 	}
 	return nil
+}
+
+// ProcessLegalHolds processes all legal holds according to the given options
+func ProcessLegalHolds(opts model.LegalHoldProcessOptions) (*model.LegalHoldProcessResult, error) {
+	result := &model.LegalHoldProcessResult{
+		LegalHolds: []string{},
+		FilesCount: 0,
+	}
+
+	fmt.Println("Let's begin...")
+	fmt.Println()
+
+	// Extract the zip file
+	fmt.Println("Extracting data to temporary directory...")
+
+	tempPath := filepath.Join(opts.OutputPath, "temp")
+
+	err := os.MkdirAll(tempPath, 0755)
+	if err != nil {
+		return nil, fmt.Errorf("error creating temporary directory: %w", err)
+	}
+
+	// Clean up the temporary directory when we're done.
+	defer func() {
+		os.RemoveAll(tempPath)
+	}()
+
+	if err := ExtractZip(opts.LegalHoldData, tempPath); err != nil {
+		return nil, fmt.Errorf("error extracting zip: %w", err)
+	}
+
+	// Create a list of legal holds.
+	fmt.Println("Identifying Legal Holds in output data...")
+	legalHolds, err := parse.ListLegalHolds(tempPath)
+	if err != nil {
+		return nil, fmt.Errorf("error listing legal holds: %w", err)
+	}
+	for _, hold := range legalHolds {
+		fmt.Printf("- Legal Hold: %s (%s)\n", hold.Name, hold.ID)
+	}
+	fmt.Println()
+
+	// Verify the legal hold data
+	if opts.LegalHoldSecret != "" {
+		fmt.Println("Secret key was provided, verifying legal holds...")
+		var errorsOnVerify bool
+
+		for _, hold := range legalHolds {
+			fmt.Printf("- Verifying Legal Hold (%s): ", hold.Name)
+			err := parse.ParseHashes(tempPath, hold.Path, opts.LegalHoldSecret)
+			if err != nil {
+				fmt.Printf("[Error] %v\n", err)
+				errorsOnVerify = true
+				continue
+			} else {
+				fmt.Println("Verified")
+			}
+		}
+		fmt.Println()
+
+		if errorsOnVerify {
+			return nil, fmt.Errorf("failed to verify the authenticity of the legal holds")
+		}
+	}
+
+	// Process Each Legal Hold.
+	var totalFiles int
+	for _, hold := range legalHolds {
+		err = ProcessLegalHold(hold, opts.OutputPath)
+		if err != nil {
+			return nil, fmt.Errorf("error processing legal hold %s: %w", hold.ID, err)
+		}
+		result.LegalHolds = append(result.LegalHolds, hold.ID)
+
+		// Count files for this hold
+		files, err := parse.ProcessFiles(hold)
+		if err != nil {
+			return nil, fmt.Errorf("error counting files for hold %s: %w", hold.ID, err)
+		}
+		totalFiles += len(files)
+	}
+
+	result.FilesCount = totalFiles
+	return result, nil
 }
 
 // ProcessLegalHold carries out the processing of a single legal hold within the extracted output data.

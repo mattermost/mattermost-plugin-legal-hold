@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/processor/cmd"
 	"github.com/mattermost/mattermost-plugin-legal-hold/processor/model"
@@ -20,19 +19,18 @@ func processLegalHold(dataPath, outputPath, secret string) error {
 		return fmt.Errorf("output path must be a directory: %s", outputPath)
 	}
 
-	// Create a LegalHold instance from the directory
-	hold := model.LegalHold{
-		Path: dataPath,
-		Name: filepath.Base(dataPath),
-		ID:   filepath.Base(dataPath), // Using directory name as ID
+	opts := model.LegalHoldProcessOptions{
+		LegalHoldData:   dataPath,
+		OutputPath:      outputPath,
+		LegalHoldSecret: secret,
 	}
 
-	// Process the legal hold using the existing cmd package
-	err := cmd.ProcessLegalHold(hold, outputPath)
+	result, err := cmd.ProcessLegalHolds(opts)
 	if err != nil {
 		return fmt.Errorf("failed to process legal hold: %w", err)
 	}
 
+	fmt.Printf("Processed %d legal holds and %d files\n", len(result.LegalHolds), result.FilesCount)
 	return nil
 }
 
