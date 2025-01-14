@@ -50,7 +50,7 @@ func processLegalHold(dataPath, outputPath, secret string, logCallback func(stri
 		LegalHoldSecret: secret,
 	}
 
-	result, err := cmd.ProcessLegalHolds(opts)
+	_, err := cmd.ProcessLegalHolds(opts)
 	if err != nil {
 		return fmt.Errorf("failed to process legal hold: %w", err)
 	}
