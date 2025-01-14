@@ -81,7 +81,7 @@ func main() {
 		go func() {
 			indexPath, err := processLegalHold(dataEntry.Text, outputEntry.Text, secretEntry.Text, func(text string) {
 				// Update UI in main thread
-				current := outputText.Text()
+				current := outputText.Text
 				outputText.SetText(current + text)
 				outputText.Refresh()
 			})
