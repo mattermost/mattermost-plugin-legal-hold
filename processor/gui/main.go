@@ -94,6 +94,9 @@ func main() {
 				dialog.ShowError(err, w)
 				openOutputBtn.Hide()
 			} else {
+				// Show success dialog
+				dialog.ShowInformation("Success", "Legal hold has been processed successfully!", w)
+				
 				// Show and configure open output button
 				openOutputBtn.OnTapped = func() {
 					var cmd *exec.Cmd
