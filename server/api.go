@@ -354,7 +354,7 @@ func (p *Plugin) runSingleLegalHold(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// testAmazonS3Connection tests the plugin's custom Amazon S3 connection
+// resetLegalHoldStatus resets the status of a LegalHold to Idle
 func (p *Plugin) resetLegalHoldStatus(w http.ResponseWriter, r *http.Request) {
 	legalholdID, err := RequireLegalHoldID(r)
 	if err != nil {
@@ -387,6 +387,7 @@ func (p *Plugin) resetLegalHoldStatus(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// testAmazonS3Connection tests the plugin's custom Amazon S3 connection
 func (p *Plugin) testAmazonS3Connection(w http.ResponseWriter, _ *http.Request) {
 	type messageResponse struct {
 		Message string `json:"message"`
