@@ -36,17 +36,20 @@ func main() {
 			}
 			dataEntry.SetText(uri.URI().Path())
 		}, w)
+		fd.Resize(fyne.NewSize(700, 500))
 		fd.SetFilter(storage.NewExtensionFileFilter([]string{".zip"}))
 		fd.Show()
 	})
 
 	selectOutputBtn := widget.NewButton("Browse...", func() {
-		dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
+		fd := dialog.NewFolderOpen(func(uri fyne.ListableURI, err error) {
 			if uri == nil {
 				return
 			}
 			outputEntry.SetText(uri.Path())
 		}, w)
+		fd.Resize(fyne.NewSize(700, 500))
+		fd.Show()
 	})
 
 	// Output text area
