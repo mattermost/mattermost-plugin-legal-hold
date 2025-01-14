@@ -50,7 +50,8 @@ func main() {
 	})
 
 	// Output text area
-	outputText := widget.NewTextGrid()
+	outputText := widget.NewMultiLineEntry()
+	outputText.Wrapping = fyne.TextWrapWord
 	outputText.SetText("Processing output will appear here...")
 
 	// Create buttons
