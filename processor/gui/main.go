@@ -9,6 +9,8 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
+	"os/exec"
+	"runtime"
 )
 
 func main() {
@@ -71,7 +73,7 @@ func main() {
 		
 		// Call processing in goroutine to keep UI responsive
 		go func() {
-			err := processLegalHold(dataEntry.Text, outputEntry.Text, secretEntry.Text, func(text string) {
+			indexPath, err := processLegalHold(dataEntry.Text, outputEntry.Text, secretEntry.Text, func(text string) {
 				// Update UI in main thread
 				current := outputText.Text()
 				outputText.SetText(current + text)
@@ -84,6 +86,24 @@ func main() {
 			
 			if err != nil {
 				dialog.ShowError(err, w)
+				openOutputBtn.Hide()
+			} else {
+				// Show and configure open output button
+				openOutputBtn.OnTapped = func() {
+					var cmd *exec.Cmd
+					switch runtime.GOOS {
+					case "darwin":
+						cmd = exec.Command("open", indexPath)
+					case "windows":
+						cmd = exec.Command("cmd", "/c", "start", indexPath)
+					default: // linux/unix
+						cmd = exec.Command("xdg-open", indexPath)
+					}
+					if err := cmd.Run(); err != nil {
+						dialog.ShowError(err, w)
+					}
+				}
+				openOutputBtn.Show()
 			}
 		}()
 	})
@@ -101,8 +121,12 @@ func main() {
 		widget.NewLabel("Processing Output:"),
 	)
 
+	// Create (initially hidden) open output button
+	openOutputBtn := widget.NewButton("Open Output", nil)
+	openOutputBtn.Hide()
+
 	content := container.NewBorder(
-		topContent, nil, nil, nil,
+		topContent, openOutputBtn, nil, nil,
 		container.NewScroll(outputText),
 	)
 

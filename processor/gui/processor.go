@@ -11,7 +11,7 @@ import (
 )
 
 // processLegalHold executes the legal hold processing with progress updates
-func processLegalHold(dataPath, outputPath, secret string, logCallback func(string)) error {
+func processLegalHold(dataPath, outputPath, secret string, logCallback func(string)) (string, error) {
 	// Validate input file is a zip
 	if !strings.HasSuffix(strings.ToLower(dataPath), ".zip") {
 		return fmt.Errorf("legal hold data must be a ZIP file: %s", dataPath)
@@ -52,10 +52,12 @@ func processLegalHold(dataPath, outputPath, secret string, logCallback func(stri
 
 	_, err := cmd.ProcessLegalHolds(opts)
 	if err != nil {
-		return fmt.Errorf("failed to process legal hold: %w", err)
+		return "", fmt.Errorf("failed to process legal hold: %w", err)
 	}
 
-	return nil
+	// Return path to index.html
+	indexPath := filepath.Join(outputPath, "index.html")
+	return indexPath, nil
 }
 
 // isDirectory checks if the given path is a directory
