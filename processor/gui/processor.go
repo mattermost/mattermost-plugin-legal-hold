@@ -48,7 +48,7 @@ func processLegalHold(dataPath, outputPath, secret string, logCallback func(stri
 	opts := model.LegalHoldProcessOptions{
 		LegalHoldData:   dataPath,
 		OutputPath:      outputPath,
-		LegalHoldSecret: secret,
+		LegalHoldSecret: strings.TrimSpace(secret),
 	}
 
 	_, err := cmd.ProcessLegalHolds(opts)
