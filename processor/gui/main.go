@@ -126,10 +126,6 @@ func main() {
 		widget.NewLabel("Processing Output:"),
 	)
 
-	// Create (initially hidden) open output button
-	openOutputBtn := widget.NewButton("Open Output", nil)
-	openOutputBtn.Hide()
-
 	content := container.NewBorder(
 		topContent, openOutputBtn, nil, nil,
 		container.NewScroll(outputText),
