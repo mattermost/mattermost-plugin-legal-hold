@@ -14,6 +14,7 @@ import EyeLockIcon from './eye-outline_F06D0.svg';
 import RunIcon from './play-outline.svg';
 import RunConfirmationModal from './run_confirmation_modal';
 import RunErrorModal from './run_error_modal';
+import ResetConfirmationModal from './reset_confirmation_modal';
 
 interface LegalHoldRowProps {
     legalHold: LegalHold;
@@ -35,6 +36,7 @@ const getLastRunDisplay = (lh: LegalHold) => {
 const LegalHoldRow = (props: LegalHoldRowProps) => {
     const [showRunConfirmModal, setShowRunConfirmModal] = useState(false);
     const [showRunErrorModal, setShowRunErrorModal] = useState(false);
+    const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
     const [resetClickCount, setResetClickCount] = useState(0);
     const lh = props.legalHold;
     const startsAt = (new Date(lh.starts_at)).toLocaleDateString();
@@ -61,14 +63,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     const newCount = resetClickCount + 1;
                     setResetClickCount(newCount);
                     if (newCount === 5) {
-                        setResetClickCount(0);
-                        Client.resetLegalHoldStatus(lh.id).
-                            then(() => {
-                                props.refresh();
-                            }).
-                            catch(() => {
-                                // Silently fail
-                            });
+                        setShowResetConfirmModal(true);
                     }
                 }}
                 style={{cursor: 'pointer'}}
@@ -240,6 +235,24 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
             <RunErrorModal
                 show={showRunErrorModal}
                 onHide={() => setShowRunErrorModal(false)}
+            />
+            <ResetConfirmationModal
+                show={showResetConfirmModal}
+                onHide={() => {
+                    setShowResetConfirmModal(false);
+                    setResetClickCount(0);
+                }}
+                onConfirm={() => {
+                    setShowResetConfirmModal(false);
+                    setResetClickCount(0);
+                    Client.resetLegalHoldStatus(lh.id).
+                        then(() => {
+                            props.refresh();
+                        }).
+                        catch(() => {
+                            // Silently fail
+                        });
+                }}
             />
         </React.Fragment>
     );
