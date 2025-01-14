@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"strings"
@@ -21,6 +22,28 @@ func processLegalHold(dataPath, outputPath, secret string, logCallback func(stri
 		return fmt.Errorf("output path must be a directory: %s", outputPath)
 	}
 
+	// Create pipe for capturing output
+	oldStdout := os.Stdout
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	os.Stderr = w
+
+	// Start goroutine to read from pipe and send to GUI
+	go func() {
+		scanner := bufio.NewScanner(r)
+		for scanner.Scan() {
+			logCallback(scanner.Text() + "\n")
+		}
+	}()
+
+	// Restore original stdout/stderr when done
+	defer func() {
+		w.Close()
+		os.Stdout = oldStdout
+		os.Stderr = oldStderr
+	}()
+
 	opts := model.LegalHoldProcessOptions{
 		LegalHoldData:   dataPath,
 		OutputPath:      outputPath,
@@ -32,7 +55,6 @@ func processLegalHold(dataPath, outputPath, secret string, logCallback func(stri
 		return fmt.Errorf("failed to process legal hold: %w", err)
 	}
 
-	fmt.Printf("Processed %d legal holds and %d files\n", len(result.LegalHolds), result.FilesCount)
 	return nil
 }
 
