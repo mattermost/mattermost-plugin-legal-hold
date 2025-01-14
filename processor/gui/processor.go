@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/processor/cmd"
@@ -14,12 +15,12 @@ import (
 func processLegalHold(dataPath, outputPath, secret string, logCallback func(string)) (string, error) {
 	// Validate input file is a zip
 	if !strings.HasSuffix(strings.ToLower(dataPath), ".zip") {
-		return fmt.Errorf("legal hold data must be a ZIP file: %s", dataPath)
+		return "", fmt.Errorf("legal hold data must be a ZIP file: %s", dataPath)
 	}
 
 	// Validate output path is a directory
 	if !isDirectory(outputPath) {
-		return fmt.Errorf("output path must be a directory: %s", outputPath)
+		return "", fmt.Errorf("output path must be a directory: %s", outputPath)
 	}
 
 	// Create pipe for capturing output

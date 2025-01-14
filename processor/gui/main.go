@@ -53,8 +53,13 @@ func main() {
 	outputText := widget.NewTextGrid()
 	outputText.SetText("Processing output will appear here...")
 
-	// Process button
-	processBtn := widget.NewButton("Process Legal Hold", func() {
+	// Create buttons
+	processBtn := widget.NewButton("Process Legal Hold", nil)
+	openOutputBtn := widget.NewButton("Open Output", nil)
+	openOutputBtn.Hide()
+
+	// Configure process button
+	processBtn.OnTapped = func() {
 		if dataEntry.Text == "" {
 			dialog.ShowError(errors.New("Legal hold data path is required"), w)
 			return
