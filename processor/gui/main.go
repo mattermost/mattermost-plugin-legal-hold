@@ -111,7 +111,7 @@ func main() {
 				openOutputBtn.Show()
 			}
 		}()
-	})
+	}
 
 	// Layout
 	dataContainer := container.NewBorder(nil, nil, nil, selectDataBtn, dataEntry)
