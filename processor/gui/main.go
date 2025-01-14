@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -16,7 +17,7 @@ func main() {
 	
 	// Input fields
 	dataEntry := widget.NewEntry()
-	dataEntry.SetPlaceHolder("Legal Hold Data Path")
+	dataEntry.SetPlaceHolder("Legal Hold Data ZIP File")
 	
 	outputEntry := widget.NewEntry()
 	outputEntry.SetPlaceHolder("Output Path")
@@ -27,12 +28,14 @@ func main() {
 
 	// File picker buttons
 	selectDataBtn := widget.NewButton("Browse...", func() {
-		dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
+		fd := dialog.NewFileOpen(func(uri fyne.URIReadCloser, err error) {
 			if uri == nil {
 				return
 			}
-			dataEntry.SetText(uri.Path())
+			dataEntry.SetText(uri.URI().Path())
 		}, w)
+		fd.SetFilter(storage.NewExtensionFileFilter([]string{".zip"}))
+		fd.Show()
 	})
 
 	selectOutputBtn := widget.NewButton("Browse...", func() {

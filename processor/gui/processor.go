@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/processor/cmd"
 	"github.com/mattermost/mattermost-plugin-legal-hold/processor/model"
@@ -10,11 +11,12 @@ import (
 
 // processLegalHold executes the legal hold processing with progress updates
 func processLegalHold(dataPath, outputPath, secret string) error {
-	// Validate that paths are directories
-	if !isDirectory(dataPath) {
-		return fmt.Errorf("legal hold path must be a directory: %s", dataPath)
+	// Validate input file is a zip
+	if !strings.HasSuffix(strings.ToLower(dataPath), ".zip") {
+		return fmt.Errorf("legal hold data must be a ZIP file: %s", dataPath)
 	}
 
+	// Validate output path is a directory
 	if !isDirectory(outputPath) {
 		return fmt.Errorf("output path must be a directory: %s", outputPath)
 	}
