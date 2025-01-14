@@ -47,6 +47,10 @@ func main() {
 		}, w)
 	})
 
+	// Output text area
+	outputText := widget.NewTextGrid()
+	outputText.SetText("Processing output will appear here...")
+
 	// Process button
 	processBtn := widget.NewButton("Process Legal Hold", func() {
 		if dataEntry.Text == "" {
@@ -58,20 +62,39 @@ func main() {
 			return
 		}
 		
+		// Clear previous output
+		outputText.SetText("")
+		
 		// Call processing in goroutine to keep UI responsive
-		go processLegalHold(dataEntry.Text, outputEntry.Text, secretEntry.Text)
+		go func() {
+			err := processLegalHold(dataEntry.Text, outputEntry.Text, secretEntry.Text, func(text string) {
+				// Update UI in main thread
+				current := outputText.Text()
+				outputText.SetText(current + text)
+				outputText.Refresh()
+			})
+			if err != nil {
+				dialog.ShowError(err, w)
+			}
+		}()
 	})
 
 	// Layout
 	dataContainer := container.NewBorder(nil, nil, nil, selectDataBtn, dataEntry)
 	outputContainer := container.NewBorder(nil, nil, nil, selectOutputBtn, outputEntry)
 
-	content := container.NewVBox(
+	topContent := container.NewVBox(
 		widget.NewLabel("Legal Hold Processor"),
 		dataContainer,
 		outputContainer,
 		secretEntry,
 		processBtn,
+		widget.NewLabel("Processing Output:"),
+	)
+
+	content := container.NewBorder(
+		topContent, nil, nil, nil,
+		container.NewScroll(outputText),
 	)
 
 	w.SetContent(content)

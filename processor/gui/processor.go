@@ -10,7 +10,7 @@ import (
 )
 
 // processLegalHold executes the legal hold processing with progress updates
-func processLegalHold(dataPath, outputPath, secret string) error {
+func processLegalHold(dataPath, outputPath, secret string, logCallback func(string)) error {
 	// Validate input file is a zip
 	if !strings.HasSuffix(strings.ToLower(dataPath), ".zip") {
 		return fmt.Errorf("legal hold data must be a ZIP file: %s", dataPath)
