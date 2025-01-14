@@ -65,6 +65,10 @@ func main() {
 		// Clear previous output
 		outputText.SetText("")
 		
+		// Disable button while processing
+		processBtn.Disable()
+		processBtn.SetText("Processing...")
+		
 		// Call processing in goroutine to keep UI responsive
 		go func() {
 			err := processLegalHold(dataEntry.Text, outputEntry.Text, secretEntry.Text, func(text string) {
@@ -73,6 +77,11 @@ func main() {
 				outputText.SetText(current + text)
 				outputText.Refresh()
 			})
+			
+			// Re-enable button when done
+			processBtn.Enable()
+			processBtn.SetText("Process Legal Hold")
+			
 			if err != nil {
 				dialog.ShowError(err, w)
 			}
