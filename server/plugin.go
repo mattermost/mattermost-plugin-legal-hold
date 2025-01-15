@@ -7,13 +7,14 @@ import (
 
 	"github.com/gorilla/mux"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
-	"github.com/mattermost/mattermost-server/v6/model"
+	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/config"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/jobs"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/kvstore"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 )
@@ -83,6 +84,20 @@ func (p *Plugin) OnActivate() error {
 	// FIXME: do we need to handle MM configuration changes?
 
 	p.KVStore = kvstore.NewKVStore(p.Client)
+
+	// Reset all legal holds on activation
+	legalHolds, err := p.KVStore.GetAllLegalHolds()
+	if err != nil {
+		p.Client.Log.Error("Failed to get legal holds during activation", "err", err)
+		return err
+	}
+
+	for _, lh := range legalHolds {
+		if err := p.KVStore.UpdateLegalHoldStatus(lh.ID, model.LegalHoldStatusIdle); err != nil {
+			p.Client.Log.Error("Failed to reset legal hold status during activation", "legal_hold_id", lh.ID, "err", err)
+			return err
+		}
+	}
 
 	// Create job manager
 	p.jobManager = jobs.NewJobManager(&p.Client.Log)
@@ -213,8 +228,8 @@ func (p *Plugin) Reconfigure() error {
 	return nil
 }
 
-func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings) filestore.FileBackendSettings {
-	if *fileSettings.DriverName == model.ImageDriverLocal {
+func FixedFileSettingsToFileBackendSettings(fileSettings mattermostModel.FileSettings) filestore.FileBackendSettings {
+	if *fileSettings.DriverName == mattermostModel.ImageDriverLocal {
 		return filestore.FileBackendSettings{
 			DriverName: *fileSettings.DriverName,
 			Directory:  *fileSettings.Directory,
