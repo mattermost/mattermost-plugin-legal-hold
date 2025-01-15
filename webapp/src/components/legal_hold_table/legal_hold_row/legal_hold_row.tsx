@@ -65,6 +65,10 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     alignItems: 'center',
                 }}
             >
+                {/*
+                    TODO: Replace when updating the webapp dependency:
+                    https://github.com/mattermost/mattermost-plugin-legal-hold/pull/129#discussion_r1914917354
+                */}
                 <OverlayTrigger
 
                     // @ts-ignore
@@ -95,6 +99,10 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                         </span>
                     </a>
                 </OverlayTrigger>
+                {/*
+                    TODO: Replace when updating the webapp dependency:
+                    https://github.com/mattermost/mattermost-plugin-legal-hold/pull/129#discussion_r1914917354
+                */}
                 <OverlayTrigger
 
                     // @ts-ignore
@@ -125,6 +133,10 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                         </span>
                     </a>
                 </OverlayTrigger>
+                {/*
+                    TODO: Replace when updating the webapp dependency:
+                    https://github.com/mattermost/mattermost-plugin-legal-hold/pull/129#discussion_r1914917354
+                */}
                 <OverlayTrigger
 
                     // @ts-ignore
@@ -162,6 +174,10 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                         </span>
                     </a>
                 </OverlayTrigger>
+                {/*
+                    TODO: Replace when updating the webapp dependency:
+                    https://github.com/mattermost/mattermost-plugin-legal-hold/pull/129#discussion_r1914917354
+                */}
                 <OverlayTrigger
 
                     // @ts-ignore
