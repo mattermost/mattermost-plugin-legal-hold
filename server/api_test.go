@@ -7,10 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/mux"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/config"
-	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/kvstore"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin/plugintest"
 	"github.com/stretchr/testify/mock"
@@ -43,59 +41,6 @@ func (m *MockLegalHoldJob) RunFromAPI() {
 func (m *MockLegalHoldJob) RunSingleLegalHold(id string) error {
 	args := m.Called(id)
 	return args.Error(0)
-}
-
-func TestResetLegalHoldStatus(t *testing.T) {
-	p := &Plugin{}
-	api := &plugintest.API{}
-	p.SetDriver(&plugintest.Driver{})
-	p.SetAPI(api)
-	p.Client = pluginapi.NewClient(p.API, p.Driver)
-
-	// Initialize KVStore
-	p.KVStore = kvstore.NewKVStore(p.Client)
-
-	// Initialize the router
-	p.router = mux.NewRouter()
-	p.router.HandleFunc("/api/v1/legalholds/{legalhold_id:[A-Za-z0-9]+}/resetstatus", p.resetLegalHoldStatus).Methods(http.MethodPost)
-	p.router.HandleFunc("/api/v1/legalholds/{legalhold_id:[A-Za-z0-9]+}/run", p.runSingleLegalHold).Methods(http.MethodPost)
-
-	api.On("HasPermissionTo", "test_user_id", model.PermissionManageSystem).Return(true)
-	api.On("LogInfo", mock.Anything).Maybe()
-	api.On("LogError", mock.Anything, mock.Anything).Maybe()
-
-	// Test successful reset
-	testID := model.NewId()
-	api.On("KVGet", mock.AnythingOfType("string")).Return([]byte(fmt.Sprintf(`{"id":"%s","status":"executing"}`, testID)), nil).Once()
-	api.On("KVSetWithOptions", mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8"), mock.AnythingOfType("model.PluginKVSetOptions")).Return(true, nil).Once()
-
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/legalholds/%s/resetstatus", testID), nil)
-	require.NoError(t, err)
-	req.Header.Add("Mattermost-User-Id", "test_user_id")
-
-	recorder := httptest.NewRecorder()
-	p.ServeHTTP(nil, recorder, req)
-	require.Equal(t, http.StatusOK, recorder.Code)
-
-	// Test invalid legal hold ID
-	req, err = http.NewRequest(http.MethodPost, "/api/v1/legalholds/invalid_id/resetstatus", nil)
-	require.NoError(t, err)
-	req.Header.Add("Mattermost-User-Id", "test_user_id")
-
-	recorder = httptest.NewRecorder()
-	p.ServeHTTP(nil, recorder, req)
-	require.Equal(t, http.StatusNotFound, recorder.Code)
-
-	// Test non-existent legal hold
-	api.On("KVGet", mock.AnythingOfType("string")).Return(nil, &model.AppError{}).Once()
-
-	req, err = http.NewRequest(http.MethodPost, "/api/v1/legalholds/"+model.NewId()+"/resetstatus", nil)
-	require.NoError(t, err)
-	req.Header.Add("Mattermost-User-Id", "test_user_id")
-
-	recorder = httptest.NewRecorder()
-	p.ServeHTTP(nil, recorder, req)
-	require.Equal(t, http.StatusInternalServerError, recorder.Code)
 }
 
 func TestRunSingleLegalHold(t *testing.T) {

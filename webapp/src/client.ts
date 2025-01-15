@@ -37,11 +37,6 @@ class APIClient {
         return this.doWithBody(url, 'post', {});
     };
 
-    resetLegalHoldStatus = (id: string) => {
-        const url = `${this.url}/legalholds/${id}/resetstatus`;
-        return this.doWithBody(url, 'post', {});
-    };
-
     testAmazonS3Connection = () => {
         const url = `${this.url}/test_amazon_s3_connection`;
         return this.doWithBody(url, 'post', {}) as Promise<{message: string}>;
