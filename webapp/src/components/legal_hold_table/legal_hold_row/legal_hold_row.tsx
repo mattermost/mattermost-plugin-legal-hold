@@ -29,7 +29,12 @@ const getLastRunDisplay = (lh: LegalHold) => {
     if (lh.status === 'executing') {
         return 'Running...';
     }
-    return lh.last_execution_ended_at ? new Date(lh.last_execution_ended_at).toLocaleString() : 'Never';
+    if (!lh.last_execution_ended_at || lh.last_execution_ended_at === 0) {
+        return 'Never';
+    }
+
+    // Convert seconds to milliseconds for JavaScript Date
+    return new Date(lh.last_execution_ended_at * 1000).toLocaleString();
 };
 
 const LegalHoldRow = (props: LegalHoldRowProps) => {
@@ -57,7 +62,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
             <div
                 data-testid={`last-run-${lh.id}`}
             >
-                {getLastRunDisplay(lh)} {lh.last_execution_ended_at}
+                {getLastRunDisplay(lh)}
             </div>
             <div
                 style={{
