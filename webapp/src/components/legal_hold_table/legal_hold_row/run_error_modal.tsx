@@ -17,7 +17,7 @@ const RunErrorModal = ({show, onHide}: Props) => {
                 <Modal.Title>{'Error Running Legal Hold'}</Modal.Title>
             </Modal.Header>
             <Modal.Body>
-                {'There was an error running the legal hold. Please contact your system administrator.'}
+                {'There was an error running the legal hold. Please check the logs for more details.'}
             </Modal.Body>
             <Modal.Footer>
                 <button
