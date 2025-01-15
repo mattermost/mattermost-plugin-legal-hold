@@ -57,7 +57,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
             <div
                 data-testid={`last-run-${lh.id}`}
             >
-                {getLastRunDisplay(lh)}
+                {getLastRunDisplay(lh)} {lh.last_execution_ended_at}
             </div>
             <div
                 style={{
