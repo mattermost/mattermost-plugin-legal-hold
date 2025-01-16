@@ -1,5 +1,6 @@
 import {test, expect} from '@e2e-support/test_fixture';
 import {getRandomId} from '@e2e-support/util';
+import pages from '@e2e-support/ui/pages';
 
 import PluginPage from '../pages/legal_hold_plugin';
 import {createLegalHold} from '../support/legal_hold';
@@ -7,7 +8,7 @@ import {createLegalHold} from '../support/legal_hold';
 let pluginPage: PluginPage;
 const legalHoldName = `New Hold ${getRandomId()}`;
 
-test.beforeEach(async ({pw, pages}) => {
+test.beforeEach(async ({pw}) => {
     // Do setup and log in as admin user
     const {adminUser, adminClient, user} = await pw.initSetup();
     const {page} = await pw.testBrowser.login(adminUser);
