@@ -98,6 +98,11 @@ processor:
 	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-v$(PLUGIN_VERSION)-darwin-arm64;
 	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-v$(PLUGIN_VERSION)-windows-amd64.exe;
 
+.PHONY: run-gui
+run-gui:
+	cd $(PROCESSOR_DIR) && go mod tidy;
+	cd $(PROCESSOR_DIR) && $(GO) run ./gui/.;
+
 ## Ensures NPM dependencies are installed without having to run this all the time.
 webapp/node_modules: $(wildcard webapp/package.json)
 ifneq ($(HAS_WEBAPP),)
