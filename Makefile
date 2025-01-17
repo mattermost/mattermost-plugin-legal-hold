@@ -89,7 +89,11 @@ endif
 
 ## Builds the processor for all architectures.
 .PHONY: processor
-processor:
+processor: processor-cli
+
+## Builds the CLI processor for all architectures.
+.PHONY: processor-cli
+processor-cli:
 	rm -rf $(PROCESSOR_DIR)/bin;
 	mkdir -p $(PROCESSOR_DIR)/bin;
 	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-v$(PLUGIN_VERSION)-linux-amd64;
@@ -97,6 +101,17 @@ processor:
 	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-v$(PLUGIN_VERSION)-darwin-amd64;
 	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-v$(PLUGIN_VERSION)-darwin-arm64;
 	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-v$(PLUGIN_VERSION)-windows-amd64.exe;
+
+## Builds the GUI processor for all architectures using fyne-cross.
+.PHONY: processor-gui
+processor-gui:
+	@if ! [ -x "$$(command -v fyne-cross)" ]; then \
+		echo "fyne-cross is not installed. Installing..."; \
+		go install github.com/fyne-io/fyne-cross@latest; \
+	fi
+	cd $(PROCESSOR_DIR) && fyne-cross linux -app-id "com.mattermost.legalhold.processor" ./gui
+	cd $(PROCESSOR_DIR) && fyne-cross windows -app-id "com.mattermost.legalhold.processor" ./gui
+	cd $(PROCESSOR_DIR) && fyne-cross darwin -app-id "com.mattermost.legalhold.processor" ./gui
 
 .PHONY: run-gui
 run-gui:

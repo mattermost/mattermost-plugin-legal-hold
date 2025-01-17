@@ -19,3 +19,4 @@ dist/
 .idea/
 
 processor/temp
+processor/fyne-cross

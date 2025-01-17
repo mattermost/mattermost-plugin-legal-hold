@@ -3,27 +3,28 @@ package main
 import (
 	"errors"
 
+	"os/exec"
+	"runtime"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
-	"os/exec"
-	"runtime"
 )
 
 func main() {
 	a := app.New()
 	w := a.NewWindow("Legal Hold Processor")
-	
+
 	// Input fields
 	dataEntry := widget.NewEntry()
 	dataEntry.SetPlaceHolder("Legal Hold Data ZIP File")
-	
+
 	outputEntry := widget.NewEntry()
 	outputEntry.SetPlaceHolder("Output Path")
-	
+
 	secretEntry := widget.NewEntry()
 	secretEntry.SetPlaceHolder("Legal Hold Secret (Optional)")
 	secretEntry.Password = true
@@ -72,14 +73,14 @@ func main() {
 			dialog.ShowError(errors.New("Output path is required"), w)
 			return
 		}
-		
+
 		// Clear previous output
 		outputText.SetText("")
-		
+
 		// Disable button while processing
 		processBtn.Disable()
 		processBtn.SetText("Processing...")
-		
+
 		// Call processing in goroutine to keep UI responsive
 		go func() {
 			indexPath, err := processLegalHold(dataEntry.Text, outputEntry.Text, secretEntry.Text, func(text string) {
@@ -88,18 +89,18 @@ func main() {
 				outputText.SetText(current + text)
 				outputText.Refresh()
 			})
-			
+
 			// Re-enable button when done
 			processBtn.Enable()
 			processBtn.SetText("Process Legal Hold")
-			
+
 			if err != nil {
 				dialog.ShowError(err, w)
 				openOutputBtn.Hide()
 			} else {
 				// Show success dialog
 				dialog.ShowInformation("Success", "Legal hold has been processed successfully!", w)
-				
+
 				// Show and configure open output button
 				openOutputBtn.OnTapped = func() {
 					var cmd *exec.Cmd
