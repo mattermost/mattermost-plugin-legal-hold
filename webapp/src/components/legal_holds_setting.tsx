@@ -110,8 +110,8 @@ const LegalHoldsSetting = () => {
             <div
                 style={{
                     padding: '28px 32px',
-                    border: '1px solid rgba(0, 0, 0, 0.08)',
-                    background: '#ffffff',
+                    border: '1px solid rgba(var(--sys-center-channel-color-rgb), 0.08)',
+                    background: 'var(--sys-center-channel-bg)',
                     borderRadius: '4px',
                     boxShadow: '0 2px 3px rgba(0, 0, 0, 0.08)',
                     marginBottom: '24px',
