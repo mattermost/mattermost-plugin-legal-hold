@@ -28,10 +28,10 @@ type LegalHold struct {
 	EndsAt                int64           `json:"ends_at"`
 	IncludePublicChannels bool            `json:"include_public_channels"`
 	LastExecutionEndedAt  int64           `json:"last_execution_ended_at"`
-	LastMessageAt         int64           `json:"last_message_at"`
 	ExecutionLength       int64           `json:"execution_length"`
 	Secret                string          `json:"secret"`
-	Status                LegalHoldStatus `json:"status"`
+	LastMessageAt         int64           `json:"last_message_at,omitempty"`
+	Status                LegalHoldStatus `json:"status,omitempty"`
 }
 
 // DeepCopy creates a deep copy of the LegalHold.
