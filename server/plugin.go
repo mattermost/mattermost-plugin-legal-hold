@@ -86,6 +86,7 @@ func (p *Plugin) OnActivate() error {
 	p.KVStore = kvstore.NewKVStore(p.Client)
 
 	// Reset all legal holds on activation
+	// Avoid faling the plugin activation if this fails.
 	legalHolds, err := p.KVStore.GetAllLegalHolds()
 	if err != nil {
 		p.Client.Log.Error("Failed to get legal holds during activation", "err", err)
@@ -95,7 +96,6 @@ func (p *Plugin) OnActivate() error {
 	for _, lh := range legalHolds {
 		if err := p.KVStore.UpdateLegalHoldStatus(lh.ID, model.LegalHoldStatusIdle); err != nil {
 			p.Client.Log.Error("Failed to reset legal hold status during activation", "legal_hold_id", lh.ID, "err", err)
-			return err
 		}
 	}
 
