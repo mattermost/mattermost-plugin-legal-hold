@@ -90,9 +90,19 @@ func (kvs Impl) UpdateLegalHoldStatus(id string, status model.LegalHoldStatus) e
 		return fmt.Errorf("legal hold not found: %s", id)
 	}
 
+	// Do not update status since it is already the same
+	if lh.Status == status {
+		return nil
+	}
+
 	oldValue := *lh
 	lh.Status = status
 	lh.UpdateAt = mattermostModel.GetMillis()
+
+	// If the legal hold does not have a status, set it to idle as default (plugin updates)
+	if oldValue.Status == "" {
+		oldValue.Status = model.LegalHoldStatusIdle
+	}
 
 	key := fmt.Sprintf("%s%s", legalHoldPrefix, lh.ID)
 	saved, err := kvs.client.KV.Set(key, lh, pluginapi.SetAtomic(oldValue))
