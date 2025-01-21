@@ -198,9 +198,10 @@ func (p *Plugin) Reconfigure() error {
 	// 2) For legal holds that supposedly don't have messages, check if the index exist
 	//    and update the field accordingly.
 	//
-	// Avoid faling the plugin activation if this section fails, to ensure working operation and
-	// allowing debugging in parallel, since most errors on this block would come from KVStorage
-	// problems and that would require manual intervention in the database.
+	// Ignore errors during plugin activation to ensure working operation and
+	// allowing debugging in parallel since most errors on this block would come
+	// from KVStorage problems and that would require manual intervention in the
+	// database.
 	legalHolds, err := p.KVStore.GetAllLegalHolds()
 	if err != nil {
 		p.Client.Log.Error("Failed to get legal holds during activation", "err", err)
