@@ -30,7 +30,7 @@ type LegalHold struct {
 	LastExecutionEndedAt  int64           `json:"last_execution_ended_at"`
 	ExecutionLength       int64           `json:"execution_length"`
 	Secret                string          `json:"secret"`
-	LastMessageAt         int64           `json:"last_message_at,omitempty"`
+	HasMessages           bool            `json:"has_messages,omitempty"`
 	Status                LegalHoldStatus `json:"status,omitempty"`
 }
 
@@ -52,6 +52,7 @@ func (lh *LegalHold) DeepCopy() LegalHold {
 		LastExecutionEndedAt:  lh.LastExecutionEndedAt,
 		ExecutionLength:       lh.ExecutionLength,
 		Secret:                lh.Secret,
+		HasMessages:           lh.HasMessages,
 		Status:                lh.Status,
 	}
 
@@ -143,6 +144,11 @@ func (lh *LegalHold) IsFinished() bool {
 // BasePath returns the base file storage path for this legal hold.
 func (lh *LegalHold) BasePath() string {
 	return fmt.Sprintf("legal_hold/%s_%s", lh.Name, lh.ID)
+}
+
+// IndexPath returns the file storage path for the index file for this legal hold.
+func (lh *LegalHold) IndexPath() string {
+	return fmt.Sprintf("%s/index.json", lh.BasePath())
 }
 
 // CreateLegalHold holds the data that is specified in the API call to create a LegalHold.

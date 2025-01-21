@@ -85,21 +85,6 @@ func (p *Plugin) OnActivate() error {
 
 	p.KVStore = kvstore.NewKVStore(p.Client)
 
-	// Reset all legal holds on activation
-	// Avoid faling the plugin activation if this fails.
-	legalHolds, err := p.KVStore.GetAllLegalHolds()
-	if err != nil {
-		p.Client.Log.Error("Failed to get legal holds during activation", "err", err)
-		return err
-	}
-
-	for _, lh := range legalHolds {
-		if err := p.KVStore.UpdateLegalHoldStatus(lh.ID, model.LegalHoldStatusIdle); err != nil {
-			p.Client.Log.Error("Failed to reset legal hold status during activation", "legal_hold_id", lh.ID, "err", err)
-			return err
-		}
-	}
-
 	// Create job manager
 	p.jobManager = jobs.NewJobManager(&p.Client.Log)
 
@@ -207,6 +192,40 @@ func (p *Plugin) Reconfigure() error {
 	}
 
 	p.FileBackend = filesBackend
+
+	// Check all legal holds on plugin activation for two reasons:
+	// 1) Reset all statuses to IDLE to prevent UI stuck legal holds.
+	// 2) For legal holds that supposedly don't have messages, check if the index exist
+	//    and update the field accordingly.
+	//
+	// Avoid faling the plugin activation if this section fails, to ensure working operation and
+	// allowing debugging in parallel, since most errors on this block would come from KVStorage
+	// problems and that would require manual intervention in the database.
+	legalHolds, err := p.KVStore.GetAllLegalHolds()
+	if err != nil {
+		p.Client.Log.Error("Failed to get legal holds during activation", "err", err)
+		return err
+	}
+
+	for _, lh := range legalHolds {
+		oldLH := lh.DeepCopy()
+
+		// Reset legal hold status to IDLE
+		lh.Status = model.LegalHoldStatusIdle
+
+		// Only check the filebackend if the legal hold don't have messages, continue otherwise.
+		if !lh.HasMessages {
+			lh.HasMessages, err = p.FileBackend.FileExists(lh.IndexPath())
+			if err != nil {
+				p.Client.Log.Error("Failed to check if legal hold index exists during activation", "legal_hold_id", lh.ID, "err", err)
+			}
+		}
+
+		// Update the legal hold
+		if _, err = p.KVStore.UpdateLegalHold(lh, oldLH); err != nil {
+			p.Client.Log.Error("Failed to update legal hold during activation", "legal_hold_id", lh.ID, "err", err)
+		}
+	}
 
 	// Remove old job if exists
 	if p.legalHoldJob != nil {

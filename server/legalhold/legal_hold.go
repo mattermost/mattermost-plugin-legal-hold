@@ -201,8 +201,9 @@ func (ex *Execution) ExportData() error {
 				return err
 			}
 
-			// Update LastMessageAt with the last CreatedAt post
-			ex.LegalHold.LastMessageAt = posts[len(posts)-1].PostCreateAt
+			// Since at this point we have posts, ensure the `HasMessages` is set to true so users can
+			// download the legal hold.
+			ex.LegalHold.HasMessages = true
 
 			// Extract the FileIDs to export
 			var fileIDs []string
@@ -480,7 +481,7 @@ func (ex *Execution) messagesBatchPath(channelID string, batchCreateAt int64, ba
 
 // indexPath returns the file path for the Index file for this LegalHold.
 func (ex *Execution) indexPath() string {
-	return fmt.Sprintf("%s/index.json", ex.basePath())
+	return ex.LegalHold.IndexPath()
 }
 
 // filePath returns the file path for a given file attachment within

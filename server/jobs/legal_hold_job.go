@@ -250,7 +250,7 @@ func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 			}
 			lh = *old
 			lh.LastExecutionEndedAt = updatedLH.LastExecutionEndedAt
-			lh.LastMessageAt = updatedLH.LastMessageAt
+			lh.HasMessages = true
 			lh.Status = model.LegalHoldStatusIdle
 			newLH, err := j.kvstore.UpdateLegalHold(lh, *old)
 			if err != nil {

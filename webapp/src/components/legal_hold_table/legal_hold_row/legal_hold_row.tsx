@@ -27,7 +27,7 @@ interface LegalHoldRowProps {
 
 const getLastRunDisplay = (lh: LegalHold) => {
     if (lh.status === 'executing') {
-        return 'Running...';
+        return 'Running now...';
     }
     if (!lh.last_execution_ended_at || lh.last_execution_ended_at === 0) {
         return 'Never';
