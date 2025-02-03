@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"strings"
-	"sync"
 	"time"
 
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
@@ -28,10 +27,10 @@ type LegalHoldRunOnceProps struct {
 }
 
 type LegalHoldJob struct {
-	mux      sync.Mutex
-	settings *LegalHoldJobSettings
+	mux      *cluster.Mutex
 	job      *cluster.Job
 	runner   *runInstance
+	settings *LegalHoldJobSettings
 
 	id          string
 	papi        plugin.API
@@ -44,6 +43,11 @@ type LegalHoldJob struct {
 }
 
 func NewLegalHoldJob(id string, api plugin.API, client *pluginapi.Client, sqlstore *sqlstore.SQLStore, kvstore kvstore.KVStore, filebackend filestore.FileBackend) (*LegalHoldJob, error) {
+	scheduledJobMutex, err := cluster.NewMutex(api, "legal_hold_scheduled_job")
+	if err != nil {
+		return nil, fmt.Errorf("could not create mutex for Legal Hold job: %w", err)
+	}
+
 	return &LegalHoldJob{
 		settings:      &LegalHoldJobSettings{},
 		id:            id,
@@ -52,6 +56,7 @@ func NewLegalHoldJob(id string, api plugin.API, client *pluginapi.Client, sqlsto
 		sqlstore:      sqlstore,
 		kvstore:       kvstore,
 		filebackend:   filebackend,
+		mux:           scheduledJobMutex,
 		onceScheduler: cluster.GetJobOnceScheduler(api),
 	}, nil
 }
