@@ -174,30 +174,30 @@ func (j *LegalHoldJob) RunAll() {
 
 func (j *LegalHoldJob) RunSingleLegalHold(legalHoldID string) error {
 	// Retrieve the single legal hold from the store
-	legalHold, err := j.kvstore.GetLegalHoldByID(legalHoldID)
+	lh, err := j.kvstore.GetLegalHoldByID(legalHoldID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch legal hold: %w", err)
 	}
-	if legalHold == nil {
+	if lh == nil {
 		return fmt.Errorf("legal hold not found: %s", legalHoldID)
 	}
 
-	for _, lh := range []model.LegalHold{*legalHold} {
-		legalHold := lh.DeepCopy()
+	legalHold := lh.DeepCopy()
 
-		j.client.Log.Info("Creating legal hold ad-hoc job", "legal_hold_id", legalHold.ID)
+	j.client.Log.Info("Creating legal hold ad-hoc job", "legal_hold_id", legalHold.ID)
 
-		j.onceScheduler.ScheduleOnce(
-			"legal_hold_run_"+lh.ID,
-			time.Now(),
-			&LegalHoldRunOnceProps{
-				LegalHold: legalHold,
-				ForceRun:  true,
-			},
-		)
+	_, err = j.onceScheduler.ScheduleOnce(
+		"legal_hold_run_"+lh.ID,
+		time.Now(),
+		LegalHoldRunOnceProps{
+			LegalHold: legalHold,
+			ForceRun:  true,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to schedule runOnce legal hold job: %w", err)
 	}
 
-	// j.runWith([]model.LegalHold{*legalHold}, true)
 	return nil
 }
 
