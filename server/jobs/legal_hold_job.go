@@ -101,10 +101,13 @@ func (j *LegalHoldJob) start(settings *LegalHoldJobSettings) error {
 		return fmt.Errorf("cannot start Legal Hold job: %w", err)
 	}
 	j.job = job
+	j.client.Log.Debug("Legal Hold daily job scheduled")
 
 	j.onceScheduler.SetCallback(j.runOnce)
-
-	j.client.Log.Debug("Legal Hold job started")
+	if err := j.onceScheduler.Start(); err != nil {
+		return fmt.Errorf("could not start scheduler for runOnce jobs: %w", err)
+	}
+	j.client.Log.Debug("Legal Hold runOnce cluster scheduler started")
 
 	return nil
 }
