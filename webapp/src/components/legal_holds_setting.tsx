@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useCallback} from 'react';
 
 import {IntlProvider} from 'react-intl';
 
@@ -14,6 +14,8 @@ import ShowSecretModal from '@/components/show_secret_modal';
 import ConfirmRelease from '@/components/confirm_release';
 import LegalHoldIcon from '@/components/legal_hold_icon.svg';
 import RefreshIcon from '@/components/legal_holds_setting/refresh-outline.svg';
+
+const POLLING_INTERVAL = 30000; // 30 seconds in milliseconds
 
 const LegalHoldsSetting = () => {
     const [legalHoldsFetched, setLegalHoldsFetched] = useState(false);
@@ -104,6 +106,15 @@ const LegalHoldsSetting = () => {
             fetchLegalHolds().catch(console.error); //eslint-disable-line no-console
         }
     }, [legalHoldsFetched, legalHoldsFetching]);
+
+    // Set up polling
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setLegalHoldsFetched(false);
+        }, POLLING_INTERVAL);
+
+        return () => clearInterval(interval);
+    }, []);
 
     return (
         <IntlProvider locale='en-US'>
