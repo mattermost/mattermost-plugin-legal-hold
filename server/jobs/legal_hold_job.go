@@ -21,6 +21,8 @@ import (
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 )
 
+const runOnceJobKeyPrefix = "legal_hold_run_"
+
 type LegalHoldRunOnceProps struct {
 	LegalHold model.LegalHold
 	ForceRun  bool
@@ -187,7 +189,7 @@ func (j *LegalHoldJob) RunSingleLegalHold(legalHoldID string) error {
 	j.client.Log.Info("Creating legal hold ad-hoc job", "legal_hold_id", legalHold.ID)
 
 	_, err = j.onceScheduler.ScheduleOnce(
-		"legal_hold_run_"+lh.ID,
+		runOnceJobKeyPrefix+lh.ID,
 		time.Now(),
 		LegalHoldRunOnceProps{
 			LegalHold: legalHold,
@@ -210,8 +212,8 @@ func (j *LegalHoldJob) GetRunningLegalHolds() ([]string, error) {
 	var runningJobs []string
 
 	for _, job := range jobs {
-		if strings.HasPrefix(job.Key, "legal_hold_run_") {
-			runningJobs = append(runningJobs, job.Key)
+		if strings.HasPrefix(job.Key, runOnceJobKeyPrefix) {
+			runningJobs = append(runningJobs, strings.TrimPrefix(job.Key, runOnceJobKeyPrefix))
 		}
 	}
 
