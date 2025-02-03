@@ -100,7 +100,10 @@ func (j *LegalHoldJob) start(settings *LegalHoldJobSettings) error {
 	j.job = job
 	j.client.Log.Debug("Legal Hold daily job scheduled")
 
-	j.onceScheduler.SetCallback(j.runOnce)
+	if err := j.onceScheduler.SetCallback(j.runOnce); err != nil {
+		return fmt.Errorf("could not set callback for runOnce jobs: %w", err)
+	}
+
 	if err := j.onceScheduler.Start(); err != nil {
 		return fmt.Errorf("could not start scheduler for runOnce jobs: %w", err)
 	}
@@ -215,7 +218,7 @@ func (j *LegalHoldJob) GetRunningLegalHolds() ([]string, error) {
 	return runningJobs, nil
 }
 
-func (j *LegalHoldJob) runOnce(key string, props any) {
+func (j *LegalHoldJob) runOnce(_ string, props any) {
 	runOnceProps, ok := props.(LegalHoldRunOnceProps)
 	if !ok {
 		j.client.Log.Error("LegalHoldJob: invalid run once props")
