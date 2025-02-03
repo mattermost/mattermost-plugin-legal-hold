@@ -22,6 +22,11 @@ import (
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 )
 
+type LegalHoldRunOnceProps struct {
+	LegalHold model.LegalHold
+	ForceRun  bool
+}
+
 type LegalHoldJob struct {
 	mux      sync.Mutex
 	settings *LegalHoldJobSettings
@@ -34,17 +39,20 @@ type LegalHoldJob struct {
 	sqlstore    *sqlstore.SQLStore
 	kvstore     kvstore.KVStore
 	filebackend filestore.FileBackend
+
+	onceScheduler *cluster.JobOnceScheduler
 }
 
 func NewLegalHoldJob(id string, api plugin.API, client *pluginapi.Client, sqlstore *sqlstore.SQLStore, kvstore kvstore.KVStore, filebackend filestore.FileBackend) (*LegalHoldJob, error) {
 	return &LegalHoldJob{
-		settings:    &LegalHoldJobSettings{},
-		id:          id,
-		papi:        api,
-		client:      client,
-		sqlstore:    sqlstore,
-		kvstore:     kvstore,
-		filebackend: filebackend,
+		settings:      &LegalHoldJobSettings{},
+		id:            id,
+		papi:          api,
+		client:        client,
+		sqlstore:      sqlstore,
+		kvstore:       kvstore,
+		filebackend:   filebackend,
+		onceScheduler: cluster.GetJobOnceScheduler(api),
 	}, nil
 }
 
@@ -88,6 +96,8 @@ func (j *LegalHoldJob) start(settings *LegalHoldJobSettings) error {
 		return fmt.Errorf("cannot start Legal Hold job: %w", err)
 	}
 	j.job = job
+
+	j.onceScheduler.SetCallback(j.runOnce)
 
 	j.client.Log.Debug("Legal Hold job started")
 
@@ -150,7 +160,7 @@ func (j *LegalHoldJob) nextWaitInterval(now time.Time, metaData cluster.JobMetad
 	return delta
 }
 
-func (j *LegalHoldJob) RunFromAPI() {
+func (j *LegalHoldJob) RunAll() {
 	j.run()
 }
 
@@ -164,8 +174,55 @@ func (j *LegalHoldJob) RunSingleLegalHold(legalHoldID string) error {
 		return fmt.Errorf("legal hold not found: %s", legalHoldID)
 	}
 
-	j.runWith([]model.LegalHold{*legalHold}, true)
+	for _, lh := range []model.LegalHold{*legalHold} {
+		legalHold := lh.DeepCopy()
+
+		j.client.Log.Info("Creating legal hold ad-hoc job", "legal_hold_id", legalHold.ID)
+
+		j.onceScheduler.ScheduleOnce(
+			"legal_hold_run_"+lh.ID,
+			time.Now(),
+			&LegalHoldRunOnceProps{
+				LegalHold: legalHold,
+				ForceRun:  true,
+			},
+		)
+	}
+
+	// j.runWith([]model.LegalHold{*legalHold}, true)
 	return nil
+}
+
+func (j *LegalHoldJob) GetRunningLegalHolds() ([]string, error) {
+	jobs, err := j.onceScheduler.ListScheduledJobs()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list scheduled jobs: %w", err)
+	}
+
+	var runningJobs []string
+
+	for _, job := range jobs {
+		if strings.HasPrefix(job.Key, "legal_hold_run_") {
+			runningJobs = append(runningJobs, job.Key)
+		}
+	}
+
+	return runningJobs, nil
+}
+
+func (j *LegalHoldJob) runOnce(key string, props any) {
+	runOnceProps, ok := props.(*LegalHoldRunOnceProps)
+	if !ok {
+		j.client.Log.Error("LegalHoldJob: invalid run once props")
+		return
+	}
+
+	time.Sleep(time.Minute * 2)
+
+	j.runWith(
+		[]model.LegalHold{runOnceProps.LegalHold},
+		runOnceProps.ForceRun,
+	)
 }
 
 func (j *LegalHoldJob) run() {
