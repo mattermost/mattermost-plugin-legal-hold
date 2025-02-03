@@ -249,6 +249,25 @@ func (j *LegalHoldJob) run() {
 
 	j.client.Log.Info("Processing all Legal Holds")
 
+	exitSignal := make(chan struct{})
+	_, canceller := context.WithCancel(context.Background())
+	runner := &runInstance{
+		canceller:  canceller,
+		exitSignal: exitSignal,
+	}
+	j.mux.Lock()
+	j.runner = runner
+	j.mux.Unlock()
+
+	defer func() {
+		canceller()
+		close(exitSignal)
+
+		j.mux.Lock()
+		j.runner = nil
+		j.mux.Unlock()
+	}()
+
 	// Retrieve the legal holds from the store.
 	legalHolds, err := j.kvstore.GetAllLegalHolds()
 	if err != nil {
@@ -261,26 +280,9 @@ func (j *LegalHoldJob) run() {
 
 func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 	j.client.Log.Info("Running Legal Hold Job")
-	exitSignal := make(chan struct{})
-	ctx, canceller := context.WithCancel(context.Background())
-
-	runner := &runInstance{
-		canceller:  canceller,
-		exitSignal: exitSignal,
-	}
-
-	defer func() {
-		canceller()
-		close(exitSignal)
-
-		j.mux.Lock()
-		j.runner = nil
-		j.mux.Unlock()
-	}()
 
 	var settings *LegalHoldJobSettings
 	j.mux.Lock()
-	j.runner = runner
 	settings = j.settings.Clone()
 	j.mux.Unlock()
 
@@ -330,7 +332,6 @@ func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 			j.client.Log.Info("legal hold executed", "legal_hold_id", lh.ID, "legal_hold_name", lh.Name)
 		}
 	}
-	_ = ctx
 	_ = settings
 }
 
