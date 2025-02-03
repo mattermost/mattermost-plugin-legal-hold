@@ -221,18 +221,20 @@ func (j *LegalHoldJob) GetRunningLegalHolds() ([]string, error) {
 }
 
 func (j *LegalHoldJob) runOnce(key string, props any) {
-	runOnceProps, ok := props.(*LegalHoldRunOnceProps)
+	runOnceProps, ok := props.(LegalHoldRunOnceProps)
 	if !ok {
 		j.client.Log.Error("LegalHoldJob: invalid run once props")
 		return
 	}
 
-	time.Sleep(time.Minute * 2)
+	j.client.Log.Info("Running runOnce legal hold", "legal_hold_id", runOnceProps.LegalHold.ID)
 
 	j.runWith(
 		[]model.LegalHold{runOnceProps.LegalHold},
 		runOnceProps.ForceRun,
 	)
+
+	j.client.Log.Info("Finished running runOnce legal hold", "legal_hold_id", runOnceProps.LegalHold.ID)
 }
 
 func (j *LegalHoldJob) run() {
