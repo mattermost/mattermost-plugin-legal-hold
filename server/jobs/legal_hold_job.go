@@ -218,6 +218,7 @@ func (j *LegalHoldJob) GetRunningLegalHolds() ([]string, error) {
 	return runningJobs, nil
 }
 
+// runOnce is called by the plugin's runOnce scheduler to run a single legal hold job on demand.
 func (j *LegalHoldJob) runOnce(_ string, props any) {
 	runOnceProps, ok := props.(LegalHoldRunOnceProps)
 	if !ok {
@@ -235,6 +236,7 @@ func (j *LegalHoldJob) runOnce(_ string, props any) {
 	j.client.Log.Info("Finished running runOnce legal hold", "legal_hold_id", runOnceProps.LegalHold.ID)
 }
 
+// run is called by the cluster job scheduler to run the legal hold job for all legal holds daily.
 func (j *LegalHoldJob) run() {
 	j.mux.Lock()
 	oldRunner := j.runner
