@@ -156,18 +156,18 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     <a
                         data-testid={`download-${lh.id}`}
                         aria-label={`${lh.display_name} download button`}
-                        href={lh.last_message_at === 0 ? '#' : downloadUrl}
+                        href={lh.has_messages ? '#' : downloadUrl}
                         download={true}
                         onClick={(e) => {
-                            if (lh.last_message_at === 0) {
+                            if (lh.has_messages) {
                                 e.preventDefault();
                             }
                         }}
                         style={{
                             marginRight: '10px',
                             height: '24px',
-                            opacity: lh.last_message_at === 0 ? '0.5' : '1',
-                            cursor: lh.last_message_at === 0 ? 'not-allowed' : 'pointer',
+                            opacity: lh.has_messages ? '0.5' : '1',
+                            cursor: lh.has_messages ? 'not-allowed' : 'pointer',
                         }}
                     >
                         <span
