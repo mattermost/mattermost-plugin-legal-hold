@@ -1,6 +1,7 @@
 import {expect} from '@playwright/test';
-import {Client} from '@e2e-support/server';
-import {test as setup} from '@e2e-support/test_fixture';
+import {Client4} from 'mmtest_client';
+import {test as setup} from 'mmtest_playwright-lib';
+
 import {legalHoldPluginId} from '@support/constant';
 
 setup('ensure server has license', async ({pw}) => {
@@ -33,7 +34,7 @@ setup('ensure plugin is enabled', async ({pw}) => {
     }
 });
 
-async function ensureLicense(adminClient: Client) {
+async function ensureLicense(adminClient: Client4) {
     try {
         const currentLicense = await adminClient.getClientLicenseOld();
 
@@ -51,7 +52,7 @@ async function ensureLicense(adminClient: Client) {
     }
 }
 
-async function requestTrialLicense(adminClient: Client) {
+async function requestTrialLicense(adminClient: Client4) {
     try {
         // @ts-expect-error This may fail requesting for trial license
         await adminClient.requestTrialLicense({

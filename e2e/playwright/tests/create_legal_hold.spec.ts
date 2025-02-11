@@ -1,20 +1,18 @@
-import {test, expect} from '@e2e-support/test_fixture';
-import {getRandomId} from '@e2e-support/util';
+import {expect, test, getRandomId} from 'mmtest_playwright-lib';
 
 import LegalHoldPluginPage from '../pages/legal_hold_plugin';
 import {createLegalHold} from '../support/legal_hold';
 
-test('Admin user can create a legal hold successfully', async ({pw, pages}) => {
+test('Admin user can create a legal hold successfully', async ({pw}) => {
     // Do setup and log in as admin user
     const {adminUser, adminClient, user} = await pw.initSetup();
-    const {page} = await pw.testBrowser.login(adminUser);
+    const {page, systemConsolePage} = await pw.testBrowser.login(adminUser);
     const pluginPage = new LegalHoldPluginPage(page);
 
     // Ensure plugin is enabled
     await adminClient.enablePlugin('com.mattermost.plugin-legal-hold');
 
     // Navigate to system console and into the legal hold plugin
-    const systemConsolePage = new pages.SystemConsolePage(page);
     await systemConsolePage.goto();
     await systemConsolePage.toBeVisible();
     await systemConsolePage.sidebar.goToItem('Legal Hold Plugin');
