@@ -23,7 +23,7 @@ import (
 )
 
 const PostExportBatchLimit = 10000
-const executionGlobalTimeout = 48 * time.Hour
+const executionGlobalTimeout = 2 * time.Hour
 
 // Execution represents one execution of a LegalHold, i.e. a daily (or other duration)
 // batch process to hold all data relating to that particular LegalHold. It is defined by the
