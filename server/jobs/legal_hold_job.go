@@ -3,8 +3,8 @@ package jobs
 import (
 	"context"
 	"fmt"
-
 	"strings"
+
 	"sync"
 	"time"
 
@@ -216,12 +216,13 @@ func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 	j.mux.Unlock()
 
 	for _, lh := range legalHolds {
+		now := mattermostModel.GetMillis()
+
 		if lh.IsFinished() {
 			j.client.Log.Debug(fmt.Sprintf("Legal Hold %s has ended and therefore does not executing.", lh.ID))
 			continue
 		}
 
-		now := mattermostModel.GetMillis()
 		if !forceRun && !lh.NeedsExecuting(now) {
 			j.client.Log.Debug(fmt.Sprintf("Legal Hold %s is not yet ready to be executed again.", lh.ID))
 			continue
@@ -234,7 +235,7 @@ func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 		j.client.Log.Debug(fmt.Sprintf("Creating Legal Hold Execution for legal hold: %s", lh.ID))
 		lhe := legalhold.NewExecution(lh, j.papi, j.sqlstore, j.kvstore, j.filebackend)
 
-		if updatedLH, err := lhe.Execute(); err != nil {
+		if updatedLH, err := lhe.Execute(now); err != nil {
 			if strings.Contains(err.Error(), "another execution is already running") {
 				j.client.Log.Debug("Another execution is already running for this legal hold", "legal_hold_id", lh.ID)
 				continue
@@ -248,19 +249,21 @@ func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 				j.client.Log.Error("Failed to fetch the LegalHold prior to updating", err)
 				continue
 			}
-			lh = *old
-			lh.LastExecutionEndedAt = updatedLH.LastExecutionEndedAt
-			lh.HasMessages = true
-			lh.Status = model.LegalHoldStatusIdle
-			newLH, err := j.kvstore.UpdateLegalHold(lh, *old)
+			legalHold := old.DeepCopy()
+
+			legalHold.LastExecutionEndedAt = updatedLH.LastExecutionEndedAt
+			legalHold.HasMessages = updatedLH.HasMessages
+			legalHold.Status = updatedLH.Status
+
+			newLH, err := j.kvstore.UpdateLegalHold(legalHold, *old)
 			if err != nil {
 				j.client.Log.Error("Failed to update legal hold", err)
 				continue
 			}
-			lh = *newLH
-			j.client.Log.Info("legal hold executed", "legal_hold_id", lh.ID, "legal_hold_name", lh.Name)
+			j.client.Log.Info("legal hold executed", "legal_hold_id", newLH.ID, "legal_hold_name", newLH.Name)
 		}
 	}
+
 	_ = ctx
 	_ = settings
 }

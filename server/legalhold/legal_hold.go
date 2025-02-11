@@ -30,7 +30,7 @@ const executionGlobalTimeout = 48 * time.Hour
 // properties of the associated LegalHold as well as a start and end time for the period this
 // execution of the LegalHold relates to.
 type Execution struct {
-	LegalHold          model.LegalHold
+	LegalHold          *model.LegalHold
 	ExecutionStartTime int64
 	ExecutionEndTime   int64
 
@@ -48,7 +48,7 @@ type Execution struct {
 // NewExecution creates a new Execution that is ready to use.
 func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQLStore, kvstore kvstore.KVStore, fileBackend filestore.FileBackend) Execution {
 	return Execution{
-		LegalHold:          legalHold,
+		LegalHold:          &legalHold,
 		ExecutionStartTime: legalHold.NextExecutionStartTime(),
 		ExecutionEndTime:   legalHold.NextExecutionEndTime(),
 		store:              store,
@@ -61,9 +61,7 @@ func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQ
 }
 
 // Execute executes the Execution and returns the updated LegalHold.
-func (ex *Execution) Execute() (*model.LegalHold, error) {
-	now := time.Now().Unix()
-
+func (ex *Execution) Execute(now int64) (*model.LegalHold, error) {
 	// Lock multiple executions using a cluster mutex
 	mutexKey := fmt.Sprintf("legal_hold_%s_execution", ex.LegalHold.ID)
 	mutex, err := cluster.NewMutex(ex.papi, mutexKey)
@@ -79,12 +77,6 @@ func (ex *Execution) Execute() (*model.LegalHold, error) {
 	}
 	defer func() {
 		mutex.Unlock()
-
-		// Set status back to idle
-		statusErr := ex.kvstore.UpdateLegalHoldStatus(ex.LegalHold.ID, model.LegalHoldStatusIdle)
-		if statusErr != nil {
-			ex.papi.LogError(fmt.Sprintf("failed to update legal hold status: %v", statusErr))
-		}
 	}()
 
 	// Set status to executing
@@ -103,7 +95,7 @@ func (ex *Execution) Execute() (*model.LegalHold, error) {
 		return nil, err
 	}
 
-	err = ex.UpdateIndexes()
+	err = ex.UpdateIndexes(now)
 	if err != nil {
 		return nil, err
 	}
@@ -114,16 +106,12 @@ func (ex *Execution) Execute() (*model.LegalHold, error) {
 	}
 
 	// Update the LegalHold with execution results
-	ex.LegalHold.LastExecutionEndedAt = ex.ExecutionEndTime
-
 	// Ensure that the LastExecutionEndedAt is not in the future, useful when running the job manually
-	if ex.ExecutionEndTime > now {
-		ex.LegalHold.LastExecutionEndedAt = now
-	}
+	ex.LegalHold.LastExecutionEndedAt = utils.Min(ex.ExecutionEndTime, now)
 
 	ex.LegalHold.Status = model.LegalHoldStatusIdle
 
-	return &ex.LegalHold, nil
+	return ex.LegalHold, nil
 }
 
 // GetChannels populates the list of channels that the Execution needs to cover within the
@@ -142,7 +130,13 @@ func (ex *Execution) GetChannels() error {
 
 		ex.channelIDs = append(ex.channelIDs, channelIDs...)
 
-		ex.papi.LogDebug("Legal hold executor - GetChannels", "user_id", userID, "channel_count", len(channelIDs))
+		ex.papi.LogDebug(
+			"Legal hold executor - GetChannels",
+			"user_id", userID,
+			"channel_count", len(channelIDs),
+			"start_time", ex.ExecutionStartTime,
+			"end_time", ex.ExecutionEndTime,
+		)
 
 		// Add to channels index
 		for _, channelID := range channelIDs {
@@ -203,6 +197,7 @@ func (ex *Execution) ExportData() error {
 
 			// Since at this point we have posts, ensure the `HasMessages` is set to true so users can
 			// download the legal hold.
+			ex.papi.LogInfo("has_messages = true")
 			ex.LegalHold.HasMessages = true
 
 			// Extract the FileIDs to export
@@ -309,7 +304,7 @@ func (ex *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPos
 }
 
 // UpdateIndexes updates the index files in the file backend in relation to this legal hold.
-func (ex *Execution) UpdateIndexes() error {
+func (ex *Execution) UpdateIndexes(now int64) error {
 	filePath := ex.indexPath()
 
 	// Populate the metadata in the index.
@@ -317,7 +312,7 @@ func (ex *Execution) UpdateIndexes() error {
 	ex.index.LegalHold.DisplayName = ex.LegalHold.DisplayName
 	ex.index.LegalHold.Name = ex.LegalHold.Name
 	ex.index.LegalHold.StartsAt = ex.LegalHold.StartsAt
-	ex.index.LegalHold.LastExecutionEndedAt = ex.ExecutionEndTime
+	ex.index.LegalHold.LastExecutionEndedAt = utils.Min(ex.ExecutionEndTime, now)
 
 	if len(ex.channelIDs) > 0 {
 		metadata, err := ex.store.GetChannelMetadataForIDs(ex.channelIDs)

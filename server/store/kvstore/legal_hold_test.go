@@ -222,20 +222,22 @@ func TestKVStore_UpdateLegalHold(t *testing.T) {
 
 	// Original legal hold
 	lh1 := model.LegalHold{
-		ID:          mattermostModel.NewId(),
-		Name:        "legal-hold-1",
-		DisplayName: "Legal Hold 1",
-		UserIDs:     []string{mattermostModel.NewId()},
-		StartsAt:    mattermostModel.GetMillis(),
+		ID:                   mattermostModel.NewId(),
+		Name:                 "legal-hold-1",
+		DisplayName:          "Legal Hold 1",
+		UserIDs:              []string{mattermostModel.NewId()},
+		StartsAt:             mattermostModel.GetMillis(),
+		LastExecutionEndedAt: mattermostModel.GetMillis(),
 	}
 
 	// Update legal hold
 	lh2 := model.LegalHold{
-		ID:          lh1.ID,
-		Name:        "legal-hold-1",
-		DisplayName: "Legal Hold 2",
-		UserIDs:     []string{mattermostModel.NewId()},
-		StartsAt:    mattermostModel.GetMillis(),
+		ID:                   lh1.ID,
+		Name:                 "legal-hold-1",
+		DisplayName:          "Legal Hold 2",
+		UserIDs:              []string{mattermostModel.NewId()},
+		StartsAt:             mattermostModel.GetMillis(),
+		LastExecutionEndedAt: mattermostModel.GetMillis(),
 	}
 
 	api.On("KVSetWithOptions",
