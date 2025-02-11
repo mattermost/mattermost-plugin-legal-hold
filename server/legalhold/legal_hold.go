@@ -62,9 +62,8 @@ func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQ
 
 // Execute executes the Execution and returns the updated LegalHold.
 func (ex *Execution) Execute(now int64) (*model.LegalHold, error) {
-	// Lock multiple executions using a cluster mutex
-	mutexKey := fmt.Sprintf("legal_hold_%s_execution", ex.LegalHold.ID)
-	mutex, err := cluster.NewMutex(ex.papi, mutexKey)
+	// Lock multiple executions behind a cluster mutex
+	mutex, err := cluster.NewMutex(ex.papi, "legal_hold_execution")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cluster mutex: %w", err)
 	}
