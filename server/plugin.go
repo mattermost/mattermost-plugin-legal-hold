@@ -214,7 +214,7 @@ func (p *Plugin) Reconfigure() error {
 		// Reset legal hold status to IDLE
 		lh.Status = model.LegalHoldStatusIdle
 
-		// Only check the filebackend if the legal hold don't have messages, continue otherwise.
+		// Only check the filebackend if the legal hold doesn't have messages, continue otherwise.
 		if !lh.HasMessages {
 			lh.HasMessages, err = p.FileBackend.FileExists(lh.IndexPath())
 			if err != nil {
