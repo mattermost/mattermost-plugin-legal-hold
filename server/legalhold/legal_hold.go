@@ -108,8 +108,6 @@ func (ex *Execution) Execute(now int64) (*model.LegalHold, error) {
 	// Ensure that the LastExecutionEndedAt is not in the future, useful when running the job manually
 	ex.LegalHold.LastExecutionEndedAt = utils.Min(ex.ExecutionEndTime, now)
 
-	ex.LegalHold.Status = model.LegalHoldStatusIdle
-
 	return ex.LegalHold, nil
 }
 
