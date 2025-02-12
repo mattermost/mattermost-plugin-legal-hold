@@ -1,10 +1,11 @@
 import {test, expect} from '@e2e-support/test_fixture';
 import {getRandomId} from '@e2e-support/util';
+import pages from '@e2e-support/ui/pages';
 
 import LegalHoldPluginPage from '../pages/legal_hold_plugin';
 import {createLegalHold} from '../support/legal_hold';
 
-test('Admin user can create a legal hold successfully', async ({pw, pages}) => {
+test('Admin user can create a legal hold successfully', async ({pw}) => {
     // Do setup and log in as admin user
     const {adminUser, adminClient, user} = await pw.initSetup();
     const {page} = await pw.testBrowser.login(adminUser);
