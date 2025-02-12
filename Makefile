@@ -71,6 +71,7 @@ ifneq ($(HAS_SERVER),)
 ifneq ($(MM_DEBUG),)
 	$(info DEBUG mode is on; to disable, unset MM_DEBUG)
 endif
+	rm -rf server/dist;
 	mkdir -p server/dist;
 ## Developer mode builds current architecture, CI builds only Linux AMD64, otherwise all unsupported architectures are built.
 ifneq ($(MM_SERVICESETTINGS_ENABLEDEVELOPER),)

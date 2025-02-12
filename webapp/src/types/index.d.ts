@@ -8,7 +8,7 @@ export interface LegalHold {
     include_public_channels: boolean;
     secret: string;
     last_execution_ended_at: number;
-    last_message_at: number;
+    has_messages: boolean;
     status: 'idle' | 'executing';
 }
 

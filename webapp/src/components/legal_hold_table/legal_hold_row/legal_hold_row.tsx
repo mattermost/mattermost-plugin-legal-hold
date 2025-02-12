@@ -34,7 +34,7 @@ const getLastRunDisplay = (lh: LegalHold) => {
     }
 
     // Convert seconds to milliseconds for JavaScript Date
-    return new Date(lh.last_execution_ended_at * 1000).toLocaleString();
+    return new Date(lh.last_execution_ended_at).toLocaleString();
 };
 
 const LegalHoldRow = (props: LegalHoldRowProps) => {
@@ -156,18 +156,18 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     <a
                         data-testid={`download-${lh.id}`}
                         aria-label={`${lh.display_name} download button`}
-                        href={lh.last_message_at === 0 ? '#' : downloadUrl}
+                        href={lh.has_messages ? downloadUrl : '#'}
                         download={true}
                         onClick={(e) => {
-                            if (lh.last_message_at === 0) {
+                            if (!lh.has_messages) {
                                 e.preventDefault();
                             }
                         }}
                         style={{
                             marginRight: '10px',
                             height: '24px',
-                            opacity: lh.last_message_at === 0 ? '0.5' : '1',
-                            cursor: lh.last_message_at === 0 ? 'not-allowed' : 'pointer',
+                            opacity: lh.has_messages ? '1' : '0.5',
+                            cursor: lh.has_messages ? 'pointer' : 'not-allowed',
                         }}
                     >
                         <span
