@@ -78,12 +78,6 @@ func (ex *Execution) Execute(now int64) (*model.LegalHold, error) {
 		mutex.Unlock()
 	}()
 
-	// Set status to executing
-	err = ex.kvstore.UpdateLegalHoldStatus(ex.LegalHold.ID, model.LegalHoldStatusExecuting)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update legal hold status: %w", err)
-	}
-
 	err = ex.GetChannels()
 	if err != nil {
 		return nil, err

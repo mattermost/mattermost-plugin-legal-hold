@@ -8,5 +8,4 @@ type KVStore interface {
 	GetLegalHoldByID(id string) (*model.LegalHold, error)
 	UpdateLegalHold(lh, oldValue model.LegalHold) (*model.LegalHold, error)
 	DeleteLegalHold(id string) error
-	UpdateLegalHoldStatus(id string, status model.LegalHoldStatus) error
 }

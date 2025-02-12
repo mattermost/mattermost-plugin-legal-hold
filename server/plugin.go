@@ -14,7 +14,6 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/config"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/jobs"
-	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/kvstore"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 )
@@ -193,10 +192,9 @@ func (p *Plugin) Reconfigure() error {
 
 	p.FileBackend = filesBackend
 
-	// Check all legal holds on plugin activation for two reasons:
-	// 1) Reset all statuses to IDLE to prevent UI stuck legal holds.
-	// 2) For legal holds that supposedly don't have messages, check if the index exist
-	//    and update the field accordingly.
+	// Check all legal holds on plugin activation to prevent corrupt states:
+	// - For legal holds that supposedly don't have messages, check if the index exist
+	//   and update the field accordingly.
 	//
 	// Ignore errors during plugin activation to ensure working operation and
 	// allowing debugging in parallel since most errors on this block would come
@@ -211,11 +209,9 @@ func (p *Plugin) Reconfigure() error {
 	for _, lh := range legalHolds {
 		oldLH := lh.DeepCopy()
 
-		// Reset legal hold status to IDLE
-		lh.Status = model.LegalHoldStatusIdle
-
-		// Only check the filebackend if the legal hold doesn't have messages, continue otherwise.
+		// Check the filebackend if the legal hold doesn't have messages, continue otherwise.
 		if !lh.HasMessages {
+			// Update the field value
 			lh.HasMessages, err = p.FileBackend.FileExists(lh.IndexPath())
 			if err != nil {
 				p.Client.Log.Error("Failed to check if legal hold index exists during activation", "legal_hold_id", lh.ID, "err", err)

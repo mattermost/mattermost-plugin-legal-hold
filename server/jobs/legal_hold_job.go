@@ -336,11 +336,6 @@ func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 
 			time.Sleep(time.Millisecond * 250)
 		}
-
-		// Set legal hold as IDLE since we are finished with it
-		if err := j.kvstore.UpdateLegalHoldStatus(legalHold.ID, model.LegalHoldStatusIdle); err != nil {
-			j.client.Log.Error("Failed to update legal hold status", "err", err, "legal_hold_id", legalHold.ID)
-		}
 	}
 
 	_ = settings
