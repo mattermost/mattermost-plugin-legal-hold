@@ -34,7 +34,7 @@ const getLastRunDisplay = (lh: LegalHold) => {
     }
 
     // Convert seconds to milliseconds for JavaScript Date
-    return new Date(lh.last_execution_ended_at * 1000).toLocaleString();
+    return new Date(lh.last_execution_ended_at).toLocaleString();
 };
 
 const LegalHoldRow = (props: LegalHoldRowProps) => {
