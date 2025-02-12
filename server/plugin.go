@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"sync"
 
@@ -251,4 +252,17 @@ func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings) fil
 		AmazonS3RequestTimeoutMilliseconds: *fileSettings.AmazonS3RequestTimeoutMilliseconds,
 		SkipVerify:                         false,
 	}
+}
+
+// IsWarmNode returns true if the plugin is running on a warm node, false otherwise.
+// In order to determine if the node is warm, the plugin configuration contains a setting that
+// indicates an environment variable name that this function checks for.
+// If the environment variable is set **with any value** the node is considered warm.
+func IsWarmNode(c *config.Configuration) bool {
+	if c.WarmNodeEnvironmentVariable != "" {
+		_, present := os.LookupEnv(c.WarmNodeEnvironmentVariable)
+		return present
+	}
+
+	return false
 }
