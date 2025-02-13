@@ -194,7 +194,6 @@ func (ex *Execution) ExportData() error {
 
 			// Since at this point we have posts, ensure the `HasMessages` is set to true so users can
 			// download the legal hold.
-			ex.papi.LogInfo("has_messages = true")
 			ex.LegalHold.HasMessages = true
 
 			// Extract the FileIDs to export
