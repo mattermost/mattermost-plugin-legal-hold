@@ -23,7 +23,10 @@ import (
 )
 
 const PostExportBatchLimit = 10000
-const executionGlobalTimeout = 2 * time.Hour
+
+// executionWaitForLockTimeout is the time to wait for the lock to be acquired before failing the execution.
+// This is to prevent multiple executions at the same time.
+const executionWaitForLockTimeout = 5 * time.Second
 
 // Execution represents one execution of a LegalHold, i.e. a daily (or other duration)
 // batch process to hold all data relating to that particular LegalHold. It is defined by the
@@ -68,7 +71,7 @@ func (ex *Execution) Execute(now int64) (*model.LegalHold, error) {
 		return nil, fmt.Errorf("failed to create cluster mutex: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), executionGlobalTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), executionWaitForLockTimeout)
 	defer cancel()
 
 	if lockErr := mutex.LockWithContext(ctx); lockErr != nil {
@@ -188,7 +191,6 @@ func (ex *Execution) ExportData() error {
 
 			// Since at this point we have posts, ensure the `HasMessages` is set to true so users can
 			// download the legal hold.
-			ex.papi.LogInfo("has_messages = true")
 			ex.LegalHold.HasMessages = true
 
 			// Extract the FileIDs to export

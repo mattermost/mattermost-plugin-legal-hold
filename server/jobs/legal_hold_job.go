@@ -292,7 +292,7 @@ func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 
 		for {
 			if legalHold.IsFinished() {
-				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s has ended and therefore does not executing.", legalHold.ID))
+				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s has ended and therefore does not need another execution.", legalHold.ID))
 				break
 			}
 
@@ -309,10 +309,6 @@ func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 			lhe := legalhold.NewExecution(legalHold, j.papi, j.sqlstore, j.kvstore, j.filebackend)
 
 			if updatedLH, err := lhe.Execute(now); err != nil {
-				if strings.Contains(err.Error(), "another execution is already running") {
-					j.client.Log.Debug("Another execution is already running for this legal hold", "legal_hold_id", legalHold.ID)
-					break
-				}
 				j.client.Log.Error("An error occurred executing the legal hold.", err)
 			} else {
 				// Update legal hold with the new execution details (last execution time and last message)
