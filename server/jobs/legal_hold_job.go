@@ -222,7 +222,7 @@ func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 
 		for {
 			if legalHold.IsFinished() {
-				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s has ended and therefore does not executing.", legalHold.ID))
+				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s has ended and therefore does not need another execution.", legalHold.ID))
 				break
 			}
 
