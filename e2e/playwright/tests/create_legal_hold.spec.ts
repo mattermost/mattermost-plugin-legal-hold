@@ -1,4 +1,4 @@
-import {expect, test, getRandomId} from 'mmtest_playwright-lib';
+import {expect, test} from 'mmtest_playwright-lib';
 
 import LegalHoldPluginPage from '../pages/legal_hold_plugin';
 import {createLegalHold} from '../support/legal_hold';
@@ -18,7 +18,7 @@ test('Admin user can create a legal hold successfully', async ({pw}) => {
     await systemConsolePage.sidebar.goToItem('Legal Hold Plugin');
 
     // Create legal hold
-    const legalHoldName = `New Hold ${getRandomId()}`;
+    const legalHoldName = `New Hold ${pw.random.id()}`;
     const today = new Date();
     const isoString = today.toISOString().split('T')[0];
     await createLegalHold(pluginPage, legalHoldName, [user.username], isoString);

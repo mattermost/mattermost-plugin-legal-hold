@@ -1,10 +1,10 @@
-import {expect, test, getRandomId} from 'mmtest_playwright-lib';
+import {expect, test} from 'mmtest_playwright-lib';
 
 import PluginPage from '../pages/legal_hold_plugin';
 import {createLegalHold} from '../support/legal_hold';
 
 let pluginPage: PluginPage;
-const legalHoldName = `New Hold ${getRandomId()}`;
+let legalHoldName: string;
 
 test.beforeEach(async ({pw}) => {
     // Do setup and log in as admin user
@@ -21,6 +21,7 @@ test.beforeEach(async ({pw}) => {
     await systemConsolePage.sidebar.goToItem('Legal Hold Plugin');
 
     // Create legal hold
+    legalHoldName = `New Hold ${pw.random.id()}`;
     const today = new Date().toISOString().split('T')[0];
     await createLegalHold(pluginPage, legalHoldName, [user.username], today);
 });
