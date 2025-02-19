@@ -20,8 +20,10 @@ func init() {
 
 // Aliases defines some targets migrated from the old Makefile to ease the transition to mage
 var Aliases = map[string]interface{}{
-	"server": plugin_magefile.Server.Build,
-	"webapp": plugin_magefile.Webapp.Build,
-	"dist":   plugin_magefile.Dist.Build,
-	"deploy": plugin_magefile.Deploy.Upload,
+	"server":   plugin_magefile.Build.Server,
+	"binaries": plugin_magefile.Build.AdditionalBinaries,
+	"webapp":   plugin_magefile.Build.Webapp,
+	"dist":     plugin_magefile.Build.All,
+	"bundle":   plugin_magefile.Build.Bundle,
+	"deploy":   plugin_magefile.Deploy.Upload,
 }

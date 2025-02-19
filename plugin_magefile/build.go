@@ -3,7 +3,12 @@ package plugin_magefile
 import (
 	"fmt"
 	"runtime"
+
+	"github.com/magefile/mage/mg"
 )
+
+// Build namespace for all build-related targets
+type Build mg.Namespace
 
 // BinaryBuildConfig defines the configuration for building a binary.
 // This is used to build additional binaries in addition to the main server binary.
@@ -119,4 +124,10 @@ func setupPluginBinary() {
 
 	// Add plugin binary as first element with defaults
 	AllBinaries = append([]BinaryBuildConfig{*pluginBinary.Defaults()}, AllBinaries...)
+}
+
+// All builds both server, additional binaries, and webapp
+func (Build) All() error {
+	mg.Deps(Build.Server, Build.AdditionalBinaries, Build.Webapp)
+	return nil
 }

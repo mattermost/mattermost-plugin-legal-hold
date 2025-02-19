@@ -10,11 +10,9 @@ import (
 	"github.com/magefile/mage/sh"
 )
 
-type Dist mg.Namespace
-
 // Bundle creates a distributable bundle of the plugin
-func (Dist) Bundle() error {
-	mg.Deps(Server.Build, Webapp.Build)
+func (Build) Bundle() error {
+	mg.Deps(Build.Server, Build.Webapp)
 
 	// Clean dist directory
 	if err := sh.Rm("dist"); err != nil {
@@ -65,13 +63,6 @@ func (Dist) Bundle() error {
 		"target", "bundle",
 		"path", fmt.Sprintf("dist/%s", bundleName))
 
-	return nil
-}
-
-// Build creates the distribution directory with plugin files
-func (Dist) Build() error {
-	mg.Deps(Server.Build, Webapp.Build)
-	mg.SerialDeps(Dist.Bundle)
 	return nil
 }
 

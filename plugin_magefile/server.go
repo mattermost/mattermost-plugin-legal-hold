@@ -5,14 +5,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
 )
 
-type Server mg.Namespace
-
 // Build builds the server if it exists
-func (Server) Build() error {
+func (Build) Server() error {
 	if !info.Manifest.HasServer() {
 		return nil
 	}
@@ -34,8 +31,21 @@ func (Server) Build() error {
 		return fmt.Errorf("failed to create server/dist directory: %w", err)
 	}
 
-	// Build all configured binaries
-	for _, config := range AllBinaries {
+	pluginBinary := AllBinaries[0]
+
+	for _, platform := range pluginBinary.Platforms {
+		if err := buildBinary(pluginBinary, platform); err != nil {
+			return fmt.Errorf("failed to build %s for %s/%s: %w",
+				pluginBinary.BinaryName, platform.GOOS, platform.GOARCH, err)
+		}
+	}
+
+	return nil
+}
+
+// AdditionalBinaries builds all additional binaries if set up by the plugin developers
+func (Build) AdditionalBinaries() error {
+	for _, config := range AllBinaries[1:] {
 		for _, platform := range config.Platforms {
 			if err := buildBinary(config, platform); err != nil {
 				return fmt.Errorf("failed to build %s for %s/%s: %w",

@@ -8,7 +8,7 @@ type Deploy mg.Namespace
 
 // Upload builds and installs the plugin to a server
 func (Deploy) Upload() error {
-	mg.SerialDeps(Dist.Build, Pluginctl.Deploy)
+	mg.SerialDeps(Build.All, Pluginctl.Deploy)
 
 	return nil
 }

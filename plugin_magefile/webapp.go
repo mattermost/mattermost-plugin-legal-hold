@@ -43,7 +43,7 @@ func (Webapp) InstallDeps() error {
 }
 
 // Build builds the webapp if it exists
-func (Webapp) Build() error {
+func (Build) Webapp() error {
 	mg.Deps(Webapp.InstallDeps)
 
 	if !info.Manifest.HasWebapp() {
