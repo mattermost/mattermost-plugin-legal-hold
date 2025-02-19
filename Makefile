@@ -67,97 +67,47 @@ endif
 ## Builds the server, if it exists, for all supported architectures, unless MM_SERVICESETTINGS_ENABLEDEVELOPER is set.
 .PHONY: server
 server:
-ifneq ($(HAS_SERVER),)
-ifneq ($(MM_DEBUG),)
-	$(info DEBUG mode is on; to disable, unset MM_DEBUG)
-endif
-	mkdir -p server/dist;
-## Developer mode builds current architecture, CI builds only Linux AMD64, otherwise all unsupported architectures are built.
-ifneq ($(MM_SERVICESETTINGS_ENABLEDEVELOPER),)
-	@echo Building plugin only for $(DEFAULT_GOOS)-$(DEFAULT_GOARCH) because MM_SERVICESETTINGS_ENABLEDEVELOPER is enabled
-	cd server && env CGO_ENABLED=0 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o dist/plugin-$(DEFAULT_GOOS)-$(DEFAULT_GOARCH);
-else
-	cd server && env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o dist/plugin-linux-amd64;
-ifneq ($(IS_CI),true)
-	cd server && env CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o dist/plugin-linux-arm64;
-	cd server && env CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o dist/plugin-darwin-amd64;
-	cd server && env CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o dist/plugin-darwin-arm64;
-	cd server && env CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o dist/plugin-windows-amd64.exe;
-endif
-endif
-endif
+	mage build:server
 
 ## Builds the processor for all architectures.
 .PHONY: processor
 processor:
-	rm -rf $(PROCESSOR_DIR)/bin;
-	mkdir -p $(PROCESSOR_DIR)/bin;
-	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-v$(PLUGIN_VERSION)-linux-amd64;
-	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-v$(PLUGIN_VERSION)-linux-arm64;
-	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-v$(PLUGIN_VERSION)-darwin-amd64;
-	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-v$(PLUGIN_VERSION)-darwin-arm64;
-	cd $(PROCESSOR_DIR) && env CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -o bin/processor-v$(PLUGIN_VERSION)-windows-amd64.exe;
+	mage build:build:additionalBinaries
 
 ## Ensures NPM dependencies are installed without having to run this all the time.
-webapp/node_modules: $(wildcard webapp/package.json)
+webapp/node_modules:
 ifneq ($(HAS_WEBAPP),)
-	cd webapp && $(NPM) install
-	touch $@
+	mage webapp:dependencies
 endif
 
 ## Builds the webapp, if it exists.
 .PHONY: webapp
-webapp: webapp/node_modules
+webapp:
 ifneq ($(HAS_WEBAPP),)
-ifeq ($(MM_DEBUG),)
-	cd webapp && $(NPM) run build;
-else
-	cd webapp && $(NPM) run debug;
+	mage build:webapp
 endif
-endif
+
 
 ## Generates a tar bundle of the plugin for install.
 .PHONY: bundle
 bundle:
-	rm -rf dist/
-	mkdir -p dist/$(PLUGIN_ID)
-	cp $(MANIFEST_FILE) dist/$(PLUGIN_ID)/
-ifneq ($(wildcard $(ASSETS_DIR)/.),)
-	cp -r $(ASSETS_DIR) dist/$(PLUGIN_ID)/
-endif
-ifneq ($(HAS_PUBLIC),)
-	cp -r public dist/$(PLUGIN_ID)/
-endif
-ifneq ($(HAS_SERVER),)
-	mkdir -p dist/$(PLUGIN_ID)/server
-	cp -r server/dist dist/$(PLUGIN_ID)/server/
-endif
-ifneq ($(HAS_WEBAPP),)
-	mkdir -p dist/$(PLUGIN_ID)/webapp
-	cp -r webapp/dist dist/$(PLUGIN_ID)/webapp/
-endif
-	cd dist && tar -cvzf $(BUNDLE_NAME) $(PLUGIN_ID)
-	cp $(PROCESSOR_DIR)/bin/* dist/
-
-	@echo plugin built at: dist/$(BUNDLE_NAME)
+	mage build:bundle
 
 ## Builds and bundles the plugin.
 .PHONY: dist
-dist:	server webapp processor bundle
+dist:
+	mage build:all
+	mage build:bundle
 
 ## Builds and installs the plugin to a server.
 .PHONY: deploy
-deploy: dist
-	./build/bin/pluginctl deploy $(PLUGIN_ID) dist/$(BUNDLE_NAME)
+deploy:
+	mage deploy
 
 ## Builds and installs the plugin to a server, updating the webapp automatically when changed.
 .PHONY: watch
-watch: server bundle
-ifeq ($(MM_DEBUG),)
-	cd webapp && $(NPM) run build:watch
-else
-	cd webapp && $(NPM) run debug:watch
-endif
+watch:
+	mage webapp:watch
 
 ## Installs a previous built plugin with updated webpack assets to a server.
 .PHONY: deploy-from-watch
