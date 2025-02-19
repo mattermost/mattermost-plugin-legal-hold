@@ -76,6 +76,11 @@ func (i *pluginInfo) Init() {
 	if os.Getenv("MM_SERVICESETTINGS_ENABLEDEVELOPER") != "" {
 		i.EnableDeveloperMode = true
 	}
+
+	if os.Getenv("MM_DEBUG") != "" {
+		logger.Info("MM_DEBUG is set, setting Go build gcflags to -gcflags all=-N -l. To disable, unset MM_DEBUG.")
+		i.GoBuildGcflags = "-gcflags all=-N -l"
+	}
 }
 
 // Defaults sets the default values for pluginInfo if they are not already set

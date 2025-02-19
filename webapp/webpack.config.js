@@ -22,7 +22,7 @@ if (NPM_TARGET === 'build:watch' || NPM_TARGET === 'debug:watch') {
                 console.log('Change detected. Rebuilding webapp.');
             });
             compiler.hooks.afterEmit.tap('AfterEmitPlugin', () => {
-                exec('cd .. && make deploy-from-watch', (err, stdout, stderr) => {
+                exec('cd .. && mage pluginctl:deploy', (err, stdout, stderr) => {
                     if (stdout) {
                         process.stdout.write(stdout);
                     }

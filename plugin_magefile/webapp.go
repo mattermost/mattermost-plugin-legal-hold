@@ -12,8 +12,8 @@ import (
 
 type Webapp mg.Namespace
 
-// InstallDeps installs webapp dependencies using npm
-func (Webapp) InstallDeps() error {
+// Dependencies installs webapp dependencies using npm
+func (Webapp) Dependencies() error {
 	if !info.Manifest.HasWebapp() {
 		return nil
 	}
@@ -44,7 +44,7 @@ func (Webapp) InstallDeps() error {
 
 // Build builds the webapp if it exists
 func (Build) Webapp() error {
-	mg.Deps(Webapp.InstallDeps)
+	mg.Deps(Webapp.Dependencies)
 
 	if !info.Manifest.HasWebapp() {
 		return nil
@@ -68,6 +68,33 @@ func (Build) Webapp() error {
 
 	if err := cmd.WorkingDir("webapp").Run("npm", "run", "build"); err != nil {
 		return fmt.Errorf("failed to build webapp: %w", err)
+	}
+
+	return nil
+}
+
+// Watch builds and watches the webapp for changes, rebuilding automatically
+func (Webapp) Watch() error {
+	mg.Deps(Webapp.Dependencies, Build.Server)
+	mg.SerialDeps(Build.Bundle)
+
+	if !info.Manifest.HasWebapp() {
+		return nil
+	}
+
+	cmd := NewCmd("webapp", "watch", nil)
+	npmCmd := "build:watch"
+	if os.Getenv("MM_DEBUG") != "" {
+		npmCmd = "debug:watch"
+	}
+
+	logger.Info("Watching webapp for changes",
+		"namespace", "webapp",
+		"target", "watch",
+		"mode", npmCmd)
+
+	if err := cmd.WorkingDir("webapp").Run("npm", "run", npmCmd); err != nil {
+		return fmt.Errorf("failed to watch webapp: %w", err)
 	}
 
 	return nil
