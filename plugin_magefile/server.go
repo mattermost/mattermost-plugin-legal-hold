@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
@@ -18,6 +17,13 @@ func (Server) Build() error {
 		return nil
 	}
 
+	// Validate all binary configurations before starting the build
+	for _, config := range AllBinaries {
+		if err := config.IsValid(); err != nil {
+			return fmt.Errorf("invalid build configuration for binary '%s': %w", config.BinaryName, err)
+		}
+	}
+
 	// Clean dist directory before creating it
 	if err := sh.Rm(filepath.Join("server", "dist")); err != nil {
 		return fmt.Errorf("failed to clean server/dist directory: %w", err)
@@ -28,69 +34,68 @@ func (Server) Build() error {
 		return fmt.Errorf("failed to create server/dist directory: %w", err)
 	}
 
-	if info.EnableDeveloperMode {
-		logger.Info("Building only for current platform due to MM_SERVICESETTINGS_ENABLEDEVELOPER",
-			"namespace", "server",
-			"target", "build",
-			"GOOS", runtime.GOOS,
-			"GOARCH", runtime.GOARCH)
-		return buildServer(runtime.GOOS, runtime.GOARCH)
-	}
-
-	// Build for all supported platforms
-	platforms := []struct{ GOOS, GOARCH string }{
-		{GOOS: "linux", GOARCH: "amd64"},
-		{GOOS: "linux", GOARCH: "arm64"},
-		{GOOS: "darwin", GOARCH: "amd64"},
-		{GOOS: "darwin", GOARCH: "arm64"},
-		{GOOS: "windows", GOARCH: "amd64"},
-	}
-
-	for _, p := range platforms {
-		if err := buildServer(p.GOOS, p.GOARCH); err != nil {
-			return err
+	// Build all configured binaries
+	for _, config := range AllBinaries {
+		for _, platform := range config.Platforms {
+			if err := buildBinary(config, platform); err != nil {
+				return fmt.Errorf("failed to build %s for %s/%s: %w",
+					config.BinaryName, platform.GOOS, platform.GOARCH, err)
+			}
 		}
 	}
 
 	return nil
 }
 
-func buildServer(goos, goarch string) error {
-	logger.Info("Building server",
+func buildBinary(config BinaryBuildConfig, platform BuildPlatform) error {
+	logger.Info("Building binary",
 		"namespace", "server",
 		"target", "build",
-		"GOOS", goos,
-		"GOARCH", goarch)
+		"binary", config.BinaryName,
+		"GOOS", platform.GOOS,
+		"GOARCH", platform.GOARCH)
 
 	// Prepare build args
-	buildArgs := []string{
-		"build",
-		"-trimpath",
-	}
+	buildArgs := append([]string{"build"}, DefaultBuildFlags...)
 
 	// Add build flags if set
-	if info.GoBuildFlags != "" {
-		buildArgs = append(buildArgs, info.GoBuildFlags)
+	if config.GoBuildFlags != "" {
+		buildArgs = append(buildArgs, config.GoBuildFlags)
 	}
 
 	// Add gcflags if set
-	if info.GoBuildGcflags != "" {
-		buildArgs = append(buildArgs, "-gcflags", info.GoBuildGcflags)
+	if config.GcFlags != "" {
+		buildArgs = append(buildArgs, "-gcflags", config.GcFlags)
 	}
 
 	// Add output and package
+	outputName := fmt.Sprintf("%s-%s-%s-%s", config.BinaryName, info.Manifest.Version, platform.GOOS, platform.GOARCH)
+	if platform.GOOS == "windows" {
+		outputName += ".exe"
+	}
+
 	buildArgs = append(buildArgs,
-		"-o", filepath.Join("server", "dist", "plugin-"+goos+"-"+goarch),
+		"-o", filepath.Join(config.OutputPath, outputName),
+		config.PackagePath,
 	)
 
-	cmd := NewCmd("server", "build", map[string]string{
-		"GOOS":        goos,
-		"GOARCH":      goarch,
-		"CGO_ENABLED": "0",
-	})
-	cmd.WorkingDir("server")
+	// Set up environment
+	env := map[string]string{
+		"GOOS":   platform.GOOS,
+		"GOARCH": platform.GOARCH,
+	}
+	// Merge with config environment
+	for k, v := range config.Environment {
+		env[k] = v
+	}
+
+	cmd := NewCmd("server", "build", env)
+	if config.WorkingDir != "" {
+		cmd.WorkingDir(config.WorkingDir)
+	}
+
 	if err := cmd.Run("go", buildArgs...); err != nil {
-		return fmt.Errorf("failed to build server for %s/%s: %w", goos, goarch, err)
+		return fmt.Errorf("failed to build: %w", err)
 	}
 
 	return nil

@@ -47,12 +47,6 @@ func (c *Cmd) Run(cmd string, args ...string) error {
 	stdout := NewLogWriter(c.namespace, c.target, slog.LevelDebug)
 	stderr := NewLogWriter(c.namespace, c.target, slog.LevelError)
 
-	// Log the command being executed
-	logger.Info("Running command",
-		"namespace", c.namespace,
-		"target", c.target,
-		"command", fmt.Sprintf("%s %s", cmd, strings.Join(args, " ")))
-
 	// Build shell command that includes before commands and cd
 	var commands []string
 	if c.workingDir != "" {
@@ -73,6 +67,11 @@ func (c *Cmd) Run(cmd string, args ...string) error {
 	if shell == "" {
 		shell = "sh"
 	}
+
+	logger.Debug("Running command",
+		"namespace", c.namespace,
+		"target", c.target,
+		"command", shellCmd)
 
 	ok, err := sh.Exec(c.env, stdout, stderr, shell, "-c", shellCmd)
 

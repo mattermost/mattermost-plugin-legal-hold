@@ -57,6 +57,9 @@ func initializeEnvironment() error {
 		}
 	}
 
+	// Setup the plugin binary configuration in the build pipeline
+	setupPluginBinary()
+
 	return nil
 }
 
