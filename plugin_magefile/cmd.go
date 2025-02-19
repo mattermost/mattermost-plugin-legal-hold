@@ -2,6 +2,7 @@ package plugin_magefile
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"strings"
@@ -16,6 +17,7 @@ type Cmd struct {
 	target         string
 	workingDir     string
 	beforeCommands []string // Commands to run before the main command
+	disableLogging bool
 }
 
 // NewCmd creates a new command with the given namespace and target
@@ -42,11 +44,13 @@ func (c *Cmd) RunBefore(command string) *Cmd {
 	return c
 }
 
+func (c *Cmd) DisableLogging() *Cmd {
+	c.disableLogging = true
+	return c
+}
+
 // Run executes the command with the given arguments
 func (c *Cmd) Run(cmd string, args ...string) error {
-	stdout := NewLogWriter(c.namespace, c.target, slog.LevelDebug)
-	stderr := NewLogWriter(c.namespace, c.target, slog.LevelError)
-
 	// Build shell command that includes before commands and cd
 	var commands []string
 	if c.workingDir != "" {
@@ -68,10 +72,16 @@ func (c *Cmd) Run(cmd string, args ...string) error {
 		shell = "sh"
 	}
 
-	Logger.Debug("Running command",
-		"namespace", c.namespace,
-		"target", c.target,
-		"command", shellCmd)
+	var stdout, stderr io.Writer
+	if !c.disableLogging {
+		Logger.Debug("Running command",
+			"namespace", c.namespace,
+			"target", c.target,
+			"command", shellCmd)
+
+		stdout = NewLogWriter(c.namespace, c.target, slog.LevelDebug)
+		stderr = NewLogWriter(c.namespace, c.target, slog.LevelError)
+	}
 
 	ok, err := sh.Exec(c.env, stdout, stderr, shell, "-c", shellCmd)
 
@@ -91,6 +101,7 @@ func CheckCommand(name string) bool {
 	}
 
 	cmd := NewCmd("", "", nil)
+	cmd.DisableLogging()
 	// Use command -v which is POSIX compliant
 	return cmd.Run("command", "-v", name) == nil
 }
