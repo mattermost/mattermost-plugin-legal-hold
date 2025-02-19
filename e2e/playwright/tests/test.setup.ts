@@ -1,5 +1,5 @@
 import {expect} from '@playwright/test';
-import {Client4} from 'mmtest_client';
+import {Client4} from '@mattermost/client';
 import {test as setup} from 'mmtest_playwright-lib';
 
 import {legalHoldPluginId} from '@support/constant';
