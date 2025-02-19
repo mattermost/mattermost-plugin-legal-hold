@@ -68,7 +68,7 @@ func (c *Cmd) Run(cmd string, args ...string) error {
 		shell = "sh"
 	}
 
-	logger.Debug("Running command",
+	Logger.Debug("Running command",
 		"namespace", c.namespace,
 		"target", c.target,
 		"command", shellCmd)

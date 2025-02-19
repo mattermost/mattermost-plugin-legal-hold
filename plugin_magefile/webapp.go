@@ -30,7 +30,7 @@ func (Webapp) Dependencies() error {
 		return nil // node_modules is up to date
 	}
 
-	logger.Info("Installing webapp dependencies",
+	Logger.Info("Installing webapp dependencies",
 		"namespace", "webapp",
 		"target", "installdeps")
 
@@ -62,7 +62,7 @@ func (Build) Webapp() error {
 		return fmt.Errorf("failed to create webapp/dist directory: %w", err)
 	}
 
-	logger.Info("Building webapp",
+	Logger.Info("Building webapp",
 		"namespace", "webapp",
 		"target", "build")
 
@@ -88,7 +88,7 @@ func (Webapp) Watch() error {
 		npmCmd = "debug:watch"
 	}
 
-	logger.Info("Watching webapp for changes",
+	Logger.Info("Watching webapp for changes",
 		"namespace", "webapp",
 		"target", "watch",
 		"mode", npmCmd)

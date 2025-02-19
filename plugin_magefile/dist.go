@@ -58,7 +58,7 @@ func (Build) Bundle() error {
 		return fmt.Errorf("failed to create bundle: %w", err)
 	}
 
-	logger.Info("Plugin built",
+	Logger.Info("Plugin built",
 		"namespace", "dist",
 		"target", "bundle",
 		"path", fmt.Sprintf("dist/%s", bundleName))

@@ -39,13 +39,13 @@ func (Pluginctl) Deploy() error {
 	}
 	defer pluginBundle.Close()
 
-	logger.Info("Uploading plugin via API")
+	Logger.Info("Uploading plugin via API")
 	_, _, err = client.UploadPluginForced(ctx, pluginBundle)
 	if err != nil {
 		return fmt.Errorf("failed to upload plugin bundle: %w", err)
 	}
 
-	logger.Info("Enabling plugin")
+	Logger.Info("Enabling plugin")
 	_, err = client.EnablePlugin(ctx, info.Manifest.Id)
 	if err != nil {
 		return fmt.Errorf("failed to enable plugin: %w", err)
@@ -64,7 +64,7 @@ func (Pluginctl) Disable() error {
 		return err
 	}
 
-	logger.Info("Disabling plugin")
+	Logger.Info("Disabling plugin")
 	_, err = client.DisablePlugin(ctx, info.Manifest.Id)
 	if err != nil {
 		return fmt.Errorf("failed to disable plugin: %w", err)
@@ -83,7 +83,7 @@ func (Pluginctl) Enable() error {
 		return err
 	}
 
-	logger.Info("Enabling plugin")
+	Logger.Info("Enabling plugin")
 	_, err = client.EnablePlugin(ctx, info.Manifest.Id)
 	if err != nil {
 		return fmt.Errorf("failed to enable plugin: %w", err)
@@ -107,12 +107,12 @@ func getClient(ctx context.Context) (*model.Client4, error) {
 
 	client, connected := getUnixClient(socketPath)
 	if connected {
-		logger.Info("Connecting using local mode", "socket", socketPath)
+		Logger.Info("Connecting using local mode", "socket", socketPath)
 		return client, nil
 	}
 
 	if os.Getenv("MM_LOCALSOCKETPATH") != "" {
-		logger.Info("No socket found for local mode deployment, attempting to authenticate with credentials", "socket", socketPath)
+		Logger.Info("No socket found for local mode deployment, attempting to authenticate with credentials", "socket", socketPath)
 	}
 
 	siteURL := os.Getenv("MM_SERVICESETTINGS_SITEURL")
@@ -127,14 +127,14 @@ func getClient(ctx context.Context) (*model.Client4, error) {
 	client = model.NewAPIv4Client(siteURL)
 
 	if adminToken != "" {
-		logger.Info("Authenticating using token", "url", siteURL)
+		Logger.Info("Authenticating using token", "url", siteURL)
 		client.SetToken(adminToken)
 		return client, nil
 	}
 
 	if adminUsername != "" && adminPassword != "" {
 		client := model.NewAPIv4Client(siteURL)
-		logger.Info("Authenticating with credentials", "username", adminUsername, "url", siteURL)
+		Logger.Info("Authenticating with credentials", "username", adminUsername, "url", siteURL)
 		_, _, err := client.Login(ctx, adminUsername, adminPassword)
 		if err != nil {
 			return nil, fmt.Errorf("failed to login as %s: %w", adminUsername, err)

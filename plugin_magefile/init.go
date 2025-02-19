@@ -13,7 +13,16 @@ import (
 
 var (
 	info   *pluginInfo
-	logger *slog.Logger
+	Logger *slog.Logger
+
+	DefaultAliases = map[string]interface{}{
+		"server":   Build.Server,
+		"binaries": Build.AdditionalBinaries,
+		"webapp":   Webapp.Watch,
+		"dist":     Build.All,
+		"bundle":   Build.Bundle,
+		"deploy":   Deploy.Upload,
+	}
 )
 
 // initializeEnvironment performs all the setup checks previously done in setup.mk
@@ -66,10 +75,10 @@ func initializeEnvironment() error {
 // init runs the initialization when the package is imported
 func init() {
 	// Initialize logger with custom handler
-	logger = slog.New(NewCustomHandler(os.Stdout))
+	Logger = slog.New(NewCustomHandler(os.Stdout))
 
 	if err := initializeEnvironment(); err != nil {
-		logger.Error("Error initializing environment", "error", err)
+		Logger.Error("Error initializing environment", "error", err)
 		os.Exit(1)
 	}
 }

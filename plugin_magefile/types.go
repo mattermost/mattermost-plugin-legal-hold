@@ -78,7 +78,7 @@ func (i *pluginInfo) Init() {
 	}
 
 	if os.Getenv("MM_DEBUG") != "" {
-		logger.Info("MM_DEBUG is set, setting Go build gcflags to -gcflags all=-N -l. To disable, unset MM_DEBUG.")
+		Logger.Info("MM_DEBUG is set, setting Go build gcflags to -gcflags all=-N -l. To disable, unset MM_DEBUG.")
 		i.GoBuildGcflags = "-gcflags all=-N -l"
 	}
 }

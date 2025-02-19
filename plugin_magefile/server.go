@@ -58,7 +58,7 @@ func (Build) AdditionalBinaries() error {
 }
 
 func buildBinary(config BinaryBuildConfig, platform BuildPlatform) error {
-	logger.Info("Building binary",
+	Logger.Info("Building binary",
 		"namespace", "server",
 		"target", "build",
 		"binary", config.BinaryName,

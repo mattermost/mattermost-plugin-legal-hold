@@ -168,7 +168,7 @@ func (l *logWriter) Write(p []byte) (n int, err error) {
 			continue
 		}
 
-		logger.Log(context.Background(), l.level, string(line),
+		Logger.Log(context.Background(), l.level, string(line),
 			"namespace", l.namespace,
 			"target", l.target)
 	}
