@@ -17,5 +17,5 @@ env:
 
 jobs:
   plugin-ci:
-    uses: mattermost/actions-workflows/.github/workflows/plugin-ci.yml@main
+    uses: mattermost/actions-workflows/.github/workflows/plugin-ci.yml@mage
     secrets: inherit

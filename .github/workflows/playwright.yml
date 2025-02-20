@@ -82,6 +82,9 @@ jobs:
           go-version-file: mattermost-plugin-legal-hold/go.mod
           cache: true
 
+      - name: ci/install-mage
+        run: go install github.com/magefile/mage@latest
+
       - name: ci/setup-node
         uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
         with:
