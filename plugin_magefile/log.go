@@ -45,7 +45,7 @@ type customHandler struct {
 	useColors bool
 }
 
-func (h *customHandler) Enabled(_ context.Context, l slog.Level) bool {
+func (h *customHandler) Enabled(_ context.Context, _ slog.Level) bool {
 	return true
 }
 
@@ -120,11 +120,11 @@ func (h *customHandler) Handle(_ context.Context, r slog.Record) error {
 	return err
 }
 
-func (h *customHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+func (h *customHandler) WithAttrs(_ []slog.Attr) slog.Handler {
 	return h
 }
 
-func (h *customHandler) WithGroup(name string) slog.Handler {
+func (h *customHandler) WithGroup(_ string) slog.Handler {
 	return h
 }
 

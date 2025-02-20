@@ -94,12 +94,6 @@ func (c *Cmd) Run(cmd string, args ...string) error {
 
 // CheckCommand checks if a command exists on the system
 func CheckCommand(name string) bool {
-	// Use user's default shell or fallback to sh
-	shell := os.Getenv("SHELL")
-	if shell == "" {
-		shell = "sh"
-	}
-
 	cmd := NewCmd("", "", nil)
 	cmd.DisableLogging()
 	// Use command -v which is POSIX compliant
