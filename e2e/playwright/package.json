@@ -29,6 +29,6 @@
     "dependencies": {
         "@playwright/test": "1.50.1",
         "@mattermost/client": "10.6.0-0",
-        "mmtest_playwright-lib": "0.0.4"
+        "mmtest_playwright-lib": "0.0.5"
     }
 }
