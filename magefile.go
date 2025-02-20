@@ -11,10 +11,11 @@ import (
 func init() {
 	// Register the processor binary
 	plugin_magefile.RegisterBinary(plugin_magefile.BinaryBuildConfig{
-		OutputPath:  "./bin",
-		BinaryName:  "processor",
-		WorkingDir:  "./processor",
-		PackagePath: ".",
+		Name:             "processor",
+		OutputPath:       "./bin",
+		BinaryNameFormat: "processor-{{.Manifest.Version}}-{{.GOOS}}-{{.GOARCH}}",
+		WorkingDir:       "./processor",
+		PackagePath:      ".",
 	})
 }
 

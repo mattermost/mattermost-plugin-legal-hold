@@ -17,7 +17,7 @@ func (Build) Server() error {
 	// Validate all binary configurations before starting the build
 	for _, config := range AllBinaries {
 		if err := config.IsValid(); err != nil {
-			return fmt.Errorf("invalid build configuration for binary '%s': %w", config.BinaryName, err)
+			return fmt.Errorf("invalid build configuration for binary '%s': %w", config.Name, err)
 		}
 	}
 
@@ -36,7 +36,7 @@ func (Build) Server() error {
 	for _, platform := range pluginBinary.Platforms {
 		if err := buildBinary(pluginBinary, platform); err != nil {
 			return fmt.Errorf("failed to build %s for %s/%s: %w",
-				pluginBinary.BinaryName, platform.GOOS, platform.GOARCH, err)
+				pluginBinary.Name, platform.GOOS, platform.GOARCH, err)
 		}
 	}
 
@@ -49,7 +49,7 @@ func (Build) AdditionalBinaries() error {
 		for _, platform := range config.Platforms {
 			if err := buildBinary(config, platform); err != nil {
 				return fmt.Errorf("failed to build %s for %s/%s: %w",
-					config.BinaryName, platform.GOOS, platform.GOARCH, err)
+					config.Name, platform.GOOS, platform.GOARCH, err)
 			}
 		}
 	}
@@ -61,7 +61,7 @@ func buildBinary(config BinaryBuildConfig, platform BuildPlatform) error {
 	Logger.Info("Building binary",
 		"namespace", "build",
 		"target", "server",
-		"binary", binaryName,
+		"binary", config.Name,
 		"GOOS", platform.GOOS,
 		"GOARCH", platform.GOARCH)
 
@@ -78,14 +78,14 @@ func buildBinary(config BinaryBuildConfig, platform BuildPlatform) error {
 		buildArgs = append(buildArgs, "-gcflags", config.GcFlags)
 	}
 
-	// Add output and package
-	outputName := fmt.Sprintf("%s-%s-%s-%s", config.BinaryName, info.Manifest.Version, platform.GOOS, platform.GOARCH)
-	if platform.GOOS == "windows" {
-		outputName += ".exe"
+	binaryName, err := config.GetBinaryName(platform.GOOS, platform.GOARCH)
+	if err != nil {
+		return fmt.Errorf("failed to get binary name for %s/%s: %w",
+			platform.GOOS, platform.GOARCH, err)
 	}
 
 	buildArgs = append(buildArgs,
-		"-o", filepath.Join(config.OutputPath, outputName),
+		"-o", filepath.Join(config.OutputPath, binaryName),
 		config.PackagePath,
 	)
 
