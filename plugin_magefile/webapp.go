@@ -32,7 +32,7 @@ func (Webapp) Dependencies() error {
 
 	Logger.Info("Installing webapp dependencies",
 		"namespace", "webapp",
-		"target", "installdeps")
+		"target", "dependencies")
 
 	cmd := NewCmd("webapp", "installdeps", nil)
 	if err := cmd.WorkingDir("webapp").Run("npm", "install"); err != nil {
@@ -50,7 +50,7 @@ func (Build) Webapp() error {
 		return nil
 	}
 
-	cmd := NewCmd("webapp", "build", nil)
+	cmd := NewCmd("build", "webapp", nil)
 
 	// Clean dist directory before creating it
 	if err := sh.Rm(filepath.Join("webapp", "dist")); err != nil {
@@ -63,8 +63,8 @@ func (Build) Webapp() error {
 	}
 
 	Logger.Info("Building webapp",
-		"namespace", "webapp",
-		"target", "build")
+		"namespace", "build",
+		"target", "webapp")
 
 	if err := cmd.WorkingDir("webapp").Run("npm", "run", "build"); err != nil {
 		return fmt.Errorf("failed to build webapp: %w", err)

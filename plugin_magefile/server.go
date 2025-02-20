@@ -59,9 +59,9 @@ func (Build) AdditionalBinaries() error {
 
 func buildBinary(config BinaryBuildConfig, platform BuildPlatform) error {
 	Logger.Info("Building binary",
-		"namespace", "server",
-		"target", "build",
-		"binary", config.BinaryName,
+		"namespace", "build",
+		"target", "server",
+		"binary", binaryName,
 		"GOOS", platform.GOOS,
 		"GOARCH", platform.GOARCH)
 
