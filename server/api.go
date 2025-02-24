@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -61,6 +62,17 @@ func (p *Plugin) listLegalHolds(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "an error occurred fetching the legal holds", http.StatusInternalServerError)
 		p.Client.Log.Error(err.Error())
 		return
+	}
+
+	runningHolds, err := p.legalHoldJob.GetRunningLegalHolds()
+	if err != nil {
+		p.Client.Log.Error("failed to get running legal holds", err.Error())
+	} else {
+		for i, lh := range legalHolds {
+			if slices.Contains(runningHolds, lh.ID) {
+				legalHolds[i].Status = model.LegalHoldStatusExecuting
+			}
+		}
 	}
 
 	b, jsonErr := json.Marshal(legalHolds)
@@ -318,7 +330,7 @@ func (p *Plugin) runJobFromAPI(w http.ResponseWriter, _ *http.Request) {
 		p.API.LogError("failed to write http response", err.Error())
 	}
 
-	go p.legalHoldJob.RunFromAPI()
+	go p.legalHoldJob.RunAll()
 }
 
 func (p *Plugin) runSingleLegalHold(w http.ResponseWriter, r *http.Request) {

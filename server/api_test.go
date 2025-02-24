@@ -34,13 +34,18 @@ func (m *MockLegalHoldJob) Stop(timeout time.Duration) error {
 	return args.Error(0)
 }
 
-func (m *MockLegalHoldJob) RunFromAPI() {
+func (m *MockLegalHoldJob) RunAll() {
 	m.Called()
 }
 
 func (m *MockLegalHoldJob) RunSingleLegalHold(id string) error {
 	args := m.Called(id)
 	return args.Error(0)
+}
+
+func (m *MockLegalHoldJob) GetRunningLegalHolds() ([]string, error) {
+	args := m.Called()
+	return args.Get(0).([]string), args.Error(1)
 }
 
 func TestRunSingleLegalHold(t *testing.T) {
