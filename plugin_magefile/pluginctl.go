@@ -22,9 +22,20 @@ func (Pluginctl) Deploy() error {
 	bundleName := fmt.Sprintf("%s-%s.tar.gz", info.Manifest.Id, info.Manifest.Version)
 	bundlePath := filepath.Join("dist", bundleName)
 
-	if _, err := os.Stat(bundlePath); os.IsNotExist(err) {
-		return fmt.Errorf("plugin bundle %s does not exist", bundlePath)
+	// Check if the bundle exists and is accessible
+	fileInfo, err := os.Stat(bundlePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("plugin bundle not found at %s - did you run 'make dist' first?", bundlePath)
+		}
+		return fmt.Errorf("failed to access plugin bundle at %s: %w", bundlePath, err)
 	}
+
+	// Validate the file size
+	if fileInfo.Size() == 0 {
+		return fmt.Errorf("plugin bundle at %s is empty", bundlePath)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
 	defer cancel()
 
