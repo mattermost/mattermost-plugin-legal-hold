@@ -258,8 +258,6 @@ func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 				}
 				j.client.Log.Info("legal hold executed", "legal_hold_id", newLH.ID, "legal_hold_name", newLH.Name)
 			}
-
-			time.Sleep(time.Millisecond * 250)
 		}
 
 		// Set legal hold as IDLE since we are finished with it
