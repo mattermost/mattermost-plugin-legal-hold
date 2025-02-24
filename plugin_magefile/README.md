@@ -67,19 +67,20 @@ mage pluginctl:deploy
 
 ### Aliases
 
-> :warning: Since there's no way to reference the `DefaultAliases` map from the plugin `magefile.go` file due to the way mage handles it using `aws` we need to manually add the aliases to the `Aliases` map in the `magefile.go` file.
+> :warning: Since there's no way to reference the `DefaultAliases` map from the plugin `magefiles/magefile.go` file due to the way mage handles it using `aws` we need to manually add the aliases to the `Aliases` map in the `magefiles/magefile.go` file.
 > 
 > Since I just added this as a convenience migration from the old Makefile there's a chance I will just remove the Aliases so people start using the new `mage` commands directly.
 
-Aliases are defined in the `Aliases` map in the `magefile.go` file. They are used to map old Makefile targets to the new Mage targets.
+Aliases are defined in the `Aliases` map in the `magefiles/magefile.go` file. They are used to map old Makefile targets to the new Mage targets.
 
-We have a `DefaultAliases` map that contains the default aliases for the targets. Right now we can reference those from the plugin `magefile.go` file, so that acts as a source of truth.
+We have a `DefaultAliases` map that contains the default aliases for the targets. Right now we can reference those from the plugin `magefiles/magefile.go` file, so that acts as a source of truth.
 
 ### Build more golang binaries
 
-You can register additional binaries to build by calling `RegisterBinary` in your `magefile.go`:
+You can register additional binaries to build by calling `RegisterBinary` in a new file in the `magefiles` directory:
 
 ```go
+// magefiles/binaries.go
 func init() {
     // Register additional binaries to build
     plugin_magefile.RegisterBinary(plugin_magefile.BinaryBuildConfig{
