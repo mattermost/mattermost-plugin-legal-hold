@@ -54,14 +54,18 @@ func (c *Cmd) Run(cmd string, args ...string) error {
 	// Build shell command that includes before commands and cd
 	var commands []string
 	if c.workingDir != "" {
-		commands = append([]string{fmt.Sprintf("cd %s", c.workingDir)}, commands...)
+		commands = append([]string{fmt.Sprintf("cd %q", c.workingDir)}, commands...)
 	}
 
 	// Add any before commands
 	commands = append(commands, c.beforeCommands...)
 
-	// Add the main command
-	commands = append(commands, fmt.Sprintf("%s %s", cmd, strings.Join(args, " ")))
+	// Add the main command with proper shell escaping
+	quotedArgs := make([]string, len(args))
+	for i, arg := range args {
+		quotedArgs[i] = fmt.Sprintf("%q", arg)
+	}
+	commands = append(commands, fmt.Sprintf("%q %s", cmd, strings.Join(quotedArgs, " ")))
 
 	// Join all commands with &&
 	shellCmd := strings.Join(commands, " && ")

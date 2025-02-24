@@ -72,7 +72,7 @@ server:
 ## Builds the processor for all architectures.
 .PHONY: processor
 processor:
-	mage build:build:additionalBinaries
+	mage build:additionalBinaries
 
 ## Ensures NPM dependencies are installed without having to run this all the time.
 webapp/node_modules:

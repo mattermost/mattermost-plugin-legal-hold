@@ -24,7 +24,7 @@ func init() {
 var Aliases = map[string]interface{}{
 	"server":   plugin_magefile.Build.Server,
 	"binaries": plugin_magefile.Build.AdditionalBinaries,
-	"webapp":   plugin_magefile.Webapp.Watch,
+	"webapp":   plugin_magefile.Build.Webapp,
 	"dist":     plugin_magefile.Build.All,
 	"bundle":   plugin_magefile.Build.Bundle,
 	"deploy":   plugin_magefile.Deploy.Upload,
