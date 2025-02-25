@@ -107,6 +107,7 @@ func init() {
 - `log.go`: Custom logging implementation
 - `types.go`: Core types and configuration
 - `init.go`: Package initialization and environment setup
+- `assets/`: Embedded assets handling
 
 ### Logging
 

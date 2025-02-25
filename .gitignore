@@ -19,3 +19,8 @@ dist/
 .idea/
 
 processor/temp
+
+# magefile included assets
+.golangci.yml
+.editorconfig
+.github
