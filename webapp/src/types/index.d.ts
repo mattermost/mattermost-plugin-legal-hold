@@ -5,6 +5,7 @@ export interface LegalHold {
     starts_at: number;
     ends_at: number;
     user_ids: string[];
+    group_ids: string[];
     include_public_channels: boolean;
     secret: string;
 }
@@ -15,6 +16,7 @@ export interface CreateLegalHold {
     starts_at: number;
     ends_at: number;
     user_ids: Array<string>;
+    group_ids?: Array<string>;
 }
 
 export interface UpdateLegalHold {
@@ -22,4 +24,5 @@ export interface UpdateLegalHold {
     display_name: string;
     ends_at: number;
     user_ids: Array<string>;
+    group_ids?: Array<string>;
 }
