@@ -36,27 +36,27 @@ export function getMissingGroupsByIds(groupIds: string[]): ActionFunc {
             }
         });
 
-        if (missingIds.length == 0) {
+        if (missingIds.length === 0) {
             return {data: []};
         }
 
-        missingIds.forEach(id => pendingGroupRequests.add(id));
+        missingIds.forEach((id) => pendingGroupRequests.add(id));
 
-        const fetchedGroups = [];
-        let lastError = null;
-        
-        for (const groupId of missingIds) {
-            try {
-                const group = await Client.getGroup(groupId);
-                fetchedGroups.push(group);
-            } catch (error) {
-                forceLogoutIfNecessary(error, dispatch, getState);
-                dispatch(logError(error));
-                lastError = error;
+        let fetchedGroups = [];
+
+        try {
+            const promises = [];
+            for (const groupId of missingIds) {
+                promises.push(Client.getGroup(groupId));
             }
+            fetchedGroups = await Promise.all(promises);
+        } catch (error) {
+            forceLogoutIfNecessary(error as any, dispatch, getState);
+            dispatch(logError(error as any));
+            return {error};
         }
 
-        missingIds.forEach(id => pendingGroupRequests.delete(id));
+        missingIds.forEach((id) => pendingGroupRequests.delete(id));
 
         if (fetchedGroups.length > 0) {
             dispatch({
@@ -65,10 +65,6 @@ export function getMissingGroupsByIds(groupIds: string[]): ActionFunc {
             });
             return {data: fetchedGroups};
         }
-
-	if (lastError) {
-	    return {error: lastError};
-	}
 
         return {data: []};
     };
