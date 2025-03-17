@@ -211,6 +211,7 @@ func (j *LegalHoldJob) run() {
 
 			if end, err := lhe.Execute(); err != nil {
 				j.client.Log.Error("An error occurred executing the legal hold.", err)
+				break
 			} else {
 				old, err := j.kvstore.GetLegalHoldByID(lh.ID)
 				if err != nil {
