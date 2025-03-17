@@ -19,3 +19,5 @@ dist/
 .idea/
 
 processor/temp
+
+.aider*
