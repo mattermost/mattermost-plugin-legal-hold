@@ -32,6 +32,11 @@ class APIClient {
         return this.doWithBody(url, 'put', data);
     };
 
+    getGroup = (id: string) => {
+        const url = `/api/v4/groups/${id}`;
+        return this.doGet(url);
+    };
+
     testAmazonS3Connection = () => {
         const url = `${this.url}/test_amazon_s3_connection`;
         return this.doWithBody(url, 'post', {}) as Promise<{message: string}>;
