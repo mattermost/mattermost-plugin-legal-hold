@@ -81,7 +81,7 @@ func (lh *LegalHold) IsValidForCreate() error {
 		return errors.New("LegalHold display name must be between 2 and 64 characters in length")
 	}
 
-	if (lh.UserIDs == nil || len(lh.UserIDs) < 1) && (lh.GroupIDs == nil || len(lh.GroupIDs) < 1) {
+	if len(lh.UserIDs) < 1 && len(lh.GroupIDs) < 1 {
 		return errors.New("LegalHold must include at least 1 user or 1 group")
 	}
 
@@ -194,7 +194,7 @@ func (ulh UpdateLegalHold) IsValid() error {
 		return errors.New("LegalHold display name must be between 2 and 64 characters in length")
 	}
 
-	if (ulh.UserIDs == nil || len(ulh.UserIDs) < 1) && (ulh.GroupIDs == nil || len(ulh.GroupIDs) < 1) {
+	if len(ulh.UserIDs) < 1 && len(ulh.GroupIDs) < 1 {
 		return errors.New("LegalHold must include at least 1 user or 1 group")
 	}
 

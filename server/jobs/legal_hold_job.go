@@ -209,25 +209,29 @@ func (j *LegalHoldJob) run() {
 			j.client.Log.Debug(fmt.Sprintf("Creating Legal Hold Execution for legal hold: %s", lh.ID))
 			lhe := legalhold.NewExecution(lh, j.papi, j.sqlstore, j.filebackend)
 
-			if end, err := lhe.Execute(); err != nil {
+			end, err := lhe.Execute()
+			if err != nil {
 				j.client.Log.Error("An error occurred executing the legal hold.", err)
 				break
-			} else {
-				old, err := j.kvstore.GetLegalHoldByID(lh.ID)
-				if err != nil {
-					j.client.Log.Error("Failed to fetch the LegalHold prior to updating", err)
-					continue
-				}
-				lh = *old
-				lh.LastExecutionEndedAt = end
-				newLH, err := j.kvstore.UpdateLegalHold(lh, *old)
-				if err != nil {
-					j.client.Log.Error("Failed to update legal hold", err)
-					continue
-				}
-				lh = *newLH
-				j.client.Log.Info("legal hold executed", "legal_hold_id", lh.ID, "legal_hold_name", lh.Name)
 			}
+
+			old, err := j.kvstore.GetLegalHoldByID(lh.ID)
+			if err != nil {
+				j.client.Log.Error("Failed to fetch the LegalHold prior to updating", err)
+				continue
+			}
+
+			lh = *old
+			lh.LastExecutionEndedAt = end
+
+			newLH, err := j.kvstore.UpdateLegalHold(lh, *old)
+			if err != nil {
+				j.client.Log.Error("Failed to update legal hold", err)
+				continue
+			}
+
+			lh = *newLH
+			j.client.Log.Info("legal hold executed", "legal_hold_id", lh.ID, "legal_hold_name", lh.Name)
 		}
 	}
 	_ = ctx

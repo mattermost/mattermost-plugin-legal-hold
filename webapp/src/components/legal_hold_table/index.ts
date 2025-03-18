@@ -51,9 +51,8 @@ export function getMissingGroupsByIds(groupIds: string[]): ActionFunc {
             }
             fetchedGroups = await Promise.all(promises);
         } catch (error) {
-            forceLogoutIfNecessary(error as any, dispatch, getState);
-            dispatch(logError(error as any));
-            return {error};
+            console.log(error); //eslint-disable-line no-console
+            throw error;
         }
 
         missingIds.forEach((id) => pendingGroupRequests.delete(id));
