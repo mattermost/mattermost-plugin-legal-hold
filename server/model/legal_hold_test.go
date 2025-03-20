@@ -475,7 +475,7 @@ func TestModel_UpdateLegalHold_IsValid(t *testing.T) {
 				UserIDs:     []string{},
 				EndsAt:      0,
 			},
-			expected: "LegalHold must include at least 1 user",
+			expected: "LegalHold must include at least 1 user or 1 group",
 		},
 		{
 			name: "InvalidUserIDs",
