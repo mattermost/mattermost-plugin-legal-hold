@@ -58,7 +58,7 @@ async function requestTrialLicense(adminClient: Client) {
             receive_emails_accepted: true,
             terms_accepted: true,
             users: 100,
-            company_country: 'e2e-ci-test',
+            company_country: 'US',
         });
     } catch (e) {
         console.error('Failed to request trial license', e);
