@@ -10,19 +10,28 @@ import (
 )
 
 // LegalHold represents one legal hold.
+type LegalHoldStatus string
+
+const (
+	LegalHoldStatusIdle      LegalHoldStatus = "idle"
+	LegalHoldStatusExecuting LegalHoldStatus = "executing"
+)
+
 type LegalHold struct {
-	ID                    string   `json:"id"`
-	Name                  string   `json:"name"`
-	DisplayName           string   `json:"display_name"`
-	CreateAt              int64    `json:"create_at"`
-	UpdateAt              int64    `json:"update_at"`
-	UserIDs               []string `json:"user_ids"`
-	StartsAt              int64    `json:"starts_at"`
-	EndsAt                int64    `json:"ends_at"`
-	IncludePublicChannels bool     `json:"include_public_channels"`
-	LastExecutionEndedAt  int64    `json:"last_execution_ended_at"`
-	ExecutionLength       int64    `json:"execution_length"`
-	Secret                string   `json:"secret"`
+	ID                    string          `json:"id"`
+	Name                  string          `json:"name"`
+	DisplayName           string          `json:"display_name"`
+	CreateAt              int64           `json:"create_at"`
+	UpdateAt              int64           `json:"update_at"`
+	UserIDs               []string        `json:"user_ids"`
+	StartsAt              int64           `json:"starts_at"`
+	EndsAt                int64           `json:"ends_at"`
+	IncludePublicChannels bool            `json:"include_public_channels"`
+	LastExecutionEndedAt  int64           `json:"last_execution_ended_at"`
+	ExecutionLength       int64           `json:"execution_length"`
+	Secret                string          `json:"secret"`
+	HasMessages           bool            `json:"has_messages,omitempty"`
+	Status                LegalHoldStatus `json:"status,omitempty"`
 }
 
 // DeepCopy creates a deep copy of the LegalHold.
@@ -43,6 +52,8 @@ func (lh *LegalHold) DeepCopy() LegalHold {
 		LastExecutionEndedAt:  lh.LastExecutionEndedAt,
 		ExecutionLength:       lh.ExecutionLength,
 		Secret:                lh.Secret,
+		HasMessages:           lh.HasMessages,
+		Status:                lh.Status,
 	}
 
 	if len(lh.UserIDs) > 0 {
@@ -135,6 +146,11 @@ func (lh *LegalHold) BasePath() string {
 	return fmt.Sprintf("legal_hold/%s_%s", lh.Name, lh.ID)
 }
 
+// IndexPath returns the file storage path for the index file for this legal hold.
+func (lh *LegalHold) IndexPath() string {
+	return fmt.Sprintf("%s/index.json", lh.BasePath())
+}
+
 // CreateLegalHold holds the data that is specified in the API call to create a LegalHold.
 type CreateLegalHold struct {
 	Name                  string   `json:"name"`
@@ -158,6 +174,7 @@ func NewLegalHoldFromCreate(lhc CreateLegalHold) LegalHold {
 		IncludePublicChannels: lhc.IncludePublicChannels,
 		LastExecutionEndedAt:  0,
 		ExecutionLength:       86400000, // 24 hours
+		Status:                LegalHoldStatusIdle,
 	}
 }
 
