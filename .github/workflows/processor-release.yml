@@ -1,0 +1,29 @@
+name: Processor Release
+on:
+  release:
+    types: [published]
+
+jobs:
+  processor-release:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+      - name: Setup Go
+        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version-file: go.mod
+
+      - name: Install Mage
+        run: go install github.com/magefile/mage@latest
+
+      - name: Build Processor
+        run: mage build:additionalBinaries
+
+      - name: Upload binaries to release
+        env:
+          GH_TOKEN: ${{ github.token }} 
+        run: gh release upload "${{ github.event.release.tag_name }}" processor/bin/*
