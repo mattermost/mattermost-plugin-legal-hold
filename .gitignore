@@ -23,4 +23,4 @@ processor/temp
 # magefile included assets
 /.golangci.yml
 /.editorconfig
-/.github/workflows/ci.yml
+#/.github/workflows/ci.yml # Has to be committed to the repo for github to use it
