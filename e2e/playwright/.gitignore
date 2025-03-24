@@ -4,6 +4,7 @@ node_modules/
 .env
 screenshots
 playwright-report
+storage_state
 test-results
 results
 .auth-user.json
