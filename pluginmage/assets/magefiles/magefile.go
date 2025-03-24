@@ -8,5 +8,5 @@ package main
 
 import (
 	//mage:import
-	_ "github.com/mattermost/mattermost-plugin-legal-hold/plugin_magefile"
+	_ "github.com/mattermost/mattermost-plugin-legal-hold/pluginmage"
 )

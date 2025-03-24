@@ -1,4 +1,4 @@
-package plugin_magefile
+package pluginmage
 
 import (
 	"os"

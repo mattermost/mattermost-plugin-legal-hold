@@ -1,4 +1,4 @@
-package plugin_magefile
+package pluginmage
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mattermost/mattermost-plugin-legal-hold/plugin_magefile/assets"
+	"github.com/mattermost/mattermost-plugin-legal-hold/pluginmage/assets"
 	"github.com/mattermost/mattermost/server/public/model"
 )
 
@@ -110,7 +110,7 @@ func initializeAssets() error {
 		destPath := filepath.Join(currentDir, path)
 
 		// Write the file to the destination
-		if err := os.WriteFile(destPath, content, 0644); err != nil {
+		if err := os.WriteFile(destPath, content, 0600); err != nil {
 			return fmt.Errorf("failed to write file %s: %w", destPath, err)
 		}
 
