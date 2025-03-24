@@ -21,6 +21,6 @@ dist/
 processor/temp
 
 # magefile included assets
-.golangci.yml
-.editorconfig
-.github
+/.golangci.yml
+/.editorconfig
+/.github/workflows/ci.yml
