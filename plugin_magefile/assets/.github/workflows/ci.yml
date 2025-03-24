@@ -19,3 +19,5 @@ jobs:
   plugin-ci:
     uses: mattermost/actions-workflows/.github/workflows/plugin-ci.yml@mage
     secrets: inherit
+    with:
+      mage-version: v1.15.0
