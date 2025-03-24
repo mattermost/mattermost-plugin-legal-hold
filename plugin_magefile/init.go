@@ -114,7 +114,6 @@ func initializeAssets() error {
 			return fmt.Errorf("failed to write file %s: %w", destPath, err)
 		}
 
-		Logger.Info("Extracted asset", "file", path, "to", destPath)
 		return nil
 	})
 
