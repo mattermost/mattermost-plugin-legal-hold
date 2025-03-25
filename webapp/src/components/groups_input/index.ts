@@ -2,6 +2,7 @@ import {connect} from 'react-redux';
 import {AnyAction, bindActionCreators, Dispatch} from 'redux';
 
 import Client from '@/client';
+
 import GroupsInput from './groups_input.jsx';
 
 // Function to search groups via the plugin API
