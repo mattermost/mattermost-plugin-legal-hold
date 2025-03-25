@@ -19,13 +19,21 @@ const LegalHoldTable = (props: LegalHoldTableProps) => {
 
     const user_ids = Array.from(
         new Set(
-            legalHolds.map((lh) => lh.user_ids).filter((i) => i !== null).reduce((prev, cur) => prev.concat(cur), []).filter((i) => i !== null),
+            legalHolds
+                .map((lh) => lh.user_ids) // Put each LH's array of user IDs into an array
+                .filter((i) => i !== null) // Drop any arrays that are null
+                .reduce((prev, cur) => prev.concat(cur), []) // Flatten the list into a single array
+                .filter((i) => i !== null), // Drop any IDs that are null
         ),
     );
 
     const group_ids = Array.from(
         new Set(
-            legalHolds.map((lh) => lh.group_ids).filter((i) => i !== null).reduce((prev, cur) => prev.concat(cur), []).filter((i) => i !== null),
+            legalHolds
+                .map((lh) => lh.group_ids) // Put each LH's array of group IDs into an array
+                .filter((i) => i !== null) // Drop any arrays that are null
+                .reduce((prev, cur) => prev.concat(cur), []) // Flatten the list into a single array
+                .filter((i) => i !== null), // Drop any IDs that are null
         ),
     );
 
