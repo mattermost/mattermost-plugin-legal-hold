@@ -42,6 +42,11 @@ class APIClient {
         return this.doWithBody(url, 'post', {}) as Promise<{message: string}>;
     };
 
+    searchGroups = (term: string) => {
+        const url = `${this.url}/groups/search?prefix=${encodeURIComponent(term)}`;
+        return this.doGet(url);
+    };
+
     private doGet = async (url: string, headers = {}) => {
         const options = {
             method: 'get',
