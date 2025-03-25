@@ -3,7 +3,6 @@ import {AnyAction, bindActionCreators, Dispatch} from 'redux';
 
 import {logError} from 'mattermost-redux/actions/errors';
 import {getMissingProfilesByIds} from 'mattermost-redux/actions/users';
-import {forceLogoutIfNecessary} from 'mattermost-redux/actions/helpers';
 import {ActionFunc, DispatchFunc, GetStateFunc} from 'mattermost-redux/types/actions';
 
 import GroupTypes from 'mattermost-redux/action_types/groups';
