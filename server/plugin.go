@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"sync"
 
@@ -173,21 +174,26 @@ func (p *Plugin) Reconfigure() error {
 		return errors.New("unable to initialize the files storage")
 	}
 
-	if err = filesBackend.TestConnection(); err != nil {
-		pluginConfig := p.Client.Configuration.GetPluginConfig()
+	// Avoid running the filebackend check on warm nodes
+	if !IsWarmNode(p.configuration) {
+		if err = filesBackend.TestConnection(); err != nil {
+			pluginConfig := p.Client.Configuration.GetPluginConfig()
 
-		// Disable the S3 settings in case the AWS config is invalid
-		pluginConfig["amazons3bucketsettings"].(map[string]interface{})["Enable"] = false
+			// Disable the S3 settings in case the AWS config is invalid
+			pluginConfig["amazons3bucketsettings"].(map[string]interface{})["Enable"] = false
 
-		confErr := p.Client.Configuration.SavePluginConfig(pluginConfig)
-		if confErr != nil {
-			p.Client.Log.Error("Error while saving plugin config.", "Error", confErr.Error())
-			return confErr
+			confErr := p.Client.Configuration.SavePluginConfig(pluginConfig)
+			if confErr != nil {
+				p.Client.Log.Error("Error while saving plugin config.", "Error", confErr.Error())
+				return confErr
+			}
+
+			err = errors.Wrap(err, "connection test for filestore failed")
+			p.Client.Log.Error(err.Error())
+			return err
 		}
-
-		err = errors.Wrap(err, "connection test for filestore failed")
-		p.Client.Log.Error(err.Error())
-		return err
+	} else {
+		p.Client.Log.Debug("Skipping filestore connection test on warm node")
 	}
 
 	p.FileBackend = filesBackend
@@ -251,4 +257,17 @@ func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings) fil
 		AmazonS3RequestTimeoutMilliseconds: *fileSettings.AmazonS3RequestTimeoutMilliseconds,
 		SkipVerify:                         false,
 	}
+}
+
+// IsWarmNode returns true if the plugin is running on a warm node, false otherwise.
+// In order to determine if the node is warm, the plugin configuration contains a setting that
+// indicates an environment variable name that this function checks for.
+// If the environment variable is set **with any value** the node is considered warm.
+func IsWarmNode(c *config.Configuration) bool {
+	if c.WarmNodeEnvironmentVariable != "" {
+		_, present := os.LookupEnv(c.WarmNodeEnvironmentVariable)
+		return present
+	}
+
+	return false
 }
