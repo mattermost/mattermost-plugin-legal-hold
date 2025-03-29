@@ -62,6 +62,7 @@ async function requestTrialLicense(adminClient: Client4) {
             receive_emails_accepted: true,
             terms_accepted: true,
             users: 100,
+            company_country: 'US',
         });
     } catch (e) {
         // eslint-disable-next-line no-console
