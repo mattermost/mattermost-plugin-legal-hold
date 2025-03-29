@@ -1,6 +1,5 @@
-import {expect} from '@playwright/test';
+import {expect, test as setup} from 'mmtest_playwright-lib';
 import {Client4} from '@mattermost/client';
-import {test as setup} from 'mmtest_playwright-lib';
 
 import {legalHoldPluginId} from '@support/constant';
 
@@ -19,6 +18,7 @@ setup('ensure plugin is enabled', async ({pw}) => {
         const isInstalled = pluginStatus.some(({plugin_id}) => plugin_id === pluginId);
 
         if (!isInstalled) {
+            // eslint-disable-next-line no-console
             console.log(`${pluginId} is not installed. Related visual test will fail.`);
             continue;
         }
@@ -27,8 +27,10 @@ setup('ensure plugin is enabled', async ({pw}) => {
 
         if (!isActive) {
             await adminClient.enablePlugin(pluginId);
+            // eslint-disable-next-line no-console
             console.log(`${pluginId} is installed and has been activated.`);
         } else {
+            // eslint-disable-next-line no-console
             console.log(`${pluginId} is installed and active.`);
         }
     }
@@ -47,6 +49,7 @@ async function ensureLicense(adminClient: Client4) {
         const trialLicense = await adminClient.getClientLicenseOld();
         return trialLicense?.IsLicensed === 'true';
     } catch (error) {
+        // eslint-disable-next-line no-console
         console.error('Error ensuring license', error);
         return false;
     }
@@ -61,6 +64,7 @@ async function requestTrialLicense(adminClient: Client4) {
             users: 100,
         });
     } catch (e) {
+        // eslint-disable-next-line no-console
         console.error('Failed to request trial license', e);
         throw e;
     }
