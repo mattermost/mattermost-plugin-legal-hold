@@ -32,7 +32,7 @@ var (
 func initializeEnvironment() error {
 	// Check if go is installed
 	if !CheckCommand("go") {
-		return fmt.Errorf("go is not available: see https://golang.org/doc/install. %s", buildErrorToDisplay(ErrInitGo))
+		return fmt.Errorf("go is not available: see https://golang.org/doc/install")
 	}
 
 	// Check if tar is GNU tar
@@ -42,7 +42,7 @@ func initializeEnvironment() error {
 		return fmt.Errorf("tar is not available")
 	}
 	if !strings.Contains(string(output), "GNU tar") {
-		return fmt.Errorf("GNU tar is required but system tar is not GNU compatible. Please install GNU tar on your system. %s", buildErrorToDisplay(ErrInitGnuTar))
+		return fmt.Errorf("GNU tar is required but system tar is not GNU compatible. Please install GNU tar on your system")
 	}
 
 	// Initialize plugin info
@@ -65,7 +65,7 @@ func initializeEnvironment() error {
 	if info.Manifest.HasWebapp() {
 		// If webapp exists, verify npm is installed
 		if _, err := exec.LookPath("npm"); err != nil {
-			return fmt.Errorf("npm is not available: see https://www.npmjs.com/get-npm. %s", buildErrorToDisplay(ErrInitNpm))
+			return fmt.Errorf("npm is not available: see https://www.npmjs.com/get-npm")
 		}
 	}
 
