@@ -31,6 +31,9 @@ export default class GroupsInput extends React.Component {
             return (
                 <React.Fragment>
                     {option.display_name}
+                    {option.name && option.name !== option.display_name && (
+                        <span>{' - @' + option.name}</span>
+                    )}
                 </React.Fragment>
             );
         }
