@@ -26,13 +26,14 @@ func sanitizeSearchTerm(term string) string {
 	return term
 }
 
-func (ss SQLStore) SearchGroupsByPrefix(prefix string) ([]*model.Group, error) {
+func (ss SQLStore) SearchLDAPGroupsByPrefix(prefix string) ([]*model.Group, error) {
 	sanitizedPrefix := strings.ToLower(sanitizeSearchTerm(prefix))
 	query := ss.replicaBuilder.
 		Select("Id", "DisplayName", "DeleteAt").
 		From("UserGroups").
 		Where(sq.Like{"LOWER(DisplayName)": sanitizedPrefix + "%"}).
 		Where(sq.Eq{"DeleteAt": 0}).
+		Where(sq.Eq{"Source": "ldap"}).
 		OrderBy("DisplayName").
 		Limit(10)
 
