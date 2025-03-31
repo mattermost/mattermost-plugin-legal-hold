@@ -17,8 +17,11 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Install Mage
+        run: go install github.com/magefile/mage@latest
+
       - name: Build Processor
-        run: make processor
+        run: mage build:additionalBinaries
 
       - name: Upload binaries to release
         env:
