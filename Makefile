@@ -102,7 +102,7 @@ dist:
 ## Builds and installs the plugin to a server.
 .PHONY: deploy
 deploy:
-	mage deploy
+	mage deploy:upload
 
 ## Builds and installs the plugin to a server, updating the webapp automatically when changed.
 .PHONY: watch
