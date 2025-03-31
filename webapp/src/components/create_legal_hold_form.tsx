@@ -151,7 +151,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
                         />
                     </div>
                     <div>
-                        <label>{'Groups'}</label>
+                        <label>{'LDAP Groups'}</label>
                         <GroupsInput
                             placeholder='group1 group2'
                             groups={groups}
