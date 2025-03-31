@@ -1,4 +1,4 @@
-import {expect} from 'mmtest_playwright-lib';
+import {expect} from '@mattermost/playwright-lib';
 
 import PluginPage from '../pages/legal_hold_plugin';
 

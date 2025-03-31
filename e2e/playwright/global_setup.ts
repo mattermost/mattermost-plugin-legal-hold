@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {baseGlobalSetup, testConfig} from 'mmtest_playwright-lib';
+import {baseGlobalSetup, testConfig} from '@mattermost/playwright-lib';
 
 async function globalSetup() {
     try {

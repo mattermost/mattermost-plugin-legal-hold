@@ -1,4 +1,4 @@
-import {expect, test} from 'mmtest_playwright-lib';
+import {expect, test} from '@mattermost/playwright-lib';
 
 import LegalHoldPluginPage from '../pages/legal_hold_plugin';
 import {createLegalHold} from '../support/legal_hold';

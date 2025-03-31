@@ -1,4 +1,4 @@
-import {expect, test as setup} from 'mmtest_playwright-lib';
+import {expect, test as setup} from '@mattermost/playwright-lib';
 import {Client4} from '@mattermost/client';
 
 import {legalHoldPluginId} from '@support/constant';
