@@ -58,6 +58,11 @@ async function requestTrialLicense(adminClient: Client) {
             receive_emails_accepted: true,
             terms_accepted: true,
             users: 100,
+            company_country: "US",
+            contact_email: process.env.MM_ADMIN_EMAIL,
+            contact_name: "Test Mattermost",
+            company_name: "MattermostTest",
+            company_size: "1-10",
         });
     } catch (e) {
         console.error('Failed to request trial license', e);
