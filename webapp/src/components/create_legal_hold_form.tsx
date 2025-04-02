@@ -3,6 +3,7 @@ import React, {useState} from 'react';
 import {UserProfile} from 'mattermost-redux/types/users';
 
 import UsersInput from '@/components/users_input';
+import GroupsInput from '@/components/groups_input';
 import {CreateLegalHold} from '@/types';
 import {GenericModal} from '@/components/mattermost-webapp/generic_modal/generic_modal';
 import Input from '@/components/mattermost-webapp/input/input';
@@ -18,6 +19,7 @@ interface CreateLegalHoldFormProps {
 const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
     const [displayName, setDisplayName] = useState('');
     const [users, setUsers] = useState(Array<UserProfile>());
+    const [groups, setGroups] = useState(Array<any>());
     const [startsAt, setStartsAt] = useState('');
     const [endsAt, setEndsAt] = useState('');
     const [saving, setSaving] = useState(false);
@@ -45,6 +47,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
         setStartsAt('');
         setEndsAt('');
         setUsers([]);
+        setGroups([]);
         setSaving(false);
         setIncludePublicChannels(false);
         setServerError('');
@@ -58,6 +61,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
 
         const data = {
             user_ids: users.map((user) => user.id),
+            group_ids: groups.map((group) => group.id),
             ends_at: (new Date(endsAt)).getTime(),
             starts_at: (new Date(startsAt)).getTime(),
             display_name: displayName,
@@ -91,7 +95,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
             return false;
         }
 
-        if (users.length < 1) {
+        if (users.length < 1 && groups.length < 1) {
             return false;
         }
 
@@ -139,10 +143,19 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
                         inputClassName={'create-legal-hold-input'}
                     />
                     <div>
+                        <label>{'Users'}</label>
                         <UsersInput
                             placeholder='@username1 @username2'
                             users={users}
                             onChange={setUsers}
+                        />
+                    </div>
+                    <div>
+                        <label>{'LDAP Groups'}</label>
+                        <GroupsInput
+                            placeholder='group1 group2'
+                            groups={groups}
+                            onChange={setGroups}
                         />
                     </div>
                     <div

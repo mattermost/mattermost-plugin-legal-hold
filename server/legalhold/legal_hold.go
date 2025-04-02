@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/gocarina/gocsv"
+	mm_model "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 
@@ -81,25 +82,50 @@ func (ex *Execution) Execute() (int64, error) {
 // GetChannels populates the list of channels that the Execution needs to cover within the
 // internal state of the Execution struct.
 func (ex *Execution) GetChannels() error {
+	targetUsers, appErr := getUsersForGroups(ex.papi, ex.LegalHold.GroupIDs)
+	if appErr != nil {
+		return appErr
+	}
+
 	for _, userID := range ex.LegalHold.UserIDs {
 		user, appErr := ex.papi.GetUser(userID)
 		if appErr != nil {
 			return appErr
 		}
+		targetUsers = append(targetUsers, user)
+	}
 
-		channelIDs, err := ex.store.GetChannelIDsForUserDuring(userID, ex.ExecutionStartTime, ex.ExecutionEndTime, ex.LegalHold.IncludePublicChannels)
+	// keep track of which users have been processed
+	processedUsersList := make(map[string]struct{})
+	// processAndMarkUser is a helper function that will check if a user
+	// has been processed, and mark the user if they has not.
+	// Returns true if the user should be processed
+	processAndMarkUser := func(id string) bool {
+		if _, processed := processedUsersList[id]; processed {
+			return false
+		}
+		processedUsersList[id] = struct{}{}
+		return true
+	}
+
+	for _, user := range targetUsers {
+		if !processAndMarkUser(user.Id) {
+			continue
+		}
+
+		channelIDs, err := ex.store.GetChannelIDsForUserDuring(user.Id, ex.ExecutionStartTime, ex.ExecutionEndTime, ex.LegalHold.IncludePublicChannels)
 		if err != nil {
 			return err
 		}
 
 		ex.channelIDs = append(ex.channelIDs, channelIDs...)
 
-		ex.papi.LogDebug("Legal hold executor - GetChannels", "user_id", userID, "channel_count", len(channelIDs))
+		ex.papi.LogDebug("Legal hold executor - GetChannels", "user_id", user.Id, "channel_count", len(channelIDs))
 
 		// Add to channels index
 		for _, channelID := range channelIDs {
-			if idx, ok := ex.index.Users[userID]; !ok {
-				ex.index.Users[userID] = model.LegalHoldIndexUser{
+			if idx, ok := ex.index.Users[user.Id]; !ok {
+				ex.index.Users[user.Id] = model.LegalHoldIndexUser{
 					Username: user.Username,
 					Email:    user.Email,
 					Channels: []model.LegalHoldChannelMembership{
@@ -111,7 +137,7 @@ func (ex *Execution) GetChannels() error {
 					},
 				}
 			} else {
-				ex.index.Users[userID] = model.LegalHoldIndexUser{
+				ex.index.Users[user.Id] = model.LegalHoldIndexUser{
 					Username: user.Username,
 					Email:    user.Email,
 					Channels: append(idx.Channels, model.LegalHoldChannelMembership{
@@ -455,4 +481,30 @@ func hashFromReader(secret string, reader io.Reader) (string, error) {
 	}
 
 	return fmt.Sprintf("%x", hasher.Sum(nil)), nil
+}
+
+func getUsersForGroups(api plugin.API, groupIDs []string) ([]*mm_model.User, error) {
+	const GroupPageLimit = 100
+	const GroupPageSize = 50
+
+	var allUsers []*mm_model.User
+	for _, groupID := range groupIDs {
+		currPage := 0
+		for {
+			users, appErr := api.GetGroupMemberUsers(groupID, currPage, GroupPageSize)
+			if appErr != nil {
+				return nil, appErr
+			}
+			if currPage > GroupPageLimit {
+				return nil, fmt.Errorf("cannot execute legal hold: a group (%s) exceeds the maximum number of members (%d)", groupID, GroupPageLimit*GroupPageSize)
+			}
+			if len(users) < 1 {
+				break
+			}
+			allUsers = append(allUsers, users...)
+			currPage++
+		}
+	}
+
+	return allUsers, nil
 }

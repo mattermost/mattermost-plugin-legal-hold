@@ -59,14 +59,14 @@ func NewLegalHoldIndex() LegalHoldIndex {
 }
 
 // Merge merges the new LegalHoldIndex into this LegalHoldIndex.
-func (lhi *LegalHoldIndex) Merge(new *LegalHoldIndex) {
+func (lhi *LegalHoldIndex) Merge(newIndex *LegalHoldIndex) {
 	// To merge the LegalHold data we overwrite the old struct in full
 	// with the new one.
-	lhi.LegalHold = new.LegalHold
+	lhi.LegalHold = newIndex.LegalHold
 
 	// Recursively merge the Teams (and their Channels) property, taking
 	// the newest version for the union of both lists.
-	for _, newTeam := range new.Teams {
+	for _, newTeam := range newIndex.Teams {
 		found := false
 		for _, oldTeam := range lhi.Teams {
 			if newTeam.ID == oldTeam.ID {
@@ -81,15 +81,15 @@ func (lhi *LegalHoldIndex) Merge(new *LegalHoldIndex) {
 		}
 	}
 
-	lhi.Users.Merge(&new.Users)
+	lhi.Users.Merge(&newIndex.Users)
 }
 
 // Merge merges the new LegalHoldTeam into this LegalHoldTeam.
-func (team *LegalHoldTeam) Merge(new *LegalHoldTeam) {
-	team.Name = new.Name
-	team.DisplayName = new.DisplayName
+func (team *LegalHoldTeam) Merge(newTeam *LegalHoldTeam) {
+	team.Name = newTeam.Name
+	team.DisplayName = newTeam.DisplayName
 
-	for _, newChannel := range new.Channels {
+	for _, newChannel := range newTeam.Channels {
 		found := false
 		for _, oldChannel := range team.Channels {
 			if newChannel.ID == oldChannel.ID {
@@ -107,8 +107,8 @@ func (team *LegalHoldTeam) Merge(new *LegalHoldTeam) {
 }
 
 // Merge merges the new LegalHoldIndexUsers into this LegalHoldIndexUsers.
-func (lhi *LegalHoldIndexUsers) Merge(new *LegalHoldIndexUsers) {
-	for userID, newUser := range *new {
+func (lhi *LegalHoldIndexUsers) Merge(newUsers *LegalHoldIndexUsers) {
+	for userID, newUser := range *newUsers {
 		if oldUser, ok := (*lhi)[userID]; !ok {
 			(*lhi)[userID] = newUser
 		} else {
@@ -154,10 +154,10 @@ func getLegalHoldChannelMembership(channelMemberships []LegalHoldChannelMembersh
 
 // Combine combines the data from two LegalHoldChannelMembership instances and returns a new one
 // representing the combined data.
-func (lhcm LegalHoldChannelMembership) Combine(new LegalHoldChannelMembership) LegalHoldChannelMembership {
+func (lhcm LegalHoldChannelMembership) Combine(newMembership LegalHoldChannelMembership) LegalHoldChannelMembership {
 	return LegalHoldChannelMembership{
 		ChannelID: lhcm.ChannelID,
-		StartTime: utils.Min(lhcm.StartTime, new.StartTime),
-		EndTime:   utils.Max(lhcm.EndTime, new.EndTime),
+		StartTime: utils.Min(lhcm.StartTime, newMembership.StartTime),
+		EndTime:   utils.Max(lhcm.EndTime, newMembership.EndTime),
 	}
 }
