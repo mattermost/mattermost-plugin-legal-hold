@@ -1,17 +1,74 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {PlaywrightTestConfig} from '@playwright/test';
-import dotenv from 'dotenv';
-import testConfig from '@e2e-test.playwright-config';
-dotenv.config({path: `${__dirname}/.env`});
+import {defineConfig, devices} from '@playwright/test';
+import {duration, testConfig} from '@mattermost/playwright-lib';
 
-// Configuration override for plugin tests
-testConfig.testDir = __dirname + '/tests';
-testConfig.outputDir = __dirname + '/test-results';
-
-const projects = testConfig.projects?.map((p) => ({...p, dependencies: ['setup']})) || [];
-testConfig.projects = [{name: 'setup', testMatch: /test\.setup\.ts/} as PlaywrightTestConfig].concat(projects);
-testConfig.use = {...testConfig.use, timezoneId: Intl.DateTimeFormat().resolvedOptions().timeZone};
-
-export default testConfig;
+export default defineConfig({
+    globalSetup: require.resolve('./global_setup'),
+    forbidOnly: testConfig.isCI,
+    outputDir: 'test-results',
+    retries: testConfig.isCI ? 2 : 0,
+    testDir: 'tests',
+    timeout: duration.one_min,
+    workers: testConfig.workers,
+    expect: {
+        timeout: duration.ten_sec,
+    },
+    use: {
+        baseURL: testConfig.baseURL,
+        ignoreHTTPSErrors: true,
+        headless: testConfig.headless,
+        locale: 'en-US',
+        launchOptions: {
+            args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'],
+            firefoxUserPrefs: {
+                'media.navigator.streams.fake': true,
+                'permissions.default.microphone': 1,
+                'permissions.default.camera': 1,
+            },
+            slowMo: testConfig.slowMo,
+        },
+        screenshot: 'only-on-failure',
+        timezoneId: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        trace: 'off',
+        video: 'retain-on-failure',
+        actionTimeout: duration.half_min,
+    },
+    projects: [
+        {name: 'setup', testMatch: /test\.setup\.ts/},
+        {
+            name: 'ipad',
+            use: {
+                browserName: 'chromium',
+                ...devices['iPad Pro 11'],
+                permissions: ['notifications', 'clipboard-read', 'clipboard-write'],
+            },
+            dependencies: ['setup'],
+        },
+        {
+            name: 'chrome',
+            use: {
+                browserName: 'chromium',
+                permissions: ['notifications', 'clipboard-read', 'clipboard-write'],
+                viewport: {width: 1280, height: 1024},
+            },
+            dependencies: ['setup'],
+        },
+        {
+            name: 'firefox',
+            use: {
+                browserName: 'firefox',
+                permissions: ['notifications'],
+                viewport: {width: 1280, height: 1024},
+            },
+            dependencies: ['setup'],
+        },
+    ],
+    reporter: [
+        ['html', {open: 'never', outputFolder: './results/reporter'}],
+        ['json', {outputFile: './results/reporter/results.json'}],
+        ['junit', {outputFile: './results/reporter/results.xml'}],
+        ['list'],
+    ],
+});
