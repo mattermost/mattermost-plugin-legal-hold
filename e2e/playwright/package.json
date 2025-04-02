@@ -1,28 +1,34 @@
 {
     "name": "plugin-e2e-tests",
     "scripts": {
-        "test": "npm run test --prefix ../../../mattermost/e2e-tests/playwright -- --config=../../../mattermost-plugin-legal-hold/e2e/playwright/playwright.config.ts",
+        "test": "cross-env playwright test",
         "test-ci": "PW_HEADLESS=true npm test",
-        "test-slomo": "npm run test-slomo --prefix ../../../mattermost/e2e-tests/playwright -- --config=../../../mattermost-plugin-legal-hold/e2e/playwright/playwright.config.ts",
+        "test-slomo": "cross-env PW_SLOWMO=1000 playwright test",
         "debug": "npm test -- --debug",
-        "show-report": "npx playwright show-report ../../../mattermost-plugin-legal-hold/e2e/playwright/playwright-report",
+        "show-report": "npx playwright show-report",
         "lint": "eslint --ignore-pattern node_modules --ignore-pattern dist --ext .js  --ext ts . --quiet --cache",
         "lint:fix": "eslint --ignore-pattern node_modules --ignore-pattern dist --ext .js  --ext ts . --quiet --cache --fix",
         "tsc": "tsc",
         "prettier": "prettier . --check",
         "prettier:fix": "prettier --write .",
         "check": "npm run tsc && npm run lint && npm run prettier",
-        "codegen": "cross-env npx playwright codegen $PW_BASE_URL",
-        "playwright-ui": "npm run playwright-ui --prefix ../../../mattermost/e2e-tests/playwright -- --config=../../../mattermost-plugin-legal-hold/e2e/playwright/playwright.config.ts"
+        "codegen": "cross-env playwright codegen $PW_BASE_URL",
+        "playwright-ui": "cross-env playwright test --ui",
+        "postinstall": "script/post_install.sh"
     },
     "devDependencies": {
         "@types/node": "22.6.1",
-        "@typescript-eslint/eslint-plugin": "7.2.0",
-        "@typescript-eslint/parser": "7.2.0",
+        "@typescript-eslint/eslint-plugin": "8.28.0",
         "cross-env": "7.0.3",
-        "dotenv": "16.4.5",
-        "eslint": "8.57.0",
-        "prettier": "3.3.3",
-        "typescript": "5.6.2"
+        "eslint": "9.23.0",
+        "eslint-import-resolver-typescript": "4.2.7",
+        "eslint-plugin-header": "3.1.1",
+        "eslint-plugin-import": "2.31.0",
+        "prettier": "3.5.3",
+        "typescript": "5.7.3"
+    },
+    "dependencies": {
+        "@mattermost/client": "10.6.0",
+        "@mattermost/playwright-lib": "10.6.1"
     }
 }

@@ -1,6 +1,6 @@
-import {expect} from '@playwright/test';
-import {Client} from '@e2e-support/server';
-import {test as setup} from '@e2e-support/test_fixture';
+import {expect, test as setup} from '@mattermost/playwright-lib';
+import {Client4} from '@mattermost/client';
+
 import {legalHoldPluginId} from '@support/constant';
 
 setup('ensure server has license', async ({pw}) => {
@@ -18,6 +18,7 @@ setup('ensure plugin is enabled', async ({pw}) => {
         const isInstalled = pluginStatus.some(({plugin_id}) => plugin_id === pluginId);
 
         if (!isInstalled) {
+            // eslint-disable-next-line no-console
             console.log(`${pluginId} is not installed. Related visual test will fail.`);
             continue;
         }
@@ -26,14 +27,16 @@ setup('ensure plugin is enabled', async ({pw}) => {
 
         if (!isActive) {
             await adminClient.enablePlugin(pluginId);
+            // eslint-disable-next-line no-console
             console.log(`${pluginId} is installed and has been activated.`);
         } else {
+            // eslint-disable-next-line no-console
             console.log(`${pluginId} is installed and active.`);
         }
     }
 });
 
-async function ensureLicense(adminClient: Client) {
+async function ensureLicense(adminClient: Client4) {
     try {
         const currentLicense = await adminClient.getClientLicenseOld();
 
@@ -46,12 +49,13 @@ async function ensureLicense(adminClient: Client) {
         const trialLicense = await adminClient.getClientLicenseOld();
         return trialLicense?.IsLicensed === 'true';
     } catch (error) {
+        // eslint-disable-next-line no-console
         console.error('Error ensuring license', error);
         return false;
     }
 }
 
-async function requestTrialLicense(adminClient: Client) {
+async function requestTrialLicense(adminClient: Client4) {
     try {
         // @ts-expect-error This may fail requesting for trial license
         await adminClient.requestTrialLicense({
@@ -61,6 +65,7 @@ async function requestTrialLicense(adminClient: Client) {
             company_country: 'US',
         });
     } catch (e) {
+        // eslint-disable-next-line no-console
         console.error('Failed to request trial license', e);
         throw e;
     }

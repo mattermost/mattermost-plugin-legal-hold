@@ -1,4 +1,4 @@
-import {expect} from '@e2e-support/test_fixture';
+import {expect} from '@mattermost/playwright-lib';
 
 import PluginPage from '../pages/legal_hold_plugin';
 
