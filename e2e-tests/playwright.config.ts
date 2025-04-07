@@ -5,11 +5,11 @@ import {defineConfig, devices} from '@playwright/test';
 import {duration, testConfig} from '@mattermost/playwright-lib';
 
 export default defineConfig({
-    globalSetup: require.resolve('./global_setup'),
+    globalSetup: './global_setup.ts',
     forbidOnly: testConfig.isCI,
     outputDir: 'test-results',
     retries: testConfig.isCI ? 2 : 0,
-    testDir: 'tests',
+    testDir: 'specs',
     timeout: duration.one_min,
     workers: testConfig.workers,
     expect: {
