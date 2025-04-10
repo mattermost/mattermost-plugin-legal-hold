@@ -1,7 +1,11 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import {expect, test} from '@mattermost/playwright-lib';
 
-import PluginPage from '../pages/legal_hold_plugin';
-import {createLegalHold} from '../support/legal_hold';
+import {legalHoldPluginId} from '@/support/constant';
+import PluginPage from '@/pages/legal_hold_plugin';
+import {createLegalHold} from '@/support/legal_hold';
 
 let pluginPage: PluginPage;
 let legalHoldName: string;
@@ -13,7 +17,7 @@ test.beforeEach(async ({pw}) => {
     pluginPage = new PluginPage(page);
 
     // Ensure plugin is enabled
-    await adminClient.enablePlugin('com.mattermost.plugin-legal-hold');
+    await adminClient.enablePlugin(legalHoldPluginId);
 
     // Navigate to system console and into the legal hold plugin
     await systemConsolePage.goto();
