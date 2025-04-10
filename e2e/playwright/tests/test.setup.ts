@@ -57,15 +57,12 @@ async function ensureLicense(adminClient: Client4) {
 
 async function requestTrialLicense(adminClient: Client4) {
     try {
+        // @ts-expect-error This may fail requesting for trial license
         await adminClient.requestTrialLicense({
             receive_emails_accepted: true,
             terms_accepted: true,
             users: 100,
             company_country: 'US',
-            contact_email: process.env.MM_ADMIN_EMAIL ?? '',
-            contact_name: 'Test Mattermost',
-            company_name: 'MattermostTest',
-            company_size: '1-10',
         });
     } catch (e) {
         // eslint-disable-next-line no-console
