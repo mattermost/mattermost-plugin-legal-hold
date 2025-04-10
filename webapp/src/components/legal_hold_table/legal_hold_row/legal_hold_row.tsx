@@ -1,5 +1,6 @@
 import React from 'react';
 import {UserProfile} from 'mattermost-redux/types/users';
+import {Group} from 'mattermost-redux/types/groups';
 
 import {LegalHold} from '@/types';
 import Client from '@/client';
@@ -15,6 +16,7 @@ import EyeLockIcon from './eye-outline_F06D0.svg';
 interface LegalHoldRowProps {
     legalHold: LegalHold;
     users: UserProfile[];
+    groups: Group[];
     releaseLegalHold: Function;
     showUpdateModal: Function;
     showSecretModal: Function;
@@ -40,6 +42,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
             <div data-testid={`start-date-${lh.id}`}>{startsAt}</div>
             <div data-testid={`end-date-${lh.id}`}>{endsAt}</div>
             <div data-testid={`users-${lh.id}`}>{props.users.length} {'users'}</div>
+            <div data-testid={`groups-${lh.id}`}>{props.groups.length} {'groups'}</div>
             <div
                 style={{
                     display: 'inline-flex',
