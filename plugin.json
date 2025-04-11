@@ -32,6 +32,13 @@
         "default": "1:00am -0700"
       },
       {
+        "key": "EnableFilestoreConnectionTest",
+        "display_name": "Enable Filestore Connection Test:",
+        "type": "bool",
+        "default": true,
+        "help_text": "If enabled, the plugin will perform a filestore connection test to ensure that the filestore is accessible on every node."
+      },
+      {
         "key": "LegalHoldsSettings",
         "display_name": "Legal Holds:",
         "type": "custom"
