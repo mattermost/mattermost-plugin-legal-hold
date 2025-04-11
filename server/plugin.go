@@ -174,7 +174,7 @@ func (p *Plugin) Reconfigure() error {
 	}
 
 	// Perform a filesystem check if enabled
-	if p.configuration.EnableFilesystemCheck {
+	if p.configuration.EnableFilestoreConnectionTest {
 		p.Client.Log.Debug("Performing filestore connection test")
 		if err = filesBackend.TestConnection(); err != nil {
 			pluginConfig := p.Client.Configuration.GetPluginConfig()

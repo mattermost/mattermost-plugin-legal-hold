@@ -32,11 +32,11 @@
         "default": "1:00am -0700"
       },
       {
-        "key": "EnableFilesystemCheck",
-        "display_name": "Enable Filesystem Check:",
+        "key": "EnableFilestoreConnectionTest",
+        "display_name": "Enable Filestore Connection Test:",
         "type": "bool",
         "default": true,
-        "help_text": "If enabled, the plugin will perform a filesystem check to ensure that the filestore is accessible on every node."
+        "help_text": "If enabled, the plugin will perform a filestore connection test to ensure that the filestore is accessible on every node."
       },
       {
         "key": "LegalHoldsSettings",
