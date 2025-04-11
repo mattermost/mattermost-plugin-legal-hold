@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"reflect"
 	"sync"
 
@@ -174,8 +173,9 @@ func (p *Plugin) Reconfigure() error {
 		return errors.New("unable to initialize the files storage")
 	}
 
-	// Avoid running the filebackend check on warm nodes
-	if !IsWarmNode(p.configuration) {
+	// Perform a filesystem check if enabled
+	if p.configuration.EnableFilesystemCheck {
+		p.Client.Log.Debug("Performing filestore connection test")
 		if err = filesBackend.TestConnection(); err != nil {
 			pluginConfig := p.Client.Configuration.GetPluginConfig()
 
@@ -193,7 +193,7 @@ func (p *Plugin) Reconfigure() error {
 			return err
 		}
 	} else {
-		p.Client.Log.Debug("Skipping filestore connection test on warm node")
+		p.Client.Log.Debug("Skipping filestore connection test")
 	}
 
 	p.FileBackend = filesBackend
@@ -257,17 +257,4 @@ func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings) fil
 		AmazonS3RequestTimeoutMilliseconds: *fileSettings.AmazonS3RequestTimeoutMilliseconds,
 		SkipVerify:                         false,
 	}
-}
-
-// IsWarmNode returns true if the plugin is running on a warm node, false otherwise.
-// In order to determine if the node is warm, the plugin configuration contains a setting that
-// indicates an environment variable name that this function checks for.
-// If the environment variable is set **with any value** the node is considered warm.
-func IsWarmNode(c *config.Configuration) bool {
-	if c.WarmNodeEnvironmentVariable != "" {
-		_, present := os.LookupEnv(c.WarmNodeEnvironmentVariable)
-		return present
-	}
-
-	return false
 }

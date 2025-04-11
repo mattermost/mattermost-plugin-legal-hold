@@ -32,11 +32,11 @@
         "default": "1:00am -0700"
       },
       {
-        "key": "WarmNodeEnvironmentVariable",
-        "display_name": "Warm Node Environment Variable:",
-        "type": "text",
-        "default": "",
-        "help_text": "The name of the environment variable that will be set to check to determine if a node running the plugin is warm or not. Setting the variable to any value will be considered warm."
+        "key": "EnableFilesystemCheck",
+        "display_name": "Enable Filesystem Check:",
+        "type": "bool",
+        "default": true,
+        "help_text": "If enabled, the plugin will perform a filesystem check to ensure that the filestore is accessible on every node."
       },
       {
         "key": "LegalHoldsSettings",
