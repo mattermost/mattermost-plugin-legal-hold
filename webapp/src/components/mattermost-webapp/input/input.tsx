@@ -144,6 +144,10 @@ const Input = React.forwardRef((
             onMouseDown={handleOnClear}
             onTouchEnd={handleOnClear}
         >
+            {/*
+                TODO: Replace when updating the webapp dependency:
+                https://github.com/mattermost/mattermost-plugin-legal-hold/pull/129#discussion_r1914917354
+            */}
             <OverlayTrigger
                 delayShow={Constants.OVERLAY_TIME_DELAY}
                 placement='bottom'

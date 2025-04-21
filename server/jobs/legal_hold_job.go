@@ -16,6 +16,7 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/config"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/legalhold"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/kvstore"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 )
@@ -152,6 +153,20 @@ func (j *LegalHoldJob) RunFromAPI() {
 	j.run()
 }
 
+func (j *LegalHoldJob) RunSingleLegalHold(legalHoldID string) error {
+	// Retrieve the single legal hold from the store
+	legalHold, err := j.kvstore.GetLegalHoldByID(legalHoldID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch legal hold: %w", err)
+	}
+	if legalHold == nil {
+		return fmt.Errorf("legal hold not found: %s", legalHoldID)
+	}
+
+	go j.runWith([]model.LegalHold{*legalHold}, true)
+	return nil
+}
+
 func (j *LegalHoldJob) run() {
 	j.mux.Lock()
 	oldRunner := j.runner
@@ -162,6 +177,19 @@ func (j *LegalHoldJob) run() {
 		return
 	}
 
+	j.client.Log.Info("Processing all Legal Holds")
+
+	// Retrieve the legal holds from the store.
+	legalHolds, err := j.kvstore.GetAllLegalHolds()
+	if err != nil {
+		j.client.Log.Error("Failed to fetch legal holds from store", err)
+		return
+	}
+
+	j.runWith(legalHolds, false)
+}
+
+func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 	j.client.Log.Info("Running Legal Hold Job")
 	exitSignal := make(chan struct{})
 	ctx, canceller := context.WithCancel(context.Background())
@@ -186,49 +214,58 @@ func (j *LegalHoldJob) run() {
 	settings = j.settings.Clone()
 	j.mux.Unlock()
 
-	// Retrieve the legal holds from the store.
-	legalHolds, err := j.kvstore.GetAllLegalHolds()
-	if err != nil {
-		j.client.Log.Error("Failed to fetch legal holds from store", err)
-	}
-
-	j.client.Log.Info("Processing all Legal Holds", "count", len(legalHolds))
-
 	for _, lh := range legalHolds {
+		now := mattermostModel.GetMillis()
+
+		legalHold := lh.DeepCopy()
+
 		for {
-			if lh.IsFinished() {
-				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s has ended and therefore will not execute.", lh.ID))
+			if legalHold.IsFinished() {
+				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s has ended and therefore does not need another execution.", legalHold.ID))
 				break
 			}
 
-			if !lh.NeedsExecuting(mattermostModel.GetMillis()) {
-				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s is not yet ready to be executed again.", lh.ID))
+			if !forceRun && !legalHold.NeedsExecuting(now) {
+				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s is not yet ready to be executed again.", legalHold.ID))
+				break
+			}
+			if legalHold.LastExecutionEndedAt >= now {
+				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s was already executed after the current time.", legalHold.ID))
 				break
 			}
 
-			j.client.Log.Debug(fmt.Sprintf("Creating Legal Hold Execution for legal hold: %s", lh.ID))
-			lhe := legalhold.NewExecution(lh, j.papi, j.sqlstore, j.filebackend)
+			j.client.Log.Debug(fmt.Sprintf("Creating Legal Hold Execution for legal hold: %s", legalHold.ID))
+			lhe := legalhold.NewExecution(legalHold, j.papi, j.sqlstore, j.kvstore, j.filebackend)
 
-			if end, err := lhe.Execute(); err != nil {
+			if updatedLH, err := lhe.Execute(now); err != nil {
 				j.client.Log.Error("An error occurred executing the legal hold.", err)
 			} else {
-				old, err := j.kvstore.GetLegalHoldByID(lh.ID)
+				// Update legal hold with the new execution details (last execution time and last message)
+				// Also set it to IDLE again since the execution has ended.
+				stored, err := j.kvstore.GetLegalHoldByID(legalHold.ID)
 				if err != nil {
 					j.client.Log.Error("Failed to fetch the LegalHold prior to updating", err)
-					continue
+					break
 				}
-				lh = *old
-				lh.LastExecutionEndedAt = end
-				newLH, err := j.kvstore.UpdateLegalHold(lh, *old)
+				legalHold = stored.DeepCopy()
+				legalHold.LastExecutionEndedAt = updatedLH.LastExecutionEndedAt
+				legalHold.HasMessages = updatedLH.HasMessages
+
+				newLH, err := j.kvstore.UpdateLegalHold(legalHold, *stored)
 				if err != nil {
 					j.client.Log.Error("Failed to update legal hold", err)
-					continue
+					break
 				}
-				lh = *newLH
-				j.client.Log.Info("legal hold executed", "legal_hold_id", lh.ID, "legal_hold_name", lh.Name)
+				j.client.Log.Info("legal hold executed", "legal_hold_id", newLH.ID, "legal_hold_name", newLH.Name)
 			}
 		}
+
+		// Set legal hold as IDLE since we are finished with it
+		if err := j.kvstore.UpdateLegalHoldStatus(legalHold.ID, model.LegalHoldStatusIdle); err != nil {
+			j.client.Log.Error("Failed to update legal hold status", "err", err, "legal_hold_id", legalHold.ID)
+		}
 	}
+
 	_ = ctx
 	_ = settings
 }
