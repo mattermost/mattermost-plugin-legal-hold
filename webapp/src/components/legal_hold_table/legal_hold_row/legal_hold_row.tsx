@@ -43,6 +43,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
     const lh = props.legalHold;
     const startsAt = (new Date(lh.starts_at)).toLocaleDateString();
     const endsAt = lh.ends_at === 0 ? 'Never' : (new Date(lh.ends_at)).toLocaleDateString();
+    const isExecuting = lh.status === 'executing';
 
     const release = () => {
         props.releaseLegalHold(lh);
@@ -166,8 +167,8 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                         style={{
                             marginRight: '10px',
                             height: '24px',
-                            opacity: lh.has_messages ? '1' : '0.5',
-                            cursor: lh.has_messages ? 'pointer' : 'not-allowed',
+                            opacity: isExecuting || !lh.has_messages ? '0.5' : '1',
+                            cursor: isExecuting || !lh.has_messages ? 'not-allowed' : 'pointer',
                         }}
                     >
                         <span
@@ -200,7 +201,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                         href='#'
                         onClick={(e) => {
                             e.preventDefault();
-                            if (lh.status === 'executing') {
+                            if (isExecuting) {
                                 return;
                             }
                             setShowRunConfirmModal(true);
@@ -208,8 +209,8 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                         style={{
                             marginRight: '20px',
                             height: '24px',
-                            opacity: lh.status === 'executing' ? '0.5' : '1',
-                            cursor: lh.status === 'executing' ? 'not-allowed' : 'pointer',
+                            opacity: isExecuting ? '0.5' : '1',
+                            cursor: isExecuting ? 'not-allowed' : 'pointer',
                         }}
                     >
                         <span
