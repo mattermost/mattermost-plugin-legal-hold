@@ -163,7 +163,7 @@ func (j *LegalHoldJob) RunSingleLegalHold(legalHoldID string) error {
 		return fmt.Errorf("legal hold not found: %s", legalHoldID)
 	}
 
-	j.runWith([]model.LegalHold{*legalHold}, true)
+	go j.runWith([]model.LegalHold{*legalHold}, true)
 	return nil
 }
 
