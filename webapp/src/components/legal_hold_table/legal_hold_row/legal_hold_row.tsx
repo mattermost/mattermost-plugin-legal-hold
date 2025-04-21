@@ -236,11 +236,10 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                 onHide={() => setShowRunConfirmModal(false)}
                 onConfirm={() => {
                     setShowRunConfirmModal(false);
-                    props.runLegalHold(lh.id).then(() => {
-                        props.refresh();
-                    }).catch(() => {
+                    props.runLegalHold(lh.id).catch(() => {
                         setShowRunErrorModal(true);
                     });
+                    props.refresh();
                 }}
             />
             <RunErrorModal
