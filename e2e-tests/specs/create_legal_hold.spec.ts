@@ -1,27 +1,28 @@
-import {test, expect} from '@e2e-support/test_fixture';
-import {getRandomId} from '@e2e-support/util';
-import pages from '@e2e-support/ui/pages';
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
 
-import LegalHoldPluginPage from '../pages/legal_hold_plugin';
-import {createLegalHold} from '../support/legal_hold';
+import {expect, test} from '@mattermost/playwright-lib';
+
+import {legalHoldPluginId} from '@/support/constant';
+import LegalHoldPluginPage from '@/pages/legal_hold_plugin';
+import {createLegalHold} from '@/support/legal_hold';
 
 test('Admin user can create a legal hold successfully', async ({pw}) => {
     // Do setup and log in as admin user
     const {adminUser, adminClient, user} = await pw.initSetup();
-    const {page} = await pw.testBrowser.login(adminUser);
+    const {page, systemConsolePage} = await pw.testBrowser.login(adminUser);
     const pluginPage = new LegalHoldPluginPage(page);
 
     // Ensure plugin is enabled
-    await adminClient.enablePlugin('com.mattermost.plugin-legal-hold');
+    await adminClient.enablePlugin(legalHoldPluginId);
 
     // Navigate to system console and into the legal hold plugin
-    const systemConsolePage = new pages.SystemConsolePage(page);
     await systemConsolePage.goto();
     await systemConsolePage.toBeVisible();
     await systemConsolePage.sidebar.goToItem('Legal Hold Plugin');
 
     // Create legal hold
-    const legalHoldName = `New Hold ${getRandomId()}`;
+    const legalHoldName = `New Hold ${pw.random.id()}`;
     const today = new Date();
     const isoString = today.toISOString().split('T')[0];
     await createLegalHold(pluginPage, legalHoldName, [user.username], isoString);
