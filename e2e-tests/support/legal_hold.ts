@@ -1,6 +1,9 @@
-import {expect} from '@e2e-support/test_fixture';
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
 
-import PluginPage from '../pages/legal_hold_plugin';
+import {expect} from '@mattermost/playwright-lib';
+
+import PluginPage from '@/pages/legal_hold_plugin';
 
 export async function createLegalHold(
     pluginPage: PluginPage,
