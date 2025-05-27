@@ -154,65 +154,6 @@ func TestKVStore_GetAllLegalHolds(t *testing.T) {
 	require.Len(t, result, 0)
 }
 
-func TestKVStore_UpdateLegalHoldStatus(t *testing.T) {
-	api := &plugintest.API{}
-	driver := &plugintest.Driver{}
-	client := pluginapi.NewClient(api, driver)
-
-	kvstore := NewKVStore(client)
-
-	// Test successful status update
-	lh1 := model.LegalHold{
-		ID:     mattermostModel.NewId(),
-		Name:   "legal-hold-1",
-		Status: model.LegalHoldStatusIdle,
-	}
-	marshaled, err := json.Marshal(lh1)
-	require.NoError(t, err)
-
-	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, lh1.ID)).
-		Return(marshaled, nil).Once()
-
-	api.On("KVSetWithOptions",
-		mock.AnythingOfType("string"),
-		mock.AnythingOfType("[]uint8"),
-		mock.AnythingOfType("model.PluginKVSetOptions"),
-	).Return(true, nil).Once()
-
-	err = kvstore.UpdateLegalHoldStatus(lh1.ID, model.LegalHoldStatusExecuting)
-	require.NoError(t, err)
-
-	// Test with non-existent legal hold
-	api.On("KVGet", mock.AnythingOfType("string")).
-		Return(nil, &mattermostModel.AppError{}).Once()
-
-	err = kvstore.UpdateLegalHoldStatus("doesnotexist", model.LegalHoldStatusExecuting)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to get legal hold")
-
-	// Test with atomic update failure
-	lh2 := model.LegalHold{
-		ID:     mattermostModel.NewId(),
-		Name:   "legal-hold-2",
-		Status: model.LegalHoldStatusIdle,
-	}
-	marshaled2, err := json.Marshal(lh2)
-	require.NoError(t, err)
-
-	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, lh2.ID)).
-		Return(marshaled2, nil).Once()
-
-	api.On("KVSetWithOptions",
-		mock.AnythingOfType("string"),
-		mock.AnythingOfType("[]uint8"),
-		mock.AnythingOfType("model.PluginKVSetOptions"),
-	).Return(false, nil).Once()
-
-	err = kvstore.UpdateLegalHoldStatus(lh2.ID, model.LegalHoldStatusExecuting)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "already been updated by someone else")
-}
-
 func TestKVStore_UpdateLegalHold(t *testing.T) {
 	api := &plugintest.API{}
 	driver := &plugintest.Driver{}

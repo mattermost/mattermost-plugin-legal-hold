@@ -13,25 +13,33 @@ import (
 type LegalHoldStatus string
 
 const (
-	LegalHoldStatusIdle      LegalHoldStatus = "idle"
+	// LegalHoldStatusExecuting is the status of a legal hold that is currently being executed
 	LegalHoldStatusExecuting LegalHoldStatus = "executing"
 )
 
 type LegalHold struct {
-	ID                    string          `json:"id"`
-	Name                  string          `json:"name"`
-	DisplayName           string          `json:"display_name"`
-	CreateAt              int64           `json:"create_at"`
-	UpdateAt              int64           `json:"update_at"`
-	UserIDs               []string        `json:"user_ids"`
-	StartsAt              int64           `json:"starts_at"`
-	EndsAt                int64           `json:"ends_at"`
-	IncludePublicChannels bool            `json:"include_public_channels"`
-	LastExecutionEndedAt  int64           `json:"last_execution_ended_at"`
-	ExecutionLength       int64           `json:"execution_length"`
-	Secret                string          `json:"secret"`
-	HasMessages           bool            `json:"has_messages,omitempty"`
-	Status                LegalHoldStatus `json:"status,omitempty"`
+	ID                    string   `json:"id"`
+	Name                  string   `json:"name"`
+	DisplayName           string   `json:"display_name"`
+	CreateAt              int64    `json:"create_at"`
+	UpdateAt              int64    `json:"update_at"`
+	UserIDs               []string `json:"user_ids"`
+	StartsAt              int64    `json:"starts_at"`
+	EndsAt                int64    `json:"ends_at"`
+	IncludePublicChannels bool     `json:"include_public_channels"`
+	LastExecutionEndedAt  int64    `json:"last_execution_ended_at"`
+	ExecutionLength       int64    `json:"execution_length"`
+	Secret                string   `json:"secret"`
+
+	// HasMessages is a denormalized field that indicates whether the legal hold has messages or not, to prevent
+	// the download button from working in case of empty legal hold and prevent user confusion.
+	// This value can be dynamically calculated by checking for the index in the store, and it's updated every time
+	// a legal hold is executed and on plugin startup.
+	// It's being persisted in the store to prevent unnecessary calls to the store.
+	HasMessages bool `json:"has_messages,omitempty"`
+
+	// DTO attributes not persisted in the store but used to display logic in the webapp
+	Status LegalHoldStatus `json:"status,omitempty"`
 }
 
 // DeepCopy creates a deep copy of the LegalHold.
@@ -53,7 +61,6 @@ func (lh *LegalHold) DeepCopy() LegalHold {
 		ExecutionLength:       lh.ExecutionLength,
 		Secret:                lh.Secret,
 		HasMessages:           lh.HasMessages,
-		Status:                lh.Status,
 	}
 
 	if len(lh.UserIDs) > 0 {
@@ -174,7 +181,6 @@ func NewLegalHoldFromCreate(lhc CreateLegalHold) LegalHold {
 		IncludePublicChannels: lhc.IncludePublicChannels,
 		LastExecutionEndedAt:  0,
 		ExecutionLength:       86400000, // 24 hours
-		Status:                LegalHoldStatusIdle,
 	}
 }
 
