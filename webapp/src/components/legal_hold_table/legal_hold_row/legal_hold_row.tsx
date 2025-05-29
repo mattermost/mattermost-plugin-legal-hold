@@ -157,7 +157,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     <a
                         data-testid={`download-${lh.id}`}
                         aria-label={`${lh.display_name} download button`}
-                        href={lh.has_messages ? downloadUrl : '#'}
+                        href={isExecuting || !lh.has_messages ? '#' : downloadUrl}
                         download={true}
                         onClick={(e) => {
                             if (!lh.has_messages) {
