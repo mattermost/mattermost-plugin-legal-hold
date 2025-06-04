@@ -14,6 +14,7 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
 	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/shared/mlog"
 	"github.com/mattermost/mattermost/server/public/shared/request"
 	mmstore "github.com/mattermost/mattermost/server/v8/channels/store/sqlstore"
 	"github.com/mattermost/mattermost/server/v8/platform/shared/filestore"
@@ -71,7 +72,10 @@ func SetupHelper(t *testing.T) *TestHelper {
 
 	t.Log("using database connection string: ", connStr)
 
-	th.mmStore, err = mmstore.New(settings, nil, nil)
+	logger, err := mlog.NewLogger()
+	require.NoError(t, err)
+
+	th.mmStore, err = mmstore.New(settings, logger, nil)
 	require.NoError(t, err, "cannot instantiate test database")
 
 	store, err := New(storeWrapper{th.mmStore}, &testLogger{t})
