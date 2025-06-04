@@ -5,8 +5,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	pluginapi "github.com/mattermost/mattermost-plugin-api"
-	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
+	mattermostModel "github.com/mattermost/mattermost/server/public/model"
+	pluginapi "github.com/mattermost/mattermost/server/public/pluginapi"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 )
