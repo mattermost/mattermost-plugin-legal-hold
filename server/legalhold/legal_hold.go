@@ -2,35 +2,44 @@ package legalhold
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/gocarina/gocsv"
+	"github.com/mattermost/mattermost-plugin-api/cluster"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/kvstore"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
 )
 
 const PostExportBatchLimit = 10000
 
+// executionWaitForLockTimeout is the time to wait for the lock to be acquired before failing the execution.
+// This is to prevent multiple executions at the same time.
+const executionWaitForLockTimeout = 5 * time.Second
+
 // Execution represents one execution of a LegalHold, i.e. a daily (or other duration)
 // batch process to hold all data relating to that particular LegalHold. It is defined by the
 // properties of the associated LegalHold as well as a start and end time for the period this
 // execution of the LegalHold relates to.
 type Execution struct {
-	LegalHold          model.LegalHold
+	LegalHold          *model.LegalHold
 	ExecutionStartTime int64
 	ExecutionEndTime   int64
 
 	papi        plugin.API
 	store       *sqlstore.SQLStore
+	kvstore     kvstore.KVStore
 	fileBackend filestore.FileBackend
 
 	channelIDs []string
@@ -40,12 +49,13 @@ type Execution struct {
 }
 
 // NewExecution creates a new Execution that is ready to use.
-func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQLStore, fileBackend filestore.FileBackend) Execution {
+func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQLStore, kvstore kvstore.KVStore, fileBackend filestore.FileBackend) Execution {
 	return Execution{
-		LegalHold:          legalHold,
+		LegalHold:          &legalHold,
 		ExecutionStartTime: legalHold.NextExecutionStartTime(),
 		ExecutionEndTime:   legalHold.NextExecutionEndTime(),
 		store:              store,
+		kvstore:            kvstore,
 		fileBackend:        fileBackend,
 		index:              model.NewLegalHoldIndex(),
 		papi:               papi,
@@ -53,29 +63,49 @@ func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQ
 	}
 }
 
-// Execute executes the Execution.
-func (ex *Execution) Execute() (int64, error) {
-	err := ex.GetChannels()
+// Execute executes the Execution and returns the updated LegalHold.
+func (ex *Execution) Execute(now int64) (*model.LegalHold, error) {
+	// Lock multiple executions behind a cluster mutex
+	mutex, err := cluster.NewMutex(ex.papi, "legal_hold_execution")
 	if err != nil {
-		return 0, err
+		return nil, fmt.Errorf("failed to create cluster mutex: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), executionWaitForLockTimeout)
+	defer cancel()
+
+	if lockErr := mutex.LockWithContext(ctx); lockErr != nil {
+		return nil, fmt.Errorf("failed to lock cluster mutex: %w", lockErr)
+	}
+	defer func() {
+		mutex.Unlock()
+	}()
+
+	err = ex.GetChannels()
+	if err != nil {
+		return nil, err
 	}
 
 	err = ex.ExportData()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	err = ex.UpdateIndexes()
+	err = ex.UpdateIndexes(now)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	err = ex.WriteFileHashes()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	return ex.ExecutionEndTime, nil
+	// Update the LegalHold with execution results
+	// Ensure that the LastExecutionEndedAt is not in the future, useful when running the job manually
+	ex.LegalHold.LastExecutionEndedAt = utils.Min(ex.ExecutionEndTime, now)
+
+	return ex.LegalHold, nil
 }
 
 // GetChannels populates the list of channels that the Execution needs to cover within the
@@ -94,7 +124,13 @@ func (ex *Execution) GetChannels() error {
 
 		ex.channelIDs = append(ex.channelIDs, channelIDs...)
 
-		ex.papi.LogDebug("Legal hold executor - GetChannels", "user_id", userID, "channel_count", len(channelIDs))
+		ex.papi.LogDebug(
+			"Legal hold executor - GetChannels",
+			"user_id", userID,
+			"channel_count", len(channelIDs),
+			"start_time", ex.ExecutionStartTime,
+			"end_time", ex.ExecutionEndTime,
+		)
 
 		// Add to channels index
 		for _, channelID := range channelIDs {
@@ -152,6 +188,10 @@ func (ex *Execution) ExportData() error {
 			if err != nil {
 				return err
 			}
+
+			// Since at this point we have posts, ensure the `HasMessages` is set to true so users can
+			// download the legal hold.
+			ex.LegalHold.HasMessages = true
 
 			// Extract the FileIDs to export
 			var fileIDs []string
@@ -257,7 +297,7 @@ func (ex *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPos
 }
 
 // UpdateIndexes updates the index files in the file backend in relation to this legal hold.
-func (ex *Execution) UpdateIndexes() error {
+func (ex *Execution) UpdateIndexes(now int64) error {
 	filePath := ex.indexPath()
 
 	// Populate the metadata in the index.
@@ -265,7 +305,7 @@ func (ex *Execution) UpdateIndexes() error {
 	ex.index.LegalHold.DisplayName = ex.LegalHold.DisplayName
 	ex.index.LegalHold.Name = ex.LegalHold.Name
 	ex.index.LegalHold.StartsAt = ex.LegalHold.StartsAt
-	ex.index.LegalHold.LastExecutionEndedAt = ex.ExecutionEndTime
+	ex.index.LegalHold.LastExecutionEndedAt = utils.Min(ex.ExecutionEndTime, now)
 
 	if len(ex.channelIDs) > 0 {
 		metadata, err := ex.store.GetChannelMetadataForIDs(ex.channelIDs)
@@ -429,7 +469,7 @@ func (ex *Execution) messagesBatchPath(channelID string, batchCreateAt int64, ba
 
 // indexPath returns the file path for the Index file for this LegalHold.
 func (ex *Execution) indexPath() string {
-	return fmt.Sprintf("%s/index.json", ex.basePath())
+	return ex.LegalHold.IndexPath()
 }
 
 // filePath returns the file path for a given file attachment within

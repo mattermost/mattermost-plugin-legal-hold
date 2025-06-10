@@ -1,8 +1,8 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {UserProfile} from 'mattermost-redux/types/users';
 
-import {LegalHold} from '@/types';
 import Client from '@/client';
+import {LegalHold} from '@/types';
 
 import Tooltip from '@/components/mattermost-webapp/tooltip';
 
@@ -11,6 +11,9 @@ import OverlayTrigger from '@/components/mattermost-webapp/overlay_trigger';
 import DownloadIcon from './download-outline_F0B8F.svg';
 import EditIcon from './pencil-outline_F0CB6.svg';
 import EyeLockIcon from './eye-outline_F06D0.svg';
+import RunIcon from './play-outline.svg';
+import RunConfirmationModal from './run_confirmation_modal';
+import RunErrorModal from './run_error_modal';
 
 interface LegalHoldRowProps {
     legalHold: LegalHold;
@@ -18,12 +21,29 @@ interface LegalHoldRowProps {
     releaseLegalHold: Function;
     showUpdateModal: Function;
     showSecretModal: Function;
+    runLegalHold: (id: string) => Promise<void>;
+    refresh: () => void;
 }
 
+const getLastRunDisplay = (lh: LegalHold) => {
+    if (lh.status === 'executing') {
+        return 'Running now...';
+    }
+    if (!lh.last_execution_ended_at || lh.last_execution_ended_at === 0) {
+        return 'Never';
+    }
+
+    // Convert seconds to milliseconds for JavaScript Date
+    return new Date(lh.last_execution_ended_at).toLocaleString();
+};
+
 const LegalHoldRow = (props: LegalHoldRowProps) => {
+    const [showRunConfirmModal, setShowRunConfirmModal] = useState(false);
+    const [showRunErrorModal, setShowRunErrorModal] = useState(false);
     const lh = props.legalHold;
     const startsAt = (new Date(lh.starts_at)).toLocaleDateString();
     const endsAt = lh.ends_at === 0 ? 'Never' : (new Date(lh.ends_at)).toLocaleDateString();
+    const isExecuting = lh.status === 'executing';
 
     const release = () => {
         props.releaseLegalHold(lh);
@@ -41,11 +61,20 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
             <div data-testid={`end-date-${lh.id}`}>{endsAt}</div>
             <div data-testid={`users-${lh.id}`}>{props.users.length} {'users'}</div>
             <div
+                data-testid={`last-run-${lh.id}`}
+            >
+                {getLastRunDisplay(lh)}
+            </div>
+            <div
                 style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                 }}
             >
+                {/*
+                    TODO: Replace when updating the webapp dependency:
+                    https://github.com/mattermost/mattermost-plugin-legal-hold/pull/129#discussion_r1914917354
+                */}
                 <OverlayTrigger
 
                     // @ts-ignore
@@ -76,6 +105,10 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                         </span>
                     </a>
                 </OverlayTrigger>
+                {/*
+                    TODO: Replace when updating the webapp dependency:
+                    https://github.com/mattermost/mattermost-plugin-legal-hold/pull/129#discussion_r1914917354
+                */}
                 <OverlayTrigger
 
                     // @ts-ignore
@@ -106,6 +139,10 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                         </span>
                     </a>
                 </OverlayTrigger>
+                {/*
+                    TODO: Replace when updating the webapp dependency:
+                    https://github.com/mattermost/mattermost-plugin-legal-hold/pull/129#discussion_r1914917354
+                */}
                 <OverlayTrigger
 
                     // @ts-ignore
@@ -120,11 +157,18 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     <a
                         data-testid={`download-${lh.id}`}
                         aria-label={`${lh.display_name} download button`}
-                        href={downloadUrl}
-                        download={true}
+                        href={isExecuting || !lh.has_messages ? '#' : downloadUrl}
+                        download={!isExecuting && lh.has_messages}
+                        onClick={(e) => {
+                            if (!lh.has_messages) {
+                                e.preventDefault();
+                            }
+                        }}
                         style={{
-                            marginRight: '20px',
+                            marginRight: '10px',
                             height: '24px',
+                            opacity: isExecuting || !lh.has_messages ? '0.5' : '1',
+                            cursor: isExecuting || !lh.has_messages ? 'not-allowed' : 'pointer',
                         }}
                     >
                         <span
@@ -133,6 +177,48 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                             }}
                         >
                             <DownloadIcon/>
+                        </span>
+                    </a>
+                </OverlayTrigger>
+                {/*
+                    TODO: Replace when updating the webapp dependency:
+                    https://github.com/mattermost/mattermost-plugin-legal-hold/pull/129#discussion_r1914917354
+                */}
+                <OverlayTrigger
+
+                    // @ts-ignore
+                    delayShow={300}
+                    placement='top'
+                    overlay={(
+                        <Tooltip id={'RunLegalHoldTooltip'}>
+                            {'Run Legal Hold Now'}
+                        </Tooltip>
+                    )}
+                >
+                    <a
+                        data-testid={`run-${lh.id}`}
+                        aria-label={`${lh.display_name} run button`}
+                        href='#'
+                        onClick={(e) => {
+                            e.preventDefault();
+                            if (isExecuting) {
+                                return;
+                            }
+                            setShowRunConfirmModal(true);
+                        }}
+                        style={{
+                            marginRight: '20px',
+                            height: '24px',
+                            opacity: isExecuting ? '0.5' : '1',
+                            cursor: isExecuting ? 'not-allowed' : 'pointer',
+                        }}
+                    >
+                        <span
+                            style={{
+                                fill: 'rgba(0, 0, 0, 0.5)',
+                            }}
+                        >
+                            <RunIcon/>
                         </span>
                     </a>
                 </OverlayTrigger>
@@ -145,6 +231,21 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     className={'btn btn-danger'}
                 >{'Release'}</a>
             </div>
+            <RunConfirmationModal
+                show={showRunConfirmModal}
+                onHide={() => setShowRunConfirmModal(false)}
+                onConfirm={() => {
+                    setShowRunConfirmModal(false);
+                    props.runLegalHold(lh.id).catch(() => {
+                        setShowRunErrorModal(true);
+                    });
+                    props.refresh();
+                }}
+            />
+            <RunErrorModal
+                show={showRunErrorModal}
+                onHide={() => setShowRunErrorModal(false)}
+            />
         </React.Fragment>
     );
 };
