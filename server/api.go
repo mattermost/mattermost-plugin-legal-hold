@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -45,6 +46,7 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 	router.HandleFunc("/api/v1/legalholds/{legalhold_id:[A-Za-z0-9]+}/release", p.releaseLegalHold).Methods(http.MethodPost)
 	router.HandleFunc("/api/v1/legalholds/{legalhold_id:[A-Za-z0-9]+}", p.updateLegalHold).Methods(http.MethodPut)
 	router.HandleFunc("/api/v1/legalholds/{legalhold_id:[A-Za-z0-9]+}/download", p.downloadLegalHold).Methods(http.MethodGet)
+	router.HandleFunc("/api/v1/legalholds/{legalhold_id:[A-Za-z0-9]+}/run", p.runSingleLegalHold).Methods(http.MethodPost)
 	router.HandleFunc("/api/v1/test_amazon_s3_connection", p.testAmazonS3Connection).Methods(http.MethodPost)
 	router.HandleFunc("/api/v1/groups/search", p.searchLDAPGroups).Methods(http.MethodGet)
 
@@ -62,6 +64,17 @@ func (p *Plugin) listLegalHolds(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "an error occurred fetching the legal holds", http.StatusInternalServerError)
 		p.Client.Log.Error(err.Error())
 		return
+	}
+
+	runningHolds, err := p.legalHoldJob.GetRunningLegalHolds()
+	if err != nil {
+		p.Client.Log.Error("failed to get running legal holds", err.Error())
+	} else {
+		for i, lh := range legalHolds {
+			if slices.Contains(runningHolds, lh.ID) {
+				legalHolds[i].Status = model.LegalHoldStatusExecuting
+			}
+		}
 	}
 
 	b, jsonErr := json.Marshal(legalHolds)
@@ -319,7 +332,39 @@ func (p *Plugin) runJobFromAPI(w http.ResponseWriter, _ *http.Request) {
 		p.API.LogError("failed to write http response", err.Error())
 	}
 
-	go p.legalHoldJob.RunFromAPI()
+	go p.legalHoldJob.RunAll()
+}
+
+func (p *Plugin) runSingleLegalHold(w http.ResponseWriter, r *http.Request) {
+	legalholdID, err := RequireLegalHoldID(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = p.legalHoldJob.RunSingleLegalHold(legalholdID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to run legal hold: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	response := struct {
+		Message string `json:"message"`
+	}{
+		Message: fmt.Sprintf("Processing Legal Hold %s. Please check the MM server logs for more details.", legalholdID),
+	}
+
+	b, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, "Error encoding json", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(b)
+	if err != nil {
+		p.API.LogError("failed to write http response", err.Error())
+	}
 }
 
 // testAmazonS3Connection tests the plugin's custom Amazon S3 connection

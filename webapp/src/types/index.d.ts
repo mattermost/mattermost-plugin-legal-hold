@@ -8,6 +8,9 @@ export interface LegalHold {
     group_ids: string[];
     include_public_channels: boolean;
     secret: string;
+    last_execution_ended_at: number;
+    has_messages: boolean;
+    status: 'idle' | 'executing';
 }
 
 export interface CreateLegalHold {

@@ -7,7 +7,7 @@ import (
 
 	"github.com/gorilla/mux"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
-	"github.com/mattermost/mattermost-server/v6/model"
+	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 	"github.com/pkg/errors"
@@ -49,7 +49,7 @@ type Plugin struct {
 	jobManager *jobs.JobManager
 
 	// legalHoldJob runs the legal hold jobs
-	legalHoldJob *jobs.LegalHoldJob
+	legalHoldJob jobs.LegalHoldJobInterface
 
 	// router holds the HTTP router for the plugin's rest API
 	router *mux.Router
@@ -192,6 +192,38 @@ func (p *Plugin) Reconfigure() error {
 
 	p.FileBackend = filesBackend
 
+	// Check all legal holds on plugin activation to prevent corrupt states:
+	// - For legal holds that supposedly don't have messages, check if the index exist
+	//   and update the field accordingly.
+	//
+	// Ignore errors during plugin activation to ensure working operation and
+	// allowing debugging in parallel since most errors on this block would come
+	// from KVStorage problems and that would require manual intervention in the
+	// database.
+	legalHolds, err := p.KVStore.GetAllLegalHolds()
+	if err != nil {
+		p.Client.Log.Error("Failed to get legal holds during activation", "err", err)
+		return err
+	}
+
+	for _, lh := range legalHolds {
+		oldLH := lh.DeepCopy()
+
+		// Check the filebackend if the legal hold doesn't have messages, continue otherwise.
+		if !lh.HasMessages {
+			// Update the field value
+			lh.HasMessages, err = p.FileBackend.FileExists(lh.IndexPath())
+			if err != nil {
+				p.Client.Log.Error("Failed to check if legal hold index exists during activation", "legal_hold_id", lh.ID, "err", err)
+			}
+		}
+
+		// Update the legal hold
+		if _, err = p.KVStore.UpdateLegalHold(lh, oldLH); err != nil {
+			p.Client.Log.Error("Failed to update legal hold during activation", "legal_hold_id", lh.ID, "err", err)
+		}
+	}
+
 	// Remove old job if exists
 	if p.legalHoldJob != nil {
 		if err = p.jobManager.RemoveJob(LegalHoldJobID, 0); err != nil {
@@ -213,8 +245,8 @@ func (p *Plugin) Reconfigure() error {
 	return nil
 }
 
-func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings) filestore.FileBackendSettings {
-	if *fileSettings.DriverName == model.ImageDriverLocal {
+func FixedFileSettingsToFileBackendSettings(fileSettings mattermostModel.FileSettings) filestore.FileBackendSettings {
+	if *fileSettings.DriverName == mattermostModel.ImageDriverLocal {
 		return filestore.FileBackendSettings{
 			DriverName: *fileSettings.DriverName,
 			Directory:  *fileSettings.Directory,

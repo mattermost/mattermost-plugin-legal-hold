@@ -59,14 +59,14 @@ func NewLegalHoldIndex() LegalHoldIndex {
 }
 
 // Merge merges the new LegalHoldIndex into this LegalHoldIndex.
-func (lhi *LegalHoldIndex) Merge(newIndex *LegalHoldIndex) {
+func (lhi *LegalHoldIndex) Merge(newHold *LegalHoldIndex) {
 	// To merge the LegalHold data we overwrite the old struct in full
 	// with the new one.
-	lhi.LegalHold = newIndex.LegalHold
+	lhi.LegalHold = newHold.LegalHold
 
 	// Recursively merge the Teams (and their Channels) property, taking
 	// the newest version for the union of both lists.
-	for _, newTeam := range newIndex.Teams {
+	for _, newTeam := range newHold.Teams {
 		found := false
 		for _, oldTeam := range lhi.Teams {
 			if newTeam.ID == oldTeam.ID {
@@ -81,15 +81,15 @@ func (lhi *LegalHoldIndex) Merge(newIndex *LegalHoldIndex) {
 		}
 	}
 
-	lhi.Users.Merge(&newIndex.Users)
+	lhi.Users.Merge(&newHold.Users)
 }
 
 // Merge merges the new LegalHoldTeam into this LegalHoldTeam.
-func (team *LegalHoldTeam) Merge(newTeam *LegalHoldTeam) {
-	team.Name = newTeam.Name
-	team.DisplayName = newTeam.DisplayName
+func (team *LegalHoldTeam) Merge(newHold *LegalHoldTeam) {
+	team.Name = newHold.Name
+	team.DisplayName = newHold.DisplayName
 
-	for _, newChannel := range newTeam.Channels {
+	for _, newChannel := range newHold.Channels {
 		found := false
 		for _, oldChannel := range team.Channels {
 			if newChannel.ID == oldChannel.ID {
@@ -107,8 +107,8 @@ func (team *LegalHoldTeam) Merge(newTeam *LegalHoldTeam) {
 }
 
 // Merge merges the new LegalHoldIndexUsers into this LegalHoldIndexUsers.
-func (lhi *LegalHoldIndexUsers) Merge(newUsers *LegalHoldIndexUsers) {
-	for userID, newUser := range *newUsers {
+func (lhi *LegalHoldIndexUsers) Merge(newHold *LegalHoldIndexUsers) {
+	for userID, newUser := range *newHold {
 		if oldUser, ok := (*lhi)[userID]; !ok {
 			(*lhi)[userID] = newUser
 		} else {

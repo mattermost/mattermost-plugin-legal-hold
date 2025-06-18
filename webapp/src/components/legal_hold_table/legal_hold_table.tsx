@@ -12,6 +12,8 @@ interface LegalHoldTableProps {
     releaseLegalHold: Function,
     showUpdateModal: Function,
     showSecretModal: Function,
+    runLegalHold: (id: string) => Promise<void>;
+    refresh: () => void;
 }
 
 const LegalHoldTable = (props: LegalHoldTableProps) => {
@@ -81,6 +83,10 @@ const LegalHoldTable = (props: LegalHoldTableProps) => {
                 <div
                     aria-label='actions header'
                     style={{fontWeight: 'bold'}}
+                >{'Last Run'}</div>
+                <div
+                    aria-label='actions header'
+                    style={{fontWeight: 'bold'}}
                 >{'Actions'}</div>
                 {legalHolds.map((legalHold) => {
                     return (
@@ -90,6 +96,8 @@ const LegalHoldTable = (props: LegalHoldTableProps) => {
                             releaseLegalHold={props.releaseLegalHold}
                             showUpdateModal={props.showUpdateModal}
                             showSecretModal={props.showSecretModal}
+                            runLegalHold={(id: string) => props.runLegalHold(id)}
+                            refresh={props.refresh}
                         />
                     );
                 })}

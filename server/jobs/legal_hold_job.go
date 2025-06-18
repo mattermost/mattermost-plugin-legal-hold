@@ -3,7 +3,7 @@ package jobs
 import (
 	"context"
 	"fmt"
-
+	"strings"
 	"sync"
 	"time"
 
@@ -16,15 +16,23 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/config"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/legalhold"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/kvstore"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 )
 
+const runOnceJobKeyPrefix = "legal_hold_run_"
+
+type LegalHoldRunOnceProps struct {
+	LegalHold model.LegalHold
+	ForceRun  bool
+}
+
 type LegalHoldJob struct {
 	mux      sync.Mutex
-	settings *LegalHoldJobSettings
 	job      *cluster.Job
 	runner   *runInstance
+	settings *LegalHoldJobSettings
 
 	id          string
 	papi        plugin.API
@@ -32,17 +40,20 @@ type LegalHoldJob struct {
 	sqlstore    *sqlstore.SQLStore
 	kvstore     kvstore.KVStore
 	filebackend filestore.FileBackend
+
+	onceScheduler *cluster.JobOnceScheduler
 }
 
 func NewLegalHoldJob(id string, api plugin.API, client *pluginapi.Client, sqlstore *sqlstore.SQLStore, kvstore kvstore.KVStore, filebackend filestore.FileBackend) (*LegalHoldJob, error) {
 	return &LegalHoldJob{
-		settings:    &LegalHoldJobSettings{},
-		id:          id,
-		papi:        api,
-		client:      client,
-		sqlstore:    sqlstore,
-		kvstore:     kvstore,
-		filebackend: filebackend,
+		settings:      &LegalHoldJobSettings{},
+		id:            id,
+		papi:          api,
+		client:        client,
+		sqlstore:      sqlstore,
+		kvstore:       kvstore,
+		filebackend:   filebackend,
+		onceScheduler: cluster.GetJobOnceScheduler(api),
 	}, nil
 }
 
@@ -86,8 +97,16 @@ func (j *LegalHoldJob) start(settings *LegalHoldJobSettings) error {
 		return fmt.Errorf("cannot start Legal Hold job: %w", err)
 	}
 	j.job = job
+	j.client.Log.Debug("Legal Hold daily job scheduled")
 
-	j.client.Log.Debug("Legal Hold job started")
+	if err := j.onceScheduler.SetCallback(j.runOnce); err != nil {
+		return fmt.Errorf("could not set callback for runOnce jobs: %w", err)
+	}
+
+	if err := j.onceScheduler.Start(); err != nil {
+		return fmt.Errorf("could not start scheduler for runOnce jobs: %w", err)
+	}
+	j.client.Log.Debug("Legal Hold runOnce cluster scheduler started")
 
 	return nil
 }
@@ -148,10 +167,75 @@ func (j *LegalHoldJob) nextWaitInterval(now time.Time, metaData cluster.JobMetad
 	return delta
 }
 
-func (j *LegalHoldJob) RunFromAPI() {
+func (j *LegalHoldJob) RunAll() {
 	j.run()
 }
 
+func (j *LegalHoldJob) RunSingleLegalHold(legalHoldID string) error {
+	// Retrieve the single legal hold from the store
+	lh, err := j.kvstore.GetLegalHoldByID(legalHoldID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch legal hold: %w", err)
+	}
+	if lh == nil {
+		return fmt.Errorf("legal hold not found: %s", legalHoldID)
+	}
+
+	legalHold := lh.DeepCopy()
+
+	j.client.Log.Info("Creating legal hold ad-hoc job", "legal_hold_id", legalHold.ID)
+
+	_, err = j.onceScheduler.ScheduleOnce(
+		runOnceJobKeyPrefix+lh.ID,
+		time.Now(),
+		LegalHoldRunOnceProps{
+			LegalHold: legalHold,
+			ForceRun:  true,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to schedule runOnce legal hold job: %w", err)
+	}
+
+	return nil
+}
+
+func (j *LegalHoldJob) GetRunningLegalHolds() ([]string, error) {
+	jobs, err := j.onceScheduler.ListScheduledJobs()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list scheduled jobs: %w", err)
+	}
+
+	var runningJobs []string
+
+	for _, job := range jobs {
+		if strings.HasPrefix(job.Key, runOnceJobKeyPrefix) {
+			runningJobs = append(runningJobs, strings.TrimPrefix(job.Key, runOnceJobKeyPrefix))
+		}
+	}
+
+	return runningJobs, nil
+}
+
+// runOnce is called by the plugin's runOnce scheduler to run a single legal hold job on demand.
+func (j *LegalHoldJob) runOnce(_ string, props any) {
+	runOnceProps, ok := props.(LegalHoldRunOnceProps)
+	if !ok {
+		j.client.Log.Error("LegalHoldJob: invalid run once props")
+		return
+	}
+
+	j.client.Log.Info("Running runOnce legal hold", "legal_hold_id", runOnceProps.LegalHold.ID)
+
+	j.runWith(
+		[]model.LegalHold{runOnceProps.LegalHold},
+		runOnceProps.ForceRun,
+	)
+
+	j.client.Log.Info("Finished running runOnce legal hold", "legal_hold_id", runOnceProps.LegalHold.ID)
+}
+
+// run is called by the cluster job scheduler to run the legal hold job for all legal holds daily.
 func (j *LegalHoldJob) run() {
 	j.mux.Lock()
 	oldRunner := j.runner
@@ -162,14 +246,17 @@ func (j *LegalHoldJob) run() {
 		return
 	}
 
-	j.client.Log.Info("Running Legal Hold Job")
-	exitSignal := make(chan struct{})
-	ctx, canceller := context.WithCancel(context.Background())
+	j.client.Log.Info("Processing all Legal Holds")
 
+	exitSignal := make(chan struct{})
+	_, canceller := context.WithCancel(context.Background())
 	runner := &runInstance{
 		canceller:  canceller,
 		exitSignal: exitSignal,
 	}
+	j.mux.Lock()
+	j.runner = runner
+	j.mux.Unlock()
 
 	defer func() {
 		canceller()
@@ -180,61 +267,71 @@ func (j *LegalHoldJob) run() {
 		j.mux.Unlock()
 	}()
 
-	var settings *LegalHoldJobSettings
-	j.mux.Lock()
-	j.runner = runner
-	settings = j.settings.Clone()
-	j.mux.Unlock()
-
 	// Retrieve the legal holds from the store.
 	legalHolds, err := j.kvstore.GetAllLegalHolds()
 	if err != nil {
 		j.client.Log.Error("Failed to fetch legal holds from store", err)
+		return
 	}
 
-	j.client.Log.Info("Processing all Legal Holds", "count", len(legalHolds))
+	j.runWith(legalHolds, false)
+}
+
+func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
+	j.client.Log.Info("Running Legal Hold Job")
+
+	var settings *LegalHoldJobSettings
+	j.mux.Lock()
+	settings = j.settings.Clone()
+	j.mux.Unlock()
 
 	for _, lh := range legalHolds {
+		now := mattermostModel.GetMillis()
+
+		legalHold := lh.DeepCopy()
+
 		for {
-			if lh.IsFinished() {
-				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s has ended and therefore will not execute.", lh.ID))
+			if legalHold.IsFinished() {
+				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s has ended and therefore does not need another execution.", legalHold.ID))
 				break
 			}
 
-			if !lh.NeedsExecuting(mattermostModel.GetMillis()) {
-				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s is not yet ready to be executed again.", lh.ID))
+			if !forceRun && !legalHold.NeedsExecuting(now) {
+				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s is not yet ready to be executed again.", legalHold.ID))
+				break
+			}
+			if legalHold.LastExecutionEndedAt >= now {
+				j.client.Log.Debug(fmt.Sprintf("Legal Hold %s was already executed after the current time.", legalHold.ID))
 				break
 			}
 
-			j.client.Log.Debug(fmt.Sprintf("Creating Legal Hold Execution for legal hold: %s", lh.ID))
-			lhe := legalhold.NewExecution(lh, j.papi, j.sqlstore, j.filebackend)
+			j.client.Log.Debug(fmt.Sprintf("Creating Legal Hold Execution for legal hold: %s", legalHold.ID))
+			lhe := legalhold.NewExecution(legalHold, j.papi, j.sqlstore, j.kvstore, j.filebackend)
 
-			end, err := lhe.Execute()
-			if err != nil {
+			if updatedLH, err := lhe.Execute(now); err != nil {
 				j.client.Log.Error("An error occurred executing the legal hold.", err)
-				break
+			} else {
+				// Update legal hold with the new execution details (last execution time and last message)
+				// Also set it to IDLE again since the execution has ended.
+				stored, err := j.kvstore.GetLegalHoldByID(legalHold.ID)
+				if err != nil {
+					j.client.Log.Error("Failed to fetch the LegalHold prior to updating", err)
+					break
+				}
+				legalHold = stored.DeepCopy()
+				legalHold.LastExecutionEndedAt = updatedLH.LastExecutionEndedAt
+				legalHold.HasMessages = updatedLH.HasMessages
+
+				newLH, err := j.kvstore.UpdateLegalHold(legalHold, *stored)
+				if err != nil {
+					j.client.Log.Error("Failed to update legal hold", err)
+					break
+				}
+				j.client.Log.Info("legal hold executed", "legal_hold_id", newLH.ID, "legal_hold_name", newLH.Name)
 			}
-
-			old, err := j.kvstore.GetLegalHoldByID(lh.ID)
-			if err != nil {
-				j.client.Log.Error("Failed to fetch the LegalHold prior to updating", err)
-				continue
-			}
-
-			lh = *old
-			lh.LastExecutionEndedAt = end
-
-			newLH, err := j.kvstore.UpdateLegalHold(lh, *old)
-			if err != nil {
-				j.client.Log.Error("Failed to update legal hold", err)
-				continue
-			}
-
-			lh = *newLH
-			j.client.Log.Info("legal hold executed", "legal_hold_id", lh.ID, "legal_hold_name", lh.Name)
 		}
 	}
-	_ = ctx
+
 	_ = settings
 }
 

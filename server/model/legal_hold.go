@@ -10,6 +10,13 @@ import (
 )
 
 // LegalHold represents one legal hold.
+type LegalHoldStatus string
+
+const (
+	// LegalHoldStatusExecuting is the status of a legal hold that is currently being executed
+	LegalHoldStatusExecuting LegalHoldStatus = "executing"
+)
+
 type LegalHold struct {
 	ID                    string   `json:"id"`
 	Name                  string   `json:"name"`
@@ -24,6 +31,16 @@ type LegalHold struct {
 	LastExecutionEndedAt  int64    `json:"last_execution_ended_at"`
 	ExecutionLength       int64    `json:"execution_length"`
 	Secret                string   `json:"secret"`
+
+	// HasMessages is a denormalized field that indicates whether the legal hold has messages or not, to prevent
+	// the download button from working in case of empty legal hold and prevent user confusion.
+	// This value can be dynamically calculated by checking for the index in the store, and it's updated every time
+	// a legal hold is executed and on plugin startup.
+	// It's being persisted in the store to prevent unnecessary calls to the store.
+	HasMessages bool `json:"has_messages,omitempty"`
+
+	// DTO attributes not persisted in the store but used to display logic in the webapp
+	Status LegalHoldStatus `json:"status,omitempty"`
 }
 
 // DeepCopy creates a deep copy of the LegalHold.
@@ -44,6 +61,7 @@ func (lh *LegalHold) DeepCopy() LegalHold {
 		LastExecutionEndedAt:  lh.LastExecutionEndedAt,
 		ExecutionLength:       lh.ExecutionLength,
 		Secret:                lh.Secret,
+		HasMessages:           lh.HasMessages,
 	}
 
 	if len(lh.UserIDs) > 0 {
@@ -145,6 +163,11 @@ func (lh *LegalHold) IsFinished() bool {
 // BasePath returns the base file storage path for this legal hold.
 func (lh *LegalHold) BasePath() string {
 	return fmt.Sprintf("legal_hold/%s_%s", lh.Name, lh.ID)
+}
+
+// IndexPath returns the file storage path for the index file for this legal hold.
+func (lh *LegalHold) IndexPath() string {
+	return fmt.Sprintf("%s/index.json", lh.BasePath())
 }
 
 // CreateLegalHold holds the data that is specified in the API call to create a LegalHold.
