@@ -17,15 +17,16 @@ type OwnProps = {
 
 function makeMapStateToProps() {
     return (state: GlobalState, ownProps: OwnProps) => {
-        if (ownProps.legalHold === null || ownProps.legalHold.user_ids === null) {
+        if (ownProps.legalHold === null) {
             return {
                 groups: [],
                 users: [],
             };
-        }
-
-        const groups = ownProps.legalHold.group_ids.map((group_id) => getGroup(state, group_id));
-        const users = ownProps.legalHold.user_ids.map((user_id) => getUser(state, user_id));
+        };
+        const users = ownProps.legalHold.user_ids === null ? [] : 
+            ownProps.legalHold.user_ids.map((user_id) => getUser(state, user_id));
+        const groups = ownProps.legalHold.group_ids === null ? [] :
+            ownProps.legalHold.group_ids.map((group_id) => getGroup(state, group_id));
         return {
             groups,
             users,

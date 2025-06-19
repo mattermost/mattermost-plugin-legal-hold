@@ -152,7 +152,7 @@ func (ex *Execution) GetChannels() error {
 
 		ex.papi.LogDebug(
 			"Legal hold executor - GetChannels",
-			"user_id", userID,
+			"user_id", user.Id,
 			"channel_count", len(channelIDs),
 			"start_time", ex.ExecutionStartTime,
 			"end_time", ex.ExecutionEndTime,
