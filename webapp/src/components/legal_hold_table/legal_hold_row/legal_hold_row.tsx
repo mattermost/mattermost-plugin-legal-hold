@@ -1,5 +1,6 @@
 import React, {useState} from 'react';
 import {UserProfile} from 'mattermost-redux/types/users';
+import {Group} from 'mattermost-redux/types/groups';
 
 import Client from '@/client';
 import {LegalHold} from '@/types';
@@ -18,6 +19,7 @@ import RunErrorModal from './run_error_modal';
 interface LegalHoldRowProps {
     legalHold: LegalHold;
     users: UserProfile[];
+    groups: Group[];
     releaseLegalHold: Function;
     showUpdateModal: Function;
     showSecretModal: Function;
@@ -60,6 +62,7 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
             <div data-testid={`start-date-${lh.id}`}>{startsAt}</div>
             <div data-testid={`end-date-${lh.id}`}>{endsAt}</div>
             <div data-testid={`users-${lh.id}`}>{props.users.length} {'users'}</div>
+            <div data-testid={`groups-${lh.id}`}>{props.groups.length} {'groups'}</div>
             <div
                 data-testid={`last-run-${lh.id}`}
             >
