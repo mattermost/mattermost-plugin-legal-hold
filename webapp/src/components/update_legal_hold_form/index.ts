@@ -22,8 +22,8 @@ function makeMapStateToProps() {
                 groups: [],
                 users: [],
             };
-        };
-        const users = ownProps.legalHold.user_ids === null ? [] : 
+        }
+        const users = ownProps.legalHold.user_ids === null ? [] :
             ownProps.legalHold.user_ids.map((user_id) => getUser(state, user_id));
         const groups = ownProps.legalHold.group_ids === null ? [] :
             ownProps.legalHold.group_ids.map((group_id) => getGroup(state, group_id));
