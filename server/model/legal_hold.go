@@ -24,6 +24,7 @@ type LegalHold struct {
 	CreateAt              int64    `json:"create_at"`
 	UpdateAt              int64    `json:"update_at"`
 	UserIDs               []string `json:"user_ids"`
+	GroupIDs              []string `json:"group_ids"`
 	StartsAt              int64    `json:"starts_at"`
 	EndsAt                int64    `json:"ends_at"`
 	IncludePublicChannels bool     `json:"include_public_channels"`
@@ -68,6 +69,11 @@ func (lh *LegalHold) DeepCopy() LegalHold {
 		copy(newLegalHold.UserIDs, lh.UserIDs)
 	}
 
+	if len(lh.GroupIDs) > 0 {
+		newLegalHold.GroupIDs = make([]string, len(lh.GroupIDs))
+		copy(newLegalHold.GroupIDs, lh.GroupIDs)
+	}
+
 	return newLegalHold
 }
 
@@ -93,13 +99,19 @@ func (lh *LegalHold) IsValidForCreate() error {
 		return errors.New("LegalHold display name must be between 2 and 64 characters in length")
 	}
 
-	if len(lh.UserIDs) < 1 {
-		return errors.New("LegalHold must include at least 1 user")
+	if len(lh.UserIDs) < 1 && len(lh.GroupIDs) < 1 {
+		return errors.New("LegalHold must include at least 1 user or 1 group")
 	}
 
 	for _, userID := range lh.UserIDs {
 		if !mattermostModel.IsValidId(userID) {
 			return errors.New("LegalHold users must have valid IDs")
+		}
+	}
+
+	for _, groupID := range lh.GroupIDs {
+		if !mattermostModel.IsValidId(groupID) {
+			return errors.New("LegalHold groups must have valid IDs")
 		}
 	}
 
@@ -163,6 +175,7 @@ type CreateLegalHold struct {
 	Name                  string   `json:"name"`
 	DisplayName           string   `json:"display_name"`
 	UserIDs               []string `json:"user_ids"`
+	GroupIDs              []string `json:"group_ids"`
 	StartsAt              int64    `json:"starts_at"`
 	EndsAt                int64    `json:"ends_at"`
 	IncludePublicChannels bool     `json:"include_public_channels"`
@@ -176,6 +189,7 @@ func NewLegalHoldFromCreate(lhc CreateLegalHold) LegalHold {
 		Name:                  lhc.Name,
 		DisplayName:           lhc.DisplayName,
 		UserIDs:               lhc.UserIDs,
+		GroupIDs:              lhc.GroupIDs,
 		StartsAt:              lhc.StartsAt,
 		EndsAt:                lhc.EndsAt,
 		IncludePublicChannels: lhc.IncludePublicChannels,
@@ -189,6 +203,7 @@ type UpdateLegalHold struct {
 	ID                    string   `json:"id"`
 	DisplayName           string   `json:"display_name"`
 	UserIDs               []string `json:"user_ids"`
+	GroupIDs              []string `json:"group_ids"`
 	IncludePublicChannels bool     `json:"include_public_channels"`
 	EndsAt                int64    `json:"ends_at"`
 }
@@ -202,13 +217,19 @@ func (ulh UpdateLegalHold) IsValid() error {
 		return errors.New("LegalHold display name must be between 2 and 64 characters in length")
 	}
 
-	if len(ulh.UserIDs) < 1 {
-		return errors.New("LegalHold must include at least 1 user")
+	if len(ulh.UserIDs) < 1 && len(ulh.GroupIDs) < 1 {
+		return errors.New("LegalHold must include at least 1 user or 1 group")
 	}
 
 	for _, userID := range ulh.UserIDs {
 		if !mattermostModel.IsValidId(userID) {
 			return errors.New("LegalHold users must have valid IDs")
+		}
+	}
+
+	for _, groupID := range ulh.GroupIDs {
+		if !mattermostModel.IsValidId(groupID) {
+			return errors.New("LegalHold groups must have valid IDs")
 		}
 	}
 
@@ -222,6 +243,7 @@ func (ulh UpdateLegalHold) IsValid() error {
 func (lh *LegalHold) ApplyUpdates(updates UpdateLegalHold) {
 	lh.DisplayName = updates.DisplayName
 	lh.UserIDs = updates.UserIDs
+	lh.GroupIDs = updates.GroupIDs
 	lh.EndsAt = updates.EndsAt
 	lh.IncludePublicChannels = updates.IncludePublicChannels
 }
