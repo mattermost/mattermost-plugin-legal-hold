@@ -154,10 +154,10 @@ func getLegalHoldChannelMembership(channelMemberships []LegalHoldChannelMembersh
 
 // Combine combines the data from two LegalHoldChannelMembership instances and returns a new one
 // representing the combined data.
-func (lhcm LegalHoldChannelMembership) Combine(new LegalHoldChannelMembership) LegalHoldChannelMembership {
+func (lhcm LegalHoldChannelMembership) Combine(newMembership LegalHoldChannelMembership) LegalHoldChannelMembership {
 	return LegalHoldChannelMembership{
 		ChannelID: lhcm.ChannelID,
-		StartTime: utils.Min(lhcm.StartTime, new.StartTime),
-		EndTime:   utils.Max(lhcm.EndTime, new.EndTime),
+		StartTime: utils.Min(lhcm.StartTime, newMembership.StartTime),
+		EndTime:   utils.Max(lhcm.EndTime, newMembership.EndTime),
 	}
 }

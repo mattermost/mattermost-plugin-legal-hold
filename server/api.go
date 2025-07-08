@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -47,6 +48,7 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 	router.HandleFunc("/api/v1/legalholds/{legalhold_id:[A-Za-z0-9]+}/download", p.downloadLegalHold).Methods(http.MethodGet)
 	router.HandleFunc("/api/v1/legalholds/{legalhold_id:[A-Za-z0-9]+}/run", p.runSingleLegalHold).Methods(http.MethodPost)
 	router.HandleFunc("/api/v1/test_amazon_s3_connection", p.testAmazonS3Connection).Methods(http.MethodPost)
+	router.HandleFunc("/api/v1/groups/search", p.searchLDAPGroups).Methods(http.MethodGet)
 
 	// Other routes
 	router.HandleFunc("/api/v1/legalhold/run", p.runJobFromAPI).Methods(http.MethodPost)
@@ -403,6 +405,27 @@ func (p *Plugin) testAmazonS3Connection(w http.ResponseWriter, _ *http.Request) 
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		p.Client.Log.Error("failed to write http response", err.Error())
+	}
+}
+
+// searchLDAPGroups searches for groups by display name
+func (p *Plugin) searchLDAPGroups(w http.ResponseWriter, r *http.Request) {
+	prefix := strings.TrimSpace(r.URL.Query().Get("prefix"))
+	if prefix == "" {
+		http.Error(w, "missing search prefix", http.StatusBadRequest)
+		return
+	}
+
+	groups, err := p.SQLStore.SearchLDAPGroupsByPrefix(prefix)
+	if err != nil {
+		http.Error(w, "failed to search groups", http.StatusInternalServerError)
+		p.Client.Log.Error("failed to search groups", "error", err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(groups); err != nil {
+		p.Client.Log.Error("failed to write http response", "error", err.Error())
 	}
 }
 
