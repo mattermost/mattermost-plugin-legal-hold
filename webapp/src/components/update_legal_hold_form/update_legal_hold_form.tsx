@@ -37,6 +37,11 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
     };
 
     const endsAtChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
+        // Check if date is valid
+        const inputValue = new Date(e.target.value);
+        if (Number.isNaN(inputValue.getTime())) {
+            e.target.value = '';
+        }
         setEndsAt(e.target.value);
     };
 
