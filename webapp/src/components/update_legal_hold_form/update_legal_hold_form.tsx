@@ -31,13 +31,20 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
     const [saving, setSaving] = useState(false);
     const [includePublicChannels, setIncludePublicChannels] = useState(false);
     const [serverError, setServerError] = useState('');
+    const [endsAtInvalid, setEndsAtInvalid] = useState(false);
 
     const displayNameChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
         setDisplayName(e.target.value);
     };
 
     const endsAtChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setEndsAt(e.target.value);
+        const dateValue = e.target.value;
+        if (dateValue && !isValidDate(dateValue)) {
+            setEndsAtInvalid(true);
+            return;
+        }
+        setEndsAtInvalid(false);
+        setEndsAt(dateValue);
     };
 
     const includePublicChannelsChanged: (e: React.ChangeEvent<HTMLInputElement>) => void = (e) => {
@@ -53,6 +60,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
         setServerError('');
         setIncludePublicChannels(false);
         setSaving(false);
+        setEndsAtInvalid(false);
     };
 
     // Populate initial form field values when the Legal Hold being edited changes.
@@ -249,12 +257,18 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
                             onBlur={endsAtChanged}
                             containerClassName={'create-legal-hold-container'}
                             inputClassName={'create-legal-hold-input'}
+                            isError={endsAtInvalid}
                         />
                     </div>
                 </div>
             </div>
         </GenericModal>
     );
+};
+
+const isValidDate = (dateString: string): boolean => {
+    const date = new Date(dateString);
+    return !isNaN(date.getTime()) && dateString === date.toISOString().split('T')[0];
 };
 
 export default UpdateLegalHoldForm;

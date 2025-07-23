@@ -23,6 +23,8 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
     const [startsAt, setStartsAt] = useState('');
     const [endsAt, setEndsAt] = useState('');
     const [saving, setSaving] = useState(false);
+    const [startsAtInvalid, setStartsAtInvalid] = useState(false);
+    const [endsAtInvalid, setEndsAtInvalid] = useState(false);
     const [includePublicChannels, setIncludePublicChannels] = useState(false);
     const [serverError, setServerError] = useState('');
 
@@ -31,11 +33,23 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
     };
 
     const startsAtChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setStartsAt(e.target.value);
+        const dateValue = e.target.value;
+        if (dateValue && !isValidDate(dateValue)) {
+            setStartsAtInvalid(true);
+            return;
+        }
+        setStartsAtInvalid(false);
+        setStartsAt(dateValue);
     };
 
     const endsAtChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setEndsAt(e.target.value);
+        const dateValue = e.target.value;
+        if (dateValue && !isValidDate(dateValue)) {
+            setEndsAtInvalid(true);
+            return;
+        }
+        setEndsAtInvalid(false);
+        setEndsAt(dateValue);
     };
 
     const includePublicChannelsChanged: (e: React.ChangeEvent<HTMLInputElement>) => void = (e) => {
@@ -51,6 +65,8 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
         setSaving(false);
         setIncludePublicChannels(false);
         setServerError('');
+        setStartsAtInvalid(false);
+        setEndsAtInvalid(false);
     };
 
     const onSave = () => {
@@ -205,6 +221,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
                             onBlur={startsAtChanged}
                             containerClassName={'create-legal-hold-container'}
                             inputClassName={'create-legal-hold-input'}
+                            isError={startsAtInvalid}
                         />
                         <Input
                             type='date'
@@ -220,12 +237,18 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
                             onBlur={endsAtChanged}
                             containerClassName={'create-legal-hold-container'}
                             inputClassName={'create-legal-hold-input'}
+                            isError={endsAtInvalid}
                         />
                     </div>
                 </div>
             </div>
         </GenericModal>
     );
+};
+
+const isValidDate = (dateString: string): boolean => {
+    const date = new Date(dateString);
+    return !isNaN(date.getTime()) && dateString === date.toISOString().split('T')[0];
 };
 
 const slugify = (data: string) => {
