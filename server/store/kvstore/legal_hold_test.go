@@ -449,3 +449,138 @@ func TestKVStore_CreateLegalHold_DifferentDates(t *testing.T) {
 	assert.Equal(t, newLH.ID, result.ID)
 	assert.Equal(t, newLH.Name, result.Name)
 }
+
+func TestUnorderedEqualSet(t *testing.T) {
+	// Test with identical slices
+	assert.True(t, unorderedEqualSet([]string{"a", "b", "c"}, []string{"a", "b", "c"}))
+
+	// Test with different order
+	assert.True(t, unorderedEqualSet([]string{"a", "b", "c"}, []string{"c", "a", "b"}))
+
+	// Test with different lengths
+	assert.False(t, unorderedEqualSet([]string{"a", "b"}, []string{"a", "b", "c"}))
+
+	// Test with different elements
+	assert.False(t, unorderedEqualSet([]string{"a", "b", "c"}, []string{"a", "b", "d"}))
+
+	// Test with empty slices
+	assert.True(t, unorderedEqualSet([]string{}, []string{}))
+
+	// Test with one empty slice
+	assert.False(t, unorderedEqualSet([]string{"a"}, []string{}))
+
+	// Test with duplicates
+	assert.True(t, unorderedEqualSet([]string{"a", "a", "b"}, []string{"b", "a", "a"}))
+}
+
+func TestKVStore_CreateLegalHold_WithGroupIDs(t *testing.T) {
+	api := &plugintest.API{}
+	driver := &plugintest.Driver{}
+	client := pluginapi.NewClient(api, driver)
+
+	kvstore := NewKVStore(client)
+
+	groupID1 := mattermostModel.NewId()
+	groupID2 := mattermostModel.NewId()
+	userID1 := mattermostModel.NewId()
+	startTime := mattermostModel.GetMillis()
+	endTime := startTime + 86400000
+
+	// Existing legal hold with groups
+	existingLH := model.LegalHold{
+		ID:                    mattermostModel.NewId(),
+		Name:                  "existing-hold",
+		DisplayName:           "Existing Legal Hold",
+		UserIDs:               []string{userID1},
+		GroupIDs:              []string{groupID1, groupID2},
+		StartsAt:              startTime,
+		EndsAt:                endTime,
+		IncludePublicChannels: false,
+	}
+
+	// New legal hold with same groups in different order
+	newLH := model.LegalHold{
+		ID:                    mattermostModel.NewId(),
+		Name:                  "new-hold",
+		DisplayName:           "New Legal Hold",
+		UserIDs:               []string{userID1},
+		GroupIDs:              []string{groupID2, groupID1}, // Same groups, different order
+		StartsAt:              startTime,
+		EndsAt:                endTime,
+		IncludePublicChannels: false,
+	}
+
+	// Mock GetAllLegalHolds to return existing legal hold
+	existingMarshaled, err := json.Marshal(existingLH)
+	require.NoError(t, err)
+
+	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+		Return([]string{fmt.Sprintf("%s%s", legalHoldPrefix, existingLH.ID)}, nil).
+		Once()
+
+	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, existingLH.ID)).
+		Return(existingMarshaled, nil).Once()
+
+	// Test creating functional duplicate with groups should fail
+	_, err = kvstore.CreateLegalHold(newLH)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "same participants, dates, and settings already exists")
+}
+
+func TestKVStore_CreateLegalHold_DifferentChannelSettings(t *testing.T) {
+	api := &plugintest.API{}
+	driver := &plugintest.Driver{}
+	client := pluginapi.NewClient(api, driver)
+
+	kvstore := NewKVStore(client)
+
+	userID1 := mattermostModel.NewId()
+	startTime := mattermostModel.GetMillis()
+
+	// Existing legal hold with public channels included
+	existingLH := model.LegalHold{
+		ID:                    mattermostModel.NewId(),
+		Name:                  "existing-hold",
+		DisplayName:           "Existing Legal Hold",
+		UserIDs:               []string{userID1},
+		StartsAt:              startTime,
+		IncludePublicChannels: true,
+	}
+
+	// New legal hold with same everything but different channel settings
+	newLH := model.LegalHold{
+		ID:                    mattermostModel.NewId(),
+		Name:                  "new-hold",
+		DisplayName:           "New Legal Hold",
+		UserIDs:               []string{userID1},
+		StartsAt:              startTime,
+		IncludePublicChannels: false, // Different channel setting
+	}
+
+	// Mock GetAllLegalHolds to return existing legal hold
+	existingMarshaled, err := json.Marshal(existingLH)
+	require.NoError(t, err)
+
+	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+		Return([]string{fmt.Sprintf("%s%s", legalHoldPrefix, existingLH.ID)}, nil).
+		Once()
+
+	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, existingLH.ID)).
+		Return(existingMarshaled, nil).Once()
+
+	// Mock successful creation
+	api.On("KVSetWithOptions",
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("[]uint8"),
+		mock.AnythingOfType("model.PluginKVSetOptions"),
+	).Run(func(args mock.Arguments) {
+		marshaled := args.Get(1).([]uint8)
+		api.On("KVGet", mock.AnythingOfType("string")).Return(marshaled, nil).Once()
+	}).Return(true, nil).Once()
+
+	// Test creating legal hold with different channel settings should succeed
+	result, err := kvstore.CreateLegalHold(newLH)
+	require.NoError(t, err)
+	assert.Equal(t, newLH.ID, result.ID)
+	assert.Equal(t, newLH.Name, result.Name)
+}

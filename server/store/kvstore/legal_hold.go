@@ -61,6 +61,7 @@ func (kvs Impl) CreateLegalHold(lh model.LegalHold) (*model.LegalHold, error) {
 		if existing.StartsAt == lh.StartsAt &&
 			existing.EndsAt == lh.EndsAt &&
 			existing.IncludePublicChannels == lh.IncludePublicChannels &&
+			unorderedEqualSet(existing.GroupIDs, lh.GroupIDs) &&
 			unorderedEqualSet(existing.UserIDs, lh.UserIDs) {
 			return nil, errors.New("could not create legal hold as a legal hold with the same participants, dates, and settings already exists")
 		}
