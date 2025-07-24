@@ -150,6 +150,12 @@ func (p *Plugin) releaseLegalHold(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if the legal hold is currently executing
+	if lh.Status == model.LegalHoldStatusExecuting {
+		http.Error(w, "cannot release legal hold while it is executing", http.StatusConflict)
+		return
+	}
+
 	// Remove the LegalHold files.
 	err = p.FileBackend.RemoveDirectory(lh.BasePath())
 	if err != nil {

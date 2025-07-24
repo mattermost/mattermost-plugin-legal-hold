@@ -9,6 +9,7 @@ import Input from '@/components/mattermost-webapp/input/input';
 import UsersInput from '@/components/users_input';
 import GroupsInput from '@/components/groups_input';
 import {LegalHold, UpdateLegalHold} from '@/types';
+import {isValidDate} from '@/utils/date_validation';
 
 import '../create_legal_hold_form.scss';
 
@@ -31,13 +32,20 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
     const [saving, setSaving] = useState(false);
     const [includePublicChannels, setIncludePublicChannels] = useState(false);
     const [serverError, setServerError] = useState('');
+    const [endsAtInvalid, setEndsAtInvalid] = useState(false);
 
     const displayNameChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
         setDisplayName(e.target.value);
     };
 
     const endsAtChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setEndsAt(e.target.value);
+        const dateValue = e.target.value;
+        if (dateValue && !isValidDate(dateValue)) {
+            setEndsAtInvalid(true);
+            return;
+        }
+        setEndsAtInvalid(false);
+        setEndsAt(dateValue);
     };
 
     const includePublicChannelsChanged: (e: React.ChangeEvent<HTMLInputElement>) => void = (e) => {
@@ -53,6 +61,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
         setServerError('');
         setIncludePublicChannels(false);
         setSaving(false);
+        setEndsAtInvalid(false);
     };
 
     // Populate initial form field values when the Legal Hold being edited changes.
@@ -249,6 +258,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
                             onBlur={endsAtChanged}
                             containerClassName={'create-legal-hold-container'}
                             inputClassName={'create-legal-hold-input'}
+                            hasError={endsAtInvalid}
                         />
                     </div>
                 </div>
