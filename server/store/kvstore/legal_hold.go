@@ -46,7 +46,6 @@ func unorderedEqualSet[T comparable](a, b []T) bool {
 }
 
 func (kvs Impl) CreateLegalHold(lh model.LegalHold) (*model.LegalHold, error) {
-
 	// Check for duplicates by name, dates, and participants
 	existingLegalHolds, err := kvs.GetAllLegalHolds()
 	if err != nil {
