@@ -7,6 +7,7 @@ import GroupsInput from '@/components/groups_input';
 import {CreateLegalHold} from '@/types';
 import {GenericModal} from '@/components/mattermost-webapp/generic_modal/generic_modal';
 import Input from '@/components/mattermost-webapp/input/input';
+import {isValidDate} from '@/utils/date_validation';
 
 import './create_legal_hold_form.scss';
 
@@ -246,10 +247,6 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
     );
 };
 
-const isValidDate = (dateString: string): boolean => {
-    const date = new Date(dateString);
-    return !isNaN(date.getTime()) && dateString === date.toISOString().split('T')[0];
-};
 
 const slugify = (data: string) => {
     return data.

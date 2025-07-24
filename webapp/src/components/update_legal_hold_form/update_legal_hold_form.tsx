@@ -9,6 +9,7 @@ import Input from '@/components/mattermost-webapp/input/input';
 import UsersInput from '@/components/users_input';
 import GroupsInput from '@/components/groups_input';
 import {LegalHold, UpdateLegalHold} from '@/types';
+import {isValidDate} from '@/utils/date_validation';
 
 import '../create_legal_hold_form.scss';
 
@@ -266,9 +267,5 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
     );
 };
 
-const isValidDate = (dateString: string): boolean => {
-    const date = new Date(dateString);
-    return !isNaN(date.getTime()) && dateString === date.toISOString().split('T')[0];
-};
 
 export default UpdateLegalHoldForm;
