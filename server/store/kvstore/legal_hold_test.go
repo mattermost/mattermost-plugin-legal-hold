@@ -31,6 +31,10 @@ func TestKVStore_CreateLegalHold(t *testing.T) {
 		StartsAt:    mattermostModel.GetMillis(),
 	}
 
+	// Mock GetAllLegalHolds to return empty list (no existing legal holds)
+	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+		Return([]string{}, nil).Once()
+
 	api.On("KVSetWithOptions",
 		mock.AnythingOfType("string"),
 		mock.AnythingOfType("[]uint8"),
@@ -62,6 +66,10 @@ func TestKVStore_CreateLegalHold(t *testing.T) {
 		ID:   mattermostModel.NewId(),
 		Name: "legal-hold-3",
 	}
+
+	// Mock GetAllLegalHolds to return empty list (no name conflicts)
+	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+		Return([]string{}, nil).Once()
 
 	api.On("KVSetWithOptions",
 		mock.AnythingOfType("string"),
@@ -232,4 +240,212 @@ func TestKVStore_DeleteLegalHold(t *testing.T) {
 
 	err = kvstore.DeleteLegalHold("does-not-exist")
 	require.Error(t, err)
+}
+
+func TestKVStore_CreateLegalHold_DuplicateName(t *testing.T) {
+	api := &plugintest.API{}
+	driver := &plugintest.Driver{}
+	client := pluginapi.NewClient(api, driver)
+
+	kvstore := NewKVStore(client)
+
+	// Existing legal hold
+	existingLH := model.LegalHold{
+		ID:          mattermostModel.NewId(),
+		Name:        "duplicate-name",
+		DisplayName: "Existing Legal Hold",
+		UserIDs:     []string{mattermostModel.NewId()},
+		StartsAt:    mattermostModel.GetMillis(),
+	}
+
+	// New legal hold with same name
+	newLH := model.LegalHold{
+		ID:          mattermostModel.NewId(),
+		Name:        "duplicate-name",
+		DisplayName: "New Legal Hold",
+		UserIDs:     []string{mattermostModel.NewId()},
+		StartsAt:    mattermostModel.GetMillis() + 1000,
+	}
+
+	// Mock GetAllLegalHolds to return existing legal hold
+	existingMarshaled, err := json.Marshal(existingLH)
+	require.NoError(t, err)
+
+	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+		Return([]string{fmt.Sprintf("%s%s", legalHoldPrefix, existingLH.ID)}, nil).
+		Once()
+
+	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, existingLH.ID)).
+		Return(existingMarshaled, nil).Once()
+
+	// Test creating legal hold with duplicate name
+	_, err = kvstore.CreateLegalHold(newLH)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "name already exists")
+}
+
+func TestKVStore_CreateLegalHold_FunctionalDuplicate(t *testing.T) {
+	api := &plugintest.API{}
+	driver := &plugintest.Driver{}
+	client := pluginapi.NewClient(api, driver)
+
+	kvstore := NewKVStore(client)
+
+	userID1 := mattermostModel.NewId()
+	userID2 := mattermostModel.NewId()
+	startTime := mattermostModel.GetMillis()
+	endTime := startTime + 86400000 // 1 day later
+
+	// Existing legal hold
+	existingLH := model.LegalHold{
+		ID:                    mattermostModel.NewId(),
+		Name:                  "existing-hold",
+		DisplayName:           "Existing Legal Hold",
+		UserIDs:               []string{userID1, userID2},
+		StartsAt:              startTime,
+		EndsAt:                endTime,
+		IncludePublicChannels: true,
+	}
+
+	// New legal hold with same functional parameters but different name
+	newLH := model.LegalHold{
+		ID:                    mattermostModel.NewId(),
+		Name:                  "new-hold",
+		DisplayName:           "New Legal Hold",
+		UserIDs:               []string{userID2, userID1}, // Same users, different order
+		StartsAt:              startTime,
+		EndsAt:                endTime,
+		IncludePublicChannels: true,
+	}
+
+	// Mock GetAllLegalHolds to return existing legal hold
+	existingMarshaled, err := json.Marshal(existingLH)
+	require.NoError(t, err)
+
+	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+		Return([]string{fmt.Sprintf("%s%s", legalHoldPrefix, existingLH.ID)}, nil).
+		Once()
+
+	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, existingLH.ID)).
+		Return(existingMarshaled, nil).Once()
+
+	// Test creating functional duplicate
+	_, err = kvstore.CreateLegalHold(newLH)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "same participants, dates, and settings already exists")
+}
+
+func TestKVStore_CreateLegalHold_DifferentParticipants(t *testing.T) {
+	api := &plugintest.API{}
+	driver := &plugintest.Driver{}
+	client := pluginapi.NewClient(api, driver)
+
+	kvstore := NewKVStore(client)
+
+	userID1 := mattermostModel.NewId()
+	userID2 := mattermostModel.NewId()
+	userID3 := mattermostModel.NewId()
+	startTime := mattermostModel.GetMillis()
+
+	// Existing legal hold
+	existingLH := model.LegalHold{
+		ID:          mattermostModel.NewId(),
+		Name:        "existing-hold",
+		DisplayName: "Existing Legal Hold",
+		UserIDs:     []string{userID1, userID2},
+		StartsAt:    startTime,
+	}
+
+	// New legal hold with different participants but same dates
+	newLH := model.LegalHold{
+		ID:          mattermostModel.NewId(),
+		Name:        "new-hold",
+		DisplayName: "New Legal Hold",
+		UserIDs:     []string{userID1, userID3}, // Different set of users
+		StartsAt:    startTime,
+	}
+
+	// Mock GetAllLegalHolds to return existing legal hold
+	existingMarshaled, err := json.Marshal(existingLH)
+	require.NoError(t, err)
+
+	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+		Return([]string{fmt.Sprintf("%s%s", legalHoldPrefix, existingLH.ID)}, nil).
+		Once()
+
+	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, existingLH.ID)).
+		Return(existingMarshaled, nil).Once()
+
+	// Mock successful creation
+	api.On("KVSetWithOptions",
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("[]uint8"),
+		mock.AnythingOfType("model.PluginKVSetOptions"),
+	).Run(func(args mock.Arguments) {
+		marshaled := args.Get(1).([]uint8)
+		api.On("KVGet", mock.AnythingOfType("string")).Return(marshaled, nil).Once()
+	}).Return(true, nil).Once()
+
+	// Test creating legal hold with different participants should succeed
+	result, err := kvstore.CreateLegalHold(newLH)
+	require.NoError(t, err)
+	assert.Equal(t, newLH.ID, result.ID)
+	assert.Equal(t, newLH.Name, result.Name)
+}
+
+func TestKVStore_CreateLegalHold_DifferentDates(t *testing.T) {
+	api := &plugintest.API{}
+	driver := &plugintest.Driver{}
+	client := pluginapi.NewClient(api, driver)
+
+	kvstore := NewKVStore(client)
+
+	userID1 := mattermostModel.NewId()
+	userID2 := mattermostModel.NewId()
+	startTime := mattermostModel.GetMillis()
+
+	// Existing legal hold
+	existingLH := model.LegalHold{
+		ID:          mattermostModel.NewId(),
+		Name:        "existing-hold",
+		DisplayName: "Existing Legal Hold",
+		UserIDs:     []string{userID1, userID2},
+		StartsAt:    startTime,
+	}
+
+	// New legal hold with same participants but different dates
+	newLH := model.LegalHold{
+		ID:          mattermostModel.NewId(),
+		Name:        "new-hold",
+		DisplayName: "New Legal Hold",
+		UserIDs:     []string{userID1, userID2},
+		StartsAt:    startTime + 86400000, // Different start time
+	}
+
+	// Mock GetAllLegalHolds to return existing legal hold
+	existingMarshaled, err := json.Marshal(existingLH)
+	require.NoError(t, err)
+
+	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+		Return([]string{fmt.Sprintf("%s%s", legalHoldPrefix, existingLH.ID)}, nil).
+		Once()
+
+	api.On("KVGet", fmt.Sprintf("%s%s", legalHoldPrefix, existingLH.ID)).
+		Return(existingMarshaled, nil).Once()
+
+	// Mock successful creation
+	api.On("KVSetWithOptions",
+		mock.AnythingOfType("string"),
+		mock.AnythingOfType("[]uint8"),
+		mock.AnythingOfType("model.PluginKVSetOptions"),
+	).Run(func(args mock.Arguments) {
+		marshaled := args.Get(1).([]uint8)
+		api.On("KVGet", mock.AnythingOfType("string")).Return(marshaled, nil).Once()
+	}).Return(true, nil).Once()
+
+	// Test creating legal hold with different dates should succeed
+	result, err := kvstore.CreateLegalHold(newLH)
+	require.NoError(t, err)
+	assert.Equal(t, newLH.ID, result.ID)
+	assert.Equal(t, newLH.Name, result.Name)
 }

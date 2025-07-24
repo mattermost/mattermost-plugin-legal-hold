@@ -25,7 +25,48 @@ func NewKVStore(client *pluginapi.Client) KVStore {
 	}
 }
 
+// unorderedEqualSet compares two slices of user IDs regardless of order
+func unorderedEqualSet[T comparable](a, b []T) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	setA := make(map[T]bool, len(a))
+	for _, v := range a {
+		setA[v] = true
+	}
+
+	for _, v := range b {
+		if !setA[v] {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (kvs Impl) CreateLegalHold(lh model.LegalHold) (*model.LegalHold, error) {
+
+	// Check for duplicates by name, dates, and participants
+	existingLegalHolds, err := kvs.GetAllLegalHolds()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to check for existing legal holds")
+	}
+
+	for _, existing := range existingLegalHolds {
+		if existing.Name == lh.Name {
+			return nil, errors.New("could not create legal hold as a legal hold with that name already exists")
+		}
+
+		// Check for functional duplicates (same participants, dates, and channel settings)
+		if existing.StartsAt == lh.StartsAt &&
+			existing.EndsAt == lh.EndsAt &&
+			existing.IncludePublicChannels == lh.IncludePublicChannels &&
+			unorderedEqualSet(existing.UserIDs, lh.UserIDs) {
+			return nil, errors.New("could not create legal hold as a legal hold with the same participants, dates, and settings already exists")
+		}
+	}
+
 	lh.CreateAt = mattermostModel.GetMillis()
 	lh.UpdateAt = lh.CreateAt
 	lh.Secret = mattermostModel.NewId()
