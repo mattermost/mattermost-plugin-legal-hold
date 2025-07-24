@@ -221,7 +221,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
                             onBlur={startsAtChanged}
                             containerClassName={'create-legal-hold-container'}
                             inputClassName={'create-legal-hold-input'}
-                            isError={startsAtInvalid}
+                            hasError={startsAtInvalid}
                         />
                         <Input
                             type='date'
@@ -237,7 +237,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
                             onBlur={endsAtChanged}
                             containerClassName={'create-legal-hold-container'}
                             inputClassName={'create-legal-hold-input'}
-                            isError={endsAtInvalid}
+                            hasError={endsAtInvalid}
                         />
                     </div>
                 </div>

@@ -257,7 +257,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
                             onBlur={endsAtChanged}
                             containerClassName={'create-legal-hold-container'}
                             inputClassName={'create-legal-hold-input'}
-                            isError={endsAtInvalid}
+                            hasError={endsAtInvalid}
                         />
                     </div>
                 </div>
