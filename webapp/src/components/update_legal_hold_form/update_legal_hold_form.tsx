@@ -267,5 +267,4 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
     );
 };
 
-
 export default UpdateLegalHoldForm;

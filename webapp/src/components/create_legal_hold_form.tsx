@@ -247,7 +247,6 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
     );
 };
 
-
 const slugify = (data: string) => {
     return data.
         replace(/[^0-9a-zA-Z _-]/g, '').
