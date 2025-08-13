@@ -230,8 +230,18 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     role='button'
                     aria-label={`${lh.display_name} release button`}
                     href='#'
-                    onClick={release}
+                    onClick={(e) => {
+                        if (isExecuting) {
+                            e.preventDefault();
+                            return;
+                        }
+                        release();
+                    }}
                     className={'btn btn-danger'}
+                    style={{
+                        opacity: isExecuting ? '0.5' : '1',
+                        cursor: isExecuting ? 'not-allowed' : 'pointer',
+                    }}
                 >{'Release'}</a>
             </div>
             <RunConfirmationModal
