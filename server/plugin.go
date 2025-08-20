@@ -19,7 +19,8 @@ import (
 )
 
 const (
-	LegalHoldJobID = "legal_hold_job"
+	LegalHoldJobID              = "legal_hold_job"
+	MattermostEntrySkuShortName = "entry"
 )
 
 // Plugin implements the interface expected by the Mattermost server to communicate between the server and plugin processes.
@@ -60,7 +61,7 @@ func (p *Plugin) OnActivate() error {
 	config := p.API.GetConfig()
 	license := p.API.GetLicense()
 
-	if !pluginapi.IsEnterpriseLicensedOrDevelopment(config, license) {
+	if !pluginapi.IsEnterpriseLicensedOrDevelopment(config, license) || (!pluginapi.IsConfiguredForDevelopment(config) && license.SkuShortName == MattermostEntrySkuShortName) {
 		return fmt.Errorf("this plugin requires an Enterprise license")
 	}
 
