@@ -190,7 +190,7 @@ func (p *Plugin) Reconfigure() error {
 					return confErr
 				}
 			} else {
-				p.Client.Log.Warn("amazons3bucketsettings not found or invalid in plugin config, skipping disable")
+				p.Client.Log.Warn("S3 bucket settings not found or invalid in plugin config. Could not disable S3 configuration potentially leading to errors. Check your storage configuration.")
 			}
 
 			err = errors.Wrap(err, "connection test for filestore failed")
