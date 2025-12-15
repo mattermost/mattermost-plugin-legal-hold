@@ -182,12 +182,16 @@ func (p *Plugin) Reconfigure() error {
 			pluginConfig := p.Client.Configuration.GetPluginConfig()
 
 			// Disable the S3 settings in case the AWS config is invalid
-			pluginConfig["amazons3bucketsettings"].(map[string]interface{})["Enable"] = false
+			if s3Settings, ok := pluginConfig["amazons3bucketsettings"].(map[string]interface{}); ok && s3Settings != nil {
+				s3Settings["Enable"] = false
 
-			confErr := p.Client.Configuration.SavePluginConfig(pluginConfig)
-			if confErr != nil {
-				p.Client.Log.Error("Error while saving plugin config.", "Error", confErr.Error())
-				return confErr
+				confErr := p.Client.Configuration.SavePluginConfig(pluginConfig)
+				if confErr != nil {
+					p.Client.Log.Error("Error while saving plugin config.", "Error", confErr.Error())
+					return confErr
+				}
+			} else {
+				p.Client.Log.Warn("amazons3bucketsettings not found or invalid in plugin config, skipping disable")
 			}
 
 			err = errors.Wrap(err, "connection test for filestore failed")
