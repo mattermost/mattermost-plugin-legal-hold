@@ -165,6 +165,7 @@ func (p *Plugin) Reconfigure() error {
 	if conf.AmazonS3BucketSettings.Enable {
 		serverFileSettings = conf.AmazonS3BucketSettings.Settings
 	}
+	serverFileSettings.SetDefaults(true)
 
 	// Reinitialise the filestore backend
 	filesBackendSettings := FixedFileSettingsToFileBackendSettings(serverFileSettings)
@@ -252,6 +253,11 @@ func (p *Plugin) Reconfigure() error {
 	return nil
 }
 
+// FixedFileSettingsToFileBackendSettings converts FileSettings to FileBackendSettings.
+// This is a copy of FileSettings.ToFileBackendSettings from mattermost-server with nil-safe
+// handling for boolean pointer fields, as the original method may be removed in future versions.
+// Note: SetDefaults(true) should be called on fileSettings before calling this function
+// to ensure string pointer fields are initialized.
 func FixedFileSettingsToFileBackendSettings(fileSettings mattermostModel.FileSettings) filestore.FileBackendSettings {
 	if *fileSettings.DriverName == mattermostModel.ImageDriverLocal {
 		return filestore.FileBackendSettings{
@@ -260,30 +266,15 @@ func FixedFileSettingsToFileBackendSettings(fileSettings mattermostModel.FileSet
 		}
 	}
 
-	amazonS3Bucket := ""
-	if fileSettings.AmazonS3Bucket != nil {
-		amazonS3Bucket = *fileSettings.AmazonS3Bucket
-	}
-
-	amazonS3PathPrefix := ""
-	if fileSettings.AmazonS3PathPrefix != nil {
-		amazonS3PathPrefix = *fileSettings.AmazonS3PathPrefix
-	}
-
-	amazonS3Region := ""
-	if fileSettings.AmazonS3Region != nil {
-		amazonS3Region = *fileSettings.AmazonS3Region
-	}
-
 	return filestore.FileBackendSettings{
 		DriverName:                         *fileSettings.DriverName,
 		AmazonS3AccessKeyId:                *fileSettings.AmazonS3AccessKeyId,
 		AmazonS3SecretAccessKey:            *fileSettings.AmazonS3SecretAccessKey,
-		AmazonS3Bucket:                     amazonS3Bucket,
-		AmazonS3PathPrefix:                 amazonS3PathPrefix,
-		AmazonS3Region:                     amazonS3Region,
+		AmazonS3Bucket:                     *fileSettings.AmazonS3Bucket,
+		AmazonS3PathPrefix:                 *fileSettings.AmazonS3PathPrefix,
+		AmazonS3Region:                     *fileSettings.AmazonS3Region,
 		AmazonS3Endpoint:                   *fileSettings.AmazonS3Endpoint,
-		AmazonS3SSL:                        fileSettings.AmazonS3SSL != nil && *fileSettings.AmazonS3SSL,
+		AmazonS3SSL:                        fileSettings.AmazonS3SSL == nil || *fileSettings.AmazonS3SSL,
 		AmazonS3SignV2:                     fileSettings.AmazonS3SignV2 != nil && *fileSettings.AmazonS3SignV2,
 		AmazonS3SSE:                        fileSettings.AmazonS3SSE != nil && *fileSettings.AmazonS3SSE,
 		AmazonS3Trace:                      fileSettings.AmazonS3Trace != nil && *fileSettings.AmazonS3Trace,
