@@ -165,7 +165,6 @@ func (p *Plugin) Reconfigure() error {
 	if conf.AmazonS3BucketSettings.Enable {
 		serverFileSettings = conf.AmazonS3BucketSettings.Settings
 	}
-	serverFileSettings.SetDefaults(true)
 
 	// Reinitialise the filestore backend
 	filesBackendSettings := FixedFileSettingsToFileBackendSettings(serverFileSettings)
@@ -260,9 +259,13 @@ func (p *Plugin) Reconfigure() error {
 // FixedFileSettingsToFileBackendSettings converts FileSettings to FileBackendSettings.
 // This is a copy of FileSettings.ToFileBackendSettings from mattermost-server with nil-safe
 // handling for boolean pointer fields, as the original method may be removed in future versions.
-// Note: SetDefaults(true) should be called on fileSettings before calling this function
-// to ensure string pointer fields are initialized.
+// This function internally calls SetDefaults(true) to ensure all pointer fields are initialized.
 func FixedFileSettingsToFileBackendSettings(fileSettings mattermostModel.FileSettings) filestore.FileBackendSettings {
+	// SetDefaults(true) initializes nil pointer fields with sensible defaults while preserving
+	// any existing user-configured values. This prevents nil pointer dereferences when accessing
+	// string and int64 pointer fields like AmazonS3Bucket, AmazonS3Region, etc.
+	fileSettings.SetDefaults(true)
+
 	if *fileSettings.DriverName == mattermostModel.ImageDriverLocal {
 		return filestore.FileBackendSettings{
 			DriverName: *fileSettings.DriverName,

@@ -124,3 +124,95 @@ func TestFixedFileSettingsToFileBackendSettings_S3WithNonDefaultBooleanValues(t 
 	assert.True(t, result.AmazonS3SSE, "AmazonS3SSE should be true when explicitly set")
 	assert.True(t, result.AmazonS3Trace, "AmazonS3Trace should be true when explicitly set")
 }
+
+func TestFixedFileSettingsToFileBackendSettings_NilPointerSafety(t *testing.T) {
+	// This test verifies that the function doesn't panic when pointer fields are nil.
+	// The original bug was direct dereferencing without checking for nil, causing:
+	// "panic: runtime error: invalid memory address or nil pointer dereference"
+	// SetDefaults(true) inside the function should initialize all nil fields safely.
+
+	t.Run("S3WithNilStringFields", func(t *testing.T) {
+		fileSettings := mattermostModel.FileSettings{
+			DriverName:          mattermostModel.NewString(mattermostModel.ImageDriverS3),
+			AmazonS3AccessKeyId: mattermostModel.NewString("access-key"),
+			// All other string fields intentionally left as nil
+			AmazonS3SecretAccessKey:            nil,
+			AmazonS3Bucket:                     nil,
+			AmazonS3PathPrefix:                 nil,
+			AmazonS3Region:                     nil,
+			AmazonS3Endpoint:                   nil,
+			AmazonS3RequestTimeoutMilliseconds: nil,
+		}
+
+		// This should not panic
+		require.NotPanics(t, func() {
+			result := FixedFileSettingsToFileBackendSettings(fileSettings)
+
+			// Verify the function completed successfully and returned sensible values
+			assert.Equal(t, mattermostModel.ImageDriverS3, result.DriverName)
+			assert.Equal(t, "access-key", result.AmazonS3AccessKeyId)
+			// SetDefaults should have populated these with defaults
+			assert.NotNil(t, result.AmazonS3Bucket)
+			assert.NotNil(t, result.AmazonS3Region)
+			assert.True(t, result.AmazonS3SSL, "AmazonS3SSL should default to true")
+		})
+	})
+
+	t.Run("CompletelyEmptyFileSettings", func(t *testing.T) {
+		// All fields are nil - this is the worst-case scenario
+		fileSettings := mattermostModel.FileSettings{}
+
+		// This should not panic - SetDefaults should initialize everything
+		require.NotPanics(t, func() {
+			result := FixedFileSettingsToFileBackendSettings(fileSettings)
+			// After SetDefaults, DriverName should be initialized
+			assert.NotEmpty(t, result.DriverName)
+		})
+	})
+
+	t.Run("LocalDriverWithNilDirectory", func(t *testing.T) {
+		fileSettings := mattermostModel.FileSettings{
+			DriverName: mattermostModel.NewString(mattermostModel.ImageDriverLocal),
+			Directory:  nil, // Intentionally nil
+		}
+
+		// Should not panic
+		require.NotPanics(t, func() {
+			result := FixedFileSettingsToFileBackendSettings(fileSettings)
+			assert.Equal(t, mattermostModel.ImageDriverLocal, result.DriverName)
+			// SetDefaults should have initialized Directory with a default value
+			assert.NotEmpty(t, result.Directory)
+		})
+	})
+
+	t.Run("S3WithNilDriverName", func(t *testing.T) {
+		fileSettings := mattermostModel.FileSettings{
+			DriverName:          nil, // Intentionally nil
+			AmazonS3Bucket:      mattermostModel.NewString("my-bucket"),
+			AmazonS3AccessKeyId: mattermostModel.NewString("access-key"),
+		}
+
+		// Should not panic even with nil DriverName
+		require.NotPanics(t, func() {
+			result := FixedFileSettingsToFileBackendSettings(fileSettings)
+			// SetDefaults should have initialized DriverName with a default value
+			assert.NotEmpty(t, result.DriverName)
+		})
+	})
+
+	t.Run("S3WithNilTimeout", func(t *testing.T) {
+		fileSettings := mattermostModel.FileSettings{
+			DriverName:                         mattermostModel.NewString(mattermostModel.ImageDriverS3),
+			AmazonS3Bucket:                     mattermostModel.NewString("my-bucket"),
+			AmazonS3RequestTimeoutMilliseconds: nil, // Intentionally nil
+		}
+
+		// Should not panic with nil timeout
+		require.NotPanics(t, func() {
+			result := FixedFileSettingsToFileBackendSettings(fileSettings)
+			assert.Equal(t, mattermostModel.ImageDriverS3, result.DriverName)
+			// SetDefaults should have initialized timeout with a default value
+			assert.NotZero(t, result.AmazonS3RequestTimeoutMilliseconds)
+		})
+	})
+}
