@@ -181,12 +181,16 @@ func (p *Plugin) Reconfigure() error {
 			pluginConfig := p.Client.Configuration.GetPluginConfig()
 
 			// Disable the S3 settings in case the AWS config is invalid
-			pluginConfig["amazons3bucketsettings"].(map[string]interface{})["Enable"] = false
+			if s3Settings, ok := pluginConfig["amazons3bucketsettings"].(map[string]interface{}); ok && s3Settings != nil {
+				s3Settings["Enable"] = false
 
-			confErr := p.Client.Configuration.SavePluginConfig(pluginConfig)
-			if confErr != nil {
-				p.Client.Log.Error("Error while saving plugin config.", "Error", confErr.Error())
-				return confErr
+				confErr := p.Client.Configuration.SavePluginConfig(pluginConfig)
+				if confErr != nil {
+					p.Client.Log.Error("Error while saving plugin config.", "Error", confErr.Error())
+					return confErr
+				}
+			} else {
+				p.Client.Log.Warn("S3 bucket settings not found or invalid in plugin config. Could not disable S3 configuration potentially leading to errors. Check your storage configuration.")
 			}
 
 			err = errors.Wrap(err, "connection test for filestore failed")
@@ -252,7 +256,16 @@ func (p *Plugin) Reconfigure() error {
 	return nil
 }
 
+// FixedFileSettingsToFileBackendSettings converts FileSettings to FileBackendSettings.
+// This is a copy of FileSettings.ToFileBackendSettings from mattermost-server with nil-safe
+// handling for boolean pointer fields, as the original method may be removed in future versions.
+// This function internally calls SetDefaults(true) to ensure all pointer fields are initialized.
 func FixedFileSettingsToFileBackendSettings(fileSettings mattermostModel.FileSettings) filestore.FileBackendSettings {
+	// SetDefaults(true) initializes nil pointer fields with sensible defaults while preserving
+	// any existing user-configured values. This prevents nil pointer dereferences when accessing
+	// string and int64 pointer fields like AmazonS3Bucket, AmazonS3Region, etc.
+	fileSettings.SetDefaults(true)
+
 	if *fileSettings.DriverName == mattermostModel.ImageDriverLocal {
 		return filestore.FileBackendSettings{
 			DriverName: *fileSettings.DriverName,
@@ -260,30 +273,15 @@ func FixedFileSettingsToFileBackendSettings(fileSettings mattermostModel.FileSet
 		}
 	}
 
-	amazonS3Bucket := ""
-	if fileSettings.AmazonS3Bucket != nil {
-		amazonS3Bucket = *fileSettings.AmazonS3Bucket
-	}
-
-	amazonS3PathPrefix := ""
-	if fileSettings.AmazonS3PathPrefix != nil {
-		amazonS3PathPrefix = *fileSettings.AmazonS3PathPrefix
-	}
-
-	amazonS3Region := ""
-	if fileSettings.AmazonS3Region != nil {
-		amazonS3Region = *fileSettings.AmazonS3Region
-	}
-
 	return filestore.FileBackendSettings{
 		DriverName:                         *fileSettings.DriverName,
 		AmazonS3AccessKeyId:                *fileSettings.AmazonS3AccessKeyId,
 		AmazonS3SecretAccessKey:            *fileSettings.AmazonS3SecretAccessKey,
-		AmazonS3Bucket:                     amazonS3Bucket,
-		AmazonS3PathPrefix:                 amazonS3PathPrefix,
-		AmazonS3Region:                     amazonS3Region,
+		AmazonS3Bucket:                     *fileSettings.AmazonS3Bucket,
+		AmazonS3PathPrefix:                 *fileSettings.AmazonS3PathPrefix,
+		AmazonS3Region:                     *fileSettings.AmazonS3Region,
 		AmazonS3Endpoint:                   *fileSettings.AmazonS3Endpoint,
-		AmazonS3SSL:                        fileSettings.AmazonS3SSL != nil && *fileSettings.AmazonS3SSL,
+		AmazonS3SSL:                        fileSettings.AmazonS3SSL == nil || *fileSettings.AmazonS3SSL,
 		AmazonS3SignV2:                     fileSettings.AmazonS3SignV2 != nil && *fileSettings.AmazonS3SignV2,
 		AmazonS3SSE:                        fileSettings.AmazonS3SSE != nil && *fileSettings.AmazonS3SSE,
 		AmazonS3Trace:                      fileSettings.AmazonS3Trace != nil && *fileSettings.AmazonS3Trace,
