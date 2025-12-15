@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-22.04
     services:
       postgres:
-        image: mattermostdevelopment/mirrored-postgres:13
+        image: mattermostdevelopment/mirrored-postgres:14
         env:
           POSTGRES_USER: mmuser
           POSTGRES_PASSWORD: mostest
