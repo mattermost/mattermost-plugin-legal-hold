@@ -27,6 +27,6 @@ type AmazonS3BucketSettings struct {
 // Clone shallow copies the Configuration. Your implementation may require a deep copy if
 // your Configuration has reference types.
 func (c *Configuration) Clone() *Configuration {
-	var clone = *c
+	clone := *c
 	return &clone
 }

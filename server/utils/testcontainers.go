@@ -42,7 +42,7 @@ func CreateTestDB(ctx context.Context, driverName string, databaseName string) (
 	}
 
 	if err == nil {
-		os.Setenv("TEST_DATABASE_POSTGRESQL_DSN", connStr)
+		_ = os.Setenv("TEST_DATABASE_POSTGRESQL_DSN", connStr)
 	}
 
 	return connStr, tearDown, err

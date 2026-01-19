@@ -134,7 +134,7 @@ func (p *Plugin) setConfiguration(configuration *config.Configuration) {
 
 // OnConfigurationChange is invoked when Configuration changes may have been made.
 func (p *Plugin) OnConfigurationChange() error {
-	var configuration = new(config.Configuration)
+	configuration := new(config.Configuration)
 
 	// Load the public Configuration fields from the Mattermost server Configuration.
 	if err := p.API.LoadPluginConfiguration(configuration); err != nil {
@@ -181,7 +181,7 @@ func (p *Plugin) Reconfigure() error {
 			pluginConfig := p.Client.Configuration.GetPluginConfig()
 
 			// Disable the S3 settings in case the AWS config is invalid
-			if s3Settings, ok := pluginConfig["amazons3bucketsettings"].(map[string]interface{}); ok && s3Settings != nil {
+			if s3Settings, ok := pluginConfig["amazons3bucketsettings"].(map[string]any); ok && s3Settings != nil {
 				s3Settings["Enable"] = false
 
 				confErr := p.Client.Configuration.SavePluginConfig(pluginConfig)

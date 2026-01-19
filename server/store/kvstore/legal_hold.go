@@ -93,12 +93,11 @@ func (kvs Impl) GetAllLegalHolds() ([]model.LegalHold, error) {
 	keys, err := kvs.client.KV.ListKeys(
 		0, 1000000000,
 		pluginapi.WithPrefix(legalHoldPrefix))
-
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get all legal holds")
 	}
 
-	var legalHolds = make([]model.LegalHold, 0)
+	legalHolds := make([]model.LegalHold, 0)
 	for _, key := range keys {
 		var legalHold model.LegalHold
 		err = kvs.client.KV.Get(key, &legalHold)

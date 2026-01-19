@@ -23,7 +23,6 @@ func NewLegalHoldCursor(startTime int64) LegalHoldCursor {
 // LegalHoldPost represents one post and its associated data as required for a legal hold record.
 // It is based on the model.CompliancePost struct from Mattermost Server.
 type LegalHoldPost struct {
-
 	// From Team
 	TeamName        string `csv:"TeamName"`
 	TeamDisplayName string `csv:"TeamDisplayName"`

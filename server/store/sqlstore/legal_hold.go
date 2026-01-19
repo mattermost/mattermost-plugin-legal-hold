@@ -123,7 +123,7 @@ func (ss SQLStore) GetChannelIDsForUserDuring(userID string, startTime int64, en
 	if !includePublic {
 		query = query.LeftJoin("Channels on cmh.channelid = Channels.id").
 			Where(sq.Or{
-				sq.Eq{"Channels.id": nil},                                // Include deleted channels
+				sq.Eq{"Channels.id": nil},                                  // Include deleted channels
 				sq.NotEq{"Channels.type": mattermostModel.ChannelTypeOpen}, // Include non-public channels
 			})
 	}
