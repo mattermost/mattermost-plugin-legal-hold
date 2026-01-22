@@ -232,26 +232,5 @@ func (ss SQLStore) GetChannelMetadataForIDs(channelIDs []string) ([]model.Channe
 		return nil, errors.Wrap(err, "unable to get channel metadata")
 	}
 
-	// Track which channels were found
-	foundChannelIDs := make(map[string]struct{})
-	for _, m := range data {
-		foundChannelIDs[m.ChannelID] = struct{}{}
-	}
-
-	// Create placeholders for missing (deleted) channels
-	for _, channelID := range channelIDs {
-		if _, found := foundChannelIDs[channelID]; !found {
-			data = append(data, model.ChannelMetadata{
-				ChannelID:          channelID,
-				ChannelName:        "[deleted]",
-				ChannelDisplayName: "[Deleted Channel]",
-				ChannelType:        "O", // Unknown, default to Open
-				TeamID:             "00000000000000000000000000",
-				TeamName:           "[deleted]",
-				TeamDisplayName:    "[Deleted Team]",
-			})
-		}
-	}
-
 	return data, nil
 }

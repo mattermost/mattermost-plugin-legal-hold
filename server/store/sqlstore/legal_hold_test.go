@@ -173,69 +173,36 @@ func TestLegalHold_GetChannelIDsForUserDuring_ExcludePublic(t *testing.T) {
 	require.ElementsMatch(t, channelIDs, []string{privateChannel.Id, dmChannel.Id, groupDM.Id})
 }
 
-func TestSQLStore_LegalHold_GetFileInfosByIDs(t *testing.T) {
-	// TODO: Implement me!
-	_ = t
-}
-
-func TestSQLStore_GetChannelMetadataForIDs(t *testing.T) {
+func TestLegalHold_GetChannelIDsForUserDuring_DeletedChannels(t *testing.T) {
 	th := SetupHelper(t).SetupBasic(t)
 	defer th.TearDown(t)
 
-	// Create a channel to have real metadata
-	channel, err := th.CreateOpenChannel("test-channel", th.User1.Id, th.Team1.Id)
+	timeReference := mattermostModel.GetMillis()
+	start := timeReference + 1000000
+	end := start + 10000
+
+	// Create a private channel that will be "deleted"
+	privateChannel, err := th.CreateChannel("private-channel-to-delete", th.User1.Id, th.Team1.Id, mattermostModel.ChannelTypePrivate)
 	require.NoError(t, err)
 
-	// Non-existent channel ID (simulating a deleted channel)
-	deletedChannelID := mattermostModel.NewId()
-
-	// Request metadata for both existing and non-existing channels
-	channelIDs := []string{channel.Id, deletedChannelID}
-	metadata, err := th.Store.GetChannelMetadataForIDs(channelIDs)
+	// Create another private channel that will remain
+	existingChannel, err := th.CreateChannel("existing-private-channel", th.User1.Id, th.Team1.Id, mattermostModel.ChannelTypePrivate)
 	require.NoError(t, err)
 
-	// Should return metadata for both channels
-	require.Len(t, metadata, 2)
+	// Log join events for both channels
+	require.NoError(t, th.mmStore.ChannelMemberHistory().LogJoinEvent(th.User1.Id, privateChannel.Id, start+1000))
+	require.NoError(t, th.mmStore.ChannelMemberHistory().LogJoinEvent(th.User1.Id, existingChannel.Id, start+1000))
 
-	// Create a map for easier lookup
-	metadataMap := make(map[string]model.ChannelMetadata)
-	for _, m := range metadata {
-		metadataMap[m.ChannelID] = m
-	}
-
-	// Verify existing channel has proper metadata
-	existingMeta, ok := metadataMap[channel.Id]
-	require.True(t, ok, "existing channel should have metadata")
-	require.Equal(t, "test-channel", existingMeta.ChannelName)
-	require.Equal(t, th.Team1.Id, existingMeta.TeamID)
-
-	// Verify deleted channel has placeholder metadata
-	deletedMeta, ok := metadataMap[deletedChannelID]
-	require.True(t, ok, "deleted channel should have placeholder metadata")
-	require.Equal(t, deletedChannelID, deletedMeta.ChannelID)
-	require.Equal(t, "[deleted]", deletedMeta.ChannelName)
-	require.Equal(t, "[Deleted Channel]", deletedMeta.ChannelDisplayName)
-	require.Equal(t, "O", deletedMeta.ChannelType)
-	require.Equal(t, "00000000000000000000000000", deletedMeta.TeamID)
-	require.Equal(t, "[deleted]", deletedMeta.TeamName)
-	require.Equal(t, "[Deleted Team]", deletedMeta.TeamDisplayName)
-}
-
-func TestSQLStore_GetChannelMetadataForIDs_AllDeleted(t *testing.T) {
-	th := SetupHelper(t).SetupBasic(t)
-	defer th.TearDown(t)
-
-	// Request metadata for only non-existing channels
-	deletedChannelIDs := []string{mattermostModel.NewId(), mattermostModel.NewId()}
-	metadata, err := th.Store.GetChannelMetadataForIDs(deletedChannelIDs)
+	// Delete the private channel from the Channels table (simulating a permanently deleted channel)
+	// The ChannelMemberHistory record will still exist
+	err = th.mmStore.Channel().PermanentDelete(privateChannel.Id)
 	require.NoError(t, err)
 
-	// Should return placeholder metadata for all channels
-	require.Len(t, metadata, 2)
+	// With includePublic=false, the LEFT JOIN should still return the deleted channel
+	// because we use LEFT JOIN and check for Channels.id IS NULL
+	channelIDs, err := th.Store.GetChannelIDsForUserDuring(th.User1.Id, start, end, false)
+	require.NoError(t, err)
 
-	for _, m := range metadata {
-		require.Contains(t, deletedChannelIDs, m.ChannelID)
-		require.Equal(t, "[deleted]", m.ChannelName)
-		require.Equal(t, "[Deleted Channel]", m.ChannelDisplayName)
-	}
+	// Should include both the deleted channel and the existing channel
+	require.ElementsMatch(t, channelIDs, []string{privateChannel.Id, existingChannel.Id})
 }
