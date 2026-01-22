@@ -208,7 +208,14 @@ func ProcessLegalHold(hold model.LegalHold, outputPath string) error {
 
 			postsWithFiles := parse.AddFilesToPosts(posts, fileLookup)
 
-			if err = view.WriteUserChannel(hold, user, channel, postsWithFiles, teamForChannelLookup[channel.ID], channelLookup[channel.ID], outputPath); err != nil {
+			// Get channel and team data from lookups, or create fallback if not found
+			var firstPost *model.Post
+			if len(posts) > 0 {
+				firstPost = posts[0]
+			}
+			channelData, teamData := view.GetChannelAndTeamData(channel.ID, firstPost, channelLookup, teamForChannelLookup)
+
+			if err = view.WriteUserChannel(hold, user, channel, postsWithFiles, teamData, channelData, outputPath); err != nil {
 				return err
 			}
 		}
