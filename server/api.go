@@ -172,7 +172,7 @@ func (p *Plugin) releaseLegalHold(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b, jsonErr := json.Marshal(make(map[string]interface{}))
+	b, jsonErr := json.Marshal(make(map[string]any))
 	if jsonErr != nil {
 		http.Error(w, "Error encoding json", http.StatusInternalServerError)
 		return

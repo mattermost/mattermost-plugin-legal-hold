@@ -173,7 +173,36 @@ func TestLegalHold_GetChannelIDsForUserDuring_ExcludePublic(t *testing.T) {
 	require.ElementsMatch(t, channelIDs, []string{privateChannel.Id, dmChannel.Id, groupDM.Id})
 }
 
-func TestSQLStore_LegalHold_GetFileInfosByIDs(t *testing.T) {
-	// TODO: Implement me!
-	_ = t
+func TestLegalHold_GetChannelIDsForUserDuring_DeletedChannels(t *testing.T) {
+	th := SetupHelper(t).SetupBasic(t)
+	defer th.TearDown(t)
+
+	timeReference := mattermostModel.GetMillis()
+	start := timeReference + 1000000
+	end := start + 10000
+
+	// Create a private channel that will be "deleted"
+	privateChannel, err := th.CreateChannel("private-channel-to-delete", th.User1.Id, th.Team1.Id, mattermostModel.ChannelTypePrivate)
+	require.NoError(t, err)
+
+	// Create another private channel that will remain
+	existingChannel, err := th.CreateChannel("existing-private-channel", th.User1.Id, th.Team1.Id, mattermostModel.ChannelTypePrivate)
+	require.NoError(t, err)
+
+	// Log join events for both channels
+	require.NoError(t, th.mmStore.ChannelMemberHistory().LogJoinEvent(th.User1.Id, privateChannel.Id, start+1000))
+	require.NoError(t, th.mmStore.ChannelMemberHistory().LogJoinEvent(th.User1.Id, existingChannel.Id, start+1000))
+
+	// Delete the private channel from the Channels table (simulating a permanently deleted channel)
+	// The ChannelMemberHistory record will still exist
+	err = th.mmStore.Channel().PermanentDelete(privateChannel.Id)
+	require.NoError(t, err)
+
+	// With includePublic=false, the LEFT JOIN should still return the deleted channel
+	// because we use LEFT JOIN and check for Channels.id IS NULL
+	channelIDs, err := th.Store.GetChannelIDsForUserDuring(th.User1.Id, start, end, false)
+	require.NoError(t, err)
+
+	// Should include both the deleted channel and the existing channel
+	require.ElementsMatch(t, channelIDs, []string{privateChannel.Id, existingChannel.Id})
 }

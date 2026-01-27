@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost-server/v6/shared/filestore"
+	mmstore "github.com/mattermost/mattermost-server/v6/store/sqlstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
-	"github.com/mattermost/mattermost-server/v6/model"
-	"github.com/mattermost/mattermost-server/v6/shared/filestore"
-	mmstore "github.com/mattermost/mattermost-server/v6/store/sqlstore"
 )
 
 const (
@@ -52,7 +52,7 @@ func SetupHelper(t *testing.T) *TestHelper {
 		dbDriverName = "postgres"
 	}
 
-	if !(dbDriverName == "postgres" || dbDriverName == "mysql") {
+	if dbDriverName != "postgres" && dbDriverName != "mysql" {
 		t.Fatalf("invalid TEST_DB_DRIVER_NAME environment variable: %s", dbDriverName)
 	}
 
@@ -320,26 +320,26 @@ type testLogger struct {
 }
 
 // Error logs an error message, optionally structured with alternating key, value parameters.
-func (l *testLogger) Error(message string, keyValuePairs ...interface{}) {
+func (l *testLogger) Error(message string, keyValuePairs ...any) {
 	l.log("error", message, keyValuePairs...)
 }
 
 // Warn logs an error message, optionally structured with alternating key, value parameters.
-func (l *testLogger) Warn(message string, keyValuePairs ...interface{}) {
+func (l *testLogger) Warn(message string, keyValuePairs ...any) {
 	l.log("warn", message, keyValuePairs...)
 }
 
 // Info logs an error message, optionally structured with alternating key, value parameters.
-func (l *testLogger) Info(message string, keyValuePairs ...interface{}) {
+func (l *testLogger) Info(message string, keyValuePairs ...any) {
 	l.log("info", message, keyValuePairs...)
 }
 
 // Debug logs an error message, optionally structured with alternating key, value parameters.
-func (l *testLogger) Debug(message string, keyValuePairs ...interface{}) {
+func (l *testLogger) Debug(message string, keyValuePairs ...any) {
 	l.log("debug", message, keyValuePairs...)
 }
 
-func (l *testLogger) log(level string, message string, keyValuePairs ...interface{}) {
+func (l *testLogger) log(level string, message string, keyValuePairs ...any) {
 	var args strings.Builder
 
 	if len(keyValuePairs) > 0 && len(keyValuePairs)%2 != 0 {
@@ -347,7 +347,7 @@ func (l *testLogger) log(level string, message string, keyValuePairs ...interfac
 	}
 
 	for i := 0; i < len(keyValuePairs); i += 2 {
-		args.WriteString(fmt.Sprintf("%v:%v  ", keyValuePairs[i], keyValuePairs[i+1]))
+		fmt.Fprintf(&args, "%v:%v  ", keyValuePairs[i], keyValuePairs[i+1])
 	}
 
 	l.tb.Logf("level=%s  message=%s  %s", level, message, args.String())

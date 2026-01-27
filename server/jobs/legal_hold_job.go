@@ -209,8 +209,8 @@ func (j *LegalHoldJob) GetRunningLegalHolds() ([]string, error) {
 	var runningJobs []string
 
 	for _, job := range jobs {
-		if strings.HasPrefix(job.Key, runOnceJobKeyPrefix) {
-			runningJobs = append(runningJobs, strings.TrimPrefix(job.Key, runOnceJobKeyPrefix))
+		if suffix, found := strings.CutPrefix(job.Key, runOnceJobKeyPrefix); found {
+			runningJobs = append(runningJobs, suffix)
 		}
 	}
 
