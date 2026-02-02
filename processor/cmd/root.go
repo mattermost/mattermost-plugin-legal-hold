@@ -152,14 +152,15 @@ func ProcessLegalHold(hold model.LegalHold, outputPath string) error {
 
 	teamLookup, channelLookup, teamForChannelLookup := parse.CreateTeamAndChannelLookup(index)
 
-	channels, err := parse.ListChannels(hold)
-	if err != nil {
-		return err
-	}
-
+	// Build channels list from index to ensure every channel in the index gets an HTML file,
+	// even if its data directory doesn't exist (avoids 404 links in index.html).
+	var channels []model.Channel
 	fmt.Println("Finding channels...")
-	for _, channel := range channels {
-		fmt.Printf("- Channel: %s\n", channel.ID)
+	for _, team := range index.Teams {
+		for _, ch := range team.Channels {
+			channels = append(channels, model.NewChannel(filepath.Join(hold.Path, ch.ID), ch.ID))
+			fmt.Printf("- Channel: %s (%s)\n", ch.DisplayName, ch.ID)
+		}
 	}
 	fmt.Println()
 
@@ -181,14 +182,17 @@ func ProcessLegalHold(hold model.LegalHold, outputPath string) error {
 			return err
 		}
 
-		if posts == nil {
-			continue
-		}
-
 		// Augment posts with the path to the file attachments using the fileID LUT.
 		postsWithFiles := parse.AddFilesToPosts(posts, fileLookup)
 
-		if err = view.WriteChannel(hold, channel, postsWithFiles, teamForChannelLookup[channel.ID], channelLookup[channel.ID], outputPath); err != nil {
+		// Get channel and team data from lookups, or create fallback if not found
+		var firstPost *model.Post
+		if len(posts) > 0 {
+			firstPost = posts[0]
+		}
+		channelData, teamData := view.GetChannelAndTeamData(channel.ID, firstPost, channelLookup, teamForChannelLookup)
+
+		if err = view.WriteChannel(hold, channel, postsWithFiles, teamData, channelData, outputPath); err != nil {
 			return err
 		}
 	}
