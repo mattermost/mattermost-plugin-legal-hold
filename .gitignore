@@ -1,8 +1,16 @@
 bin/
 dist/
+webapp/src/manifest.ts
+server/manifest.go
 
 # Mac
 .DS_Store
+
+# Jetbrains
+.idea/
+
+# VS Code
+.vscode
 
 # env, cert, key, license
 .env*
@@ -16,8 +24,8 @@ dist/
 # node
 *.lock
 
-# Jetbrains
-.idea/
-
+# Processor
 processor/temp
+
+# Aider
 .aider*
