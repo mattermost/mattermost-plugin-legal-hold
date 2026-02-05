@@ -88,6 +88,9 @@ func main() {
 		}
 
 	case "check":
+		// Log the manifest
+		fmt.Printf("Version:\n%s\n", manifest.Version)
+
 		if err := manifest.IsValid(); err != nil {
 			panic("failed to check manifest: " + err.Error())
 		}
