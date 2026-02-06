@@ -184,4 +184,53 @@ func TestAddFilesToPosts(t *testing.T) {
 		// File not in lookup should not be added
 		assert.Empty(t, result[0].Files)
 	})
+
+	t.Run("correctly parses multiple file IDs from a post", func(t *testing.T) {
+		// This test certifies the bug where multiple file IDs are not parsed correctly.
+		// The PostFileIDs field contains a JSON-like array string: ["file1","file2"]
+		// The function should parse each file ID and look it up in the fileLookup.
+		posts := []*model.Post{
+			{
+				PostID:      "post1",
+				PostMessage: "Has multiple files",
+				PostFileIDs: `["abc123","def456","ghi789"]`,
+			},
+		}
+		fileLookup := model.FileLookup{
+			"abc123": "files/abc123/document.pdf",
+			"def456": "files/def456/image.png",
+			"ghi789": "files/ghi789/video.mp4",
+		}
+
+		result := AddFilesToPosts(posts, fileLookup)
+
+		require.Len(t, result, 1)
+		assert.Equal(t, "post1", result[0].PostID)
+		// Should find all three files
+		require.Len(t, result[0].Files, 3, "expected 3 files but got %d: %v", len(result[0].Files), result[0].Files)
+		assert.Contains(t, result[0].Files, "files/abc123/document.pdf")
+		assert.Contains(t, result[0].Files, "files/def456/image.png")
+		assert.Contains(t, result[0].Files, "files/ghi789/video.mp4")
+	})
+
+	t.Run("correctly parses single file ID from a post", func(t *testing.T) {
+		// Even a single file ID should be parsed correctly
+		posts := []*model.Post{
+			{
+				PostID:      "post1",
+				PostMessage: "Has one file",
+				PostFileIDs: `["xyz999"]`,
+			},
+		}
+		fileLookup := model.FileLookup{
+			"xyz999": "files/xyz999/attachment.txt",
+		}
+
+		result := AddFilesToPosts(posts, fileLookup)
+
+		require.Len(t, result, 1)
+		assert.Equal(t, "post1", result[0].PostID)
+		require.Len(t, result[0].Files, 1, "expected 1 file but got %d: %v", len(result[0].Files), result[0].Files)
+		assert.Equal(t, "files/xyz999/attachment.txt", result[0].Files[0])
+	})
 }
