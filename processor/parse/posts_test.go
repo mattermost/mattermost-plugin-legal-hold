@@ -186,7 +186,7 @@ func TestAddFilesToPosts(t *testing.T) {
 	})
 
 	t.Run("correctly parses multiple file IDs from a post", func(t *testing.T) {
-		// This test certifies the bug where multiple file IDs are not parsed correctly.
+		// This test verifies that multiple file IDs are parsed correctly.
 		// The PostFileIDs field contains a JSON-like array string: ["file1","file2"]
 		// The function should parse each file ID and look it up in the fileLookup.
 		posts := []*model.Post{
