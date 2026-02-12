@@ -218,7 +218,7 @@ detach: setup-attach
 		kill -9 $$DELVE_PID ; \
 	fi
 
-## Runs any lints and unit tests defined for the server and webapp, if they exist.
+## Runs any lints and unit tests defined for the server, webapp, and processor, if they exist.
 .PHONY: test
 test: webapp/node_modules install-go-tools
 ifneq ($(HAS_SERVER),)
@@ -228,6 +228,7 @@ endif
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && $(NPM) run test;
 endif
+	cd $(PROCESSOR_DIR) && $(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./...
 
 ## Creates a coverage report for the server code.
 .PHONY: coverage
