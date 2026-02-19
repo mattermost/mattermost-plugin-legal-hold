@@ -1,6 +1,6 @@
 module github.com/mattermost/mattermost-plugin-legal-hold/processor
 
-go 1.21
+go 1.25.7
 
 require (
 	github.com/gocarina/gocsv v0.0.0-20231116093920-b87c2d0e983a
