@@ -5,7 +5,6 @@ import "time"
 // Post represents one post and its associated data as required for a legal hold record.
 // It must be kept in sync with model.LegalHoldPost from mattermost-plugin-legal-hold
 type Post struct {
-
 	// From Team
 	TeamID          string `csv:"TeamId"`
 	TeamName        string `csv:"TeamName"`

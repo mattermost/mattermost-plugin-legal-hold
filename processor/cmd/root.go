@@ -21,9 +21,11 @@ var rootCmd = &cobra.Command{
 	Run:   Process,
 }
 
-var legalHoldData string
-var outputPath string
-var legalHoldSecret string
+var (
+	legalHoldData   string
+	outputPath      string
+	legalHoldSecret string
+)
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&legalHoldData, "legal-hold-data", "", "Path to the legal hold data file")
@@ -58,7 +60,7 @@ func Process(cmd *cobra.Command, _ []string) {
 
 	tempPath := filepath.Join(outputPath, "temp")
 
-	err := os.MkdirAll(tempPath, 0755)
+	err := os.MkdirAll(tempPath, 0o755)
 	if err != nil {
 		fmt.Printf("Error while creating temporary directory: %v\n", err)
 	}
@@ -261,13 +263,13 @@ func extractItem(f *zip.File, outputPath string) error {
 
 	fpath := filepath.Join(outputPath, f.Name)
 	if f.FileInfo().IsDir() {
-		err := os.MkdirAll(fpath, 0644)
+		err := os.MkdirAll(fpath, 0o644)
 		if err != nil {
 			return err
 		}
 	} else {
 		fdir := filepath.Dir(fpath)
-		err = os.MkdirAll(fdir, 0755)
+		err = os.MkdirAll(fdir, 0o755)
 		if err != nil {
 			return err
 		}

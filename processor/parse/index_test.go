@@ -57,7 +57,7 @@ func TestLoadIndex(t *testing.T) {
 		indexJSON, err := json.Marshal(index)
 		require.NoError(t, err)
 
-		err = os.WriteFile(filepath.Join(tempDir, "index.json"), indexJSON, 0644)
+		err = os.WriteFile(filepath.Join(tempDir, "index.json"), indexJSON, 0o644)
 		require.NoError(t, err)
 
 		legalHold := model.LegalHold{
@@ -98,7 +98,7 @@ func TestLoadIndex(t *testing.T) {
 		require.NoError(t, err)
 		defer os.RemoveAll(tempDir)
 
-		err = os.WriteFile(filepath.Join(tempDir, "index.json"), []byte("not valid json"), 0644)
+		err = os.WriteFile(filepath.Join(tempDir, "index.json"), []byte("not valid json"), 0o644)
 		require.NoError(t, err)
 
 		legalHold := model.LegalHold{

@@ -19,7 +19,7 @@ func TestLoadPosts(t *testing.T) {
 
 		// Create channel directory but no messages subdirectory
 		channelDir := filepath.Join(tempDir, "channel1")
-		err = os.MkdirAll(channelDir, 0755)
+		err = os.MkdirAll(channelDir, 0o755)
 		require.NoError(t, err)
 
 		channel := model.NewChannel(channelDir, "channel1")
@@ -37,7 +37,7 @@ func TestLoadPosts(t *testing.T) {
 
 		// Create channel directory with empty messages subdirectory
 		messagesDir := filepath.Join(tempDir, "channel1", "messages")
-		err = os.MkdirAll(messagesDir, 0755)
+		err = os.MkdirAll(messagesDir, 0o755)
 		require.NoError(t, err)
 
 		channel := model.NewChannel(filepath.Join(tempDir, "channel1"), "channel1")
@@ -54,14 +54,14 @@ func TestLoadPosts(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		messagesDir := filepath.Join(tempDir, "channel1", "messages")
-		err = os.MkdirAll(messagesDir, 0755)
+		err = os.MkdirAll(messagesDir, 0o755)
 		require.NoError(t, err)
 
 		// Create a CSV file with post data
 		csvContent := `TeamId,TeamName,TeamDisplayName,ChannelName,ChannelDisplayName,ChannelType,UserUsername,UserEmail,UserNickname,PostId,PostCreateAt,PostUpdateAt,PostDeleteAt,PostRootId,PostOriginalId,PostMessage,PostType,PostProps,PostHashtags,PostFileIds,IsBot
 team1,test-team,Test Team,test-channel,Test Channel,O,testuser,test@example.com,Test,post1,1609459200000,1609459200000,0,,,Hello World,,{},,,false`
 
-		err = os.WriteFile(filepath.Join(messagesDir, "posts.csv"), []byte(csvContent), 0644)
+		err = os.WriteFile(filepath.Join(messagesDir, "posts.csv"), []byte(csvContent), 0o644)
 		require.NoError(t, err)
 
 		channel := model.NewChannel(filepath.Join(tempDir, "channel1"), "channel1")
@@ -81,7 +81,7 @@ team1,test-team,Test Team,test-channel,Test Channel,O,testuser,test@example.com,
 		defer os.RemoveAll(tempDir)
 
 		messagesDir := filepath.Join(tempDir, "channel1", "messages")
-		err = os.MkdirAll(messagesDir, 0755)
+		err = os.MkdirAll(messagesDir, 0o755)
 		require.NoError(t, err)
 
 		// Create CSV with posts at different times
@@ -90,7 +90,7 @@ team1,test-team,Test Team,test-channel,Test Channel,O,testuser,test@example.com,
 team1,test-team,Test Team,test-channel,Test Channel,O,testuser,test@example.com,Test,post2,5000,5000,0,,,In Range,,{},,,false
 team1,test-team,Test Team,test-channel,Test Channel,O,testuser,test@example.com,Test,post3,9000,9000,0,,,Too Late,,{},,,false`
 
-		err = os.WriteFile(filepath.Join(messagesDir, "posts.csv"), []byte(csvContent), 0644)
+		err = os.WriteFile(filepath.Join(messagesDir, "posts.csv"), []byte(csvContent), 0o644)
 		require.NoError(t, err)
 
 		// Create channel with time bounds that only include post2
@@ -110,13 +110,13 @@ team1,test-team,Test Team,test-channel,Test Channel,O,testuser,test@example.com,
 		defer os.RemoveAll(tempDir)
 
 		messagesDir := filepath.Join(tempDir, "channel1", "messages")
-		err = os.MkdirAll(messagesDir, 0755)
+		err = os.MkdirAll(messagesDir, 0o755)
 		require.NoError(t, err)
 
 		csvContent := `TeamId,TeamName,TeamDisplayName,ChannelName,ChannelDisplayName,ChannelType,UserUsername,UserEmail,UserNickname,PostId,PostCreateAt,PostUpdateAt,PostDeleteAt,PostRootId,PostOriginalId,PostMessage,PostType,PostProps,PostHashtags,PostFileIds,IsBot
 team1,test-team,Test Team,test-channel,Test Channel,O,testuser,test@example.com,Test,post1,1000,1000,0,,,Message,,{},,,false`
 
-		err = os.WriteFile(filepath.Join(messagesDir, "posts.csv"), []byte(csvContent), 0644)
+		err = os.WriteFile(filepath.Join(messagesDir, "posts.csv"), []byte(csvContent), 0o644)
 		require.NoError(t, err)
 
 		// Time bounds that exclude all posts
