@@ -125,7 +125,7 @@ func (th *TestHelper) TearDown(t *testing.T) {
 
 func (th *TestHelper) CreateTeams(num int, namePrefix string) ([]*model.Team, error) {
 	var teams []*model.Team
-	for i := 0; i < num; i++ {
+	for i := range num {
 		team := &model.Team{
 			Name:        fmt.Sprintf("%s-%d", namePrefix, i),
 			DisplayName: fmt.Sprintf("%s-%d", namePrefix, i),
@@ -157,7 +157,7 @@ func (th *TestHelper) CreateChannel(name, userID, teamID string, channelType mod
 
 func (th *TestHelper) CreateChannels(num int, namePrefix string, userID string, teamID string) ([]*model.Channel, error) {
 	var channels []*model.Channel
-	for i := 0; i < num; i++ {
+	for i := range num {
 		channel := &model.Channel{
 			Name:        fmt.Sprintf("%s-%d", namePrefix, i),
 			DisplayName: fmt.Sprintf("%s-%d", namePrefix, i),
@@ -176,7 +176,7 @@ func (th *TestHelper) CreateChannels(num int, namePrefix string, userID string, 
 
 func (th *TestHelper) CreateChannelsWithChannelMemberHistory(num int, namePrefix string, userID string, teamID string) ([]*model.Channel, error) {
 	var channels []*model.Channel
-	for i := 0; i < num; i++ {
+	for i := range num {
 		channel := &model.Channel{
 			Name:        fmt.Sprintf("%s-%d", namePrefix, i),
 			DisplayName: fmt.Sprintf("%s-%d", namePrefix, i),
@@ -204,7 +204,7 @@ func (th *TestHelper) CreateDirectMessageChannel(user1 *model.User, user2 *model
 
 func (th *TestHelper) CreateUsers(num int, namePrefix string) ([]*model.User, error) {
 	var users []*model.User
-	for i := 0; i < num; i++ {
+	for i := range num {
 		user := &model.User{
 			Username: fmt.Sprintf("%s-%d", namePrefix, i),
 			Password: namePrefix,
@@ -221,7 +221,7 @@ func (th *TestHelper) CreateUsers(num int, namePrefix string) ([]*model.User, er
 
 func (th *TestHelper) CreatePosts(num int, userID string, channelID string) ([]*model.Post, error) {
 	var posts []*model.Post
-	for i := 0; i < num; i++ {
+	for i := range num {
 		post := &model.Post{
 			UserId:    userID,
 			ChannelId: channelID,
@@ -239,7 +239,7 @@ func (th *TestHelper) CreatePosts(num int, userID string, channelID string) ([]*
 
 func (th *TestHelper) CreatePostsWithAttachments(num int, userID string, channelID string) ([]*model.Post, error) {
 	var posts []*model.Post
-	for i := 0; i < num; i++ {
+	for i := range num {
 		text := "This is a test uploaded file."
 		reader := strings.NewReader(text)
 		size, err := th.FileBackend.WriteFile(reader, "data/file_upload_test.txt")

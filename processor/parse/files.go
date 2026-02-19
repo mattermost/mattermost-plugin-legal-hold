@@ -55,7 +55,6 @@ func processFilesInChannel(path string) (model.FileLookup, error) {
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}

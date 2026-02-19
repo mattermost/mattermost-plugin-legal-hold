@@ -52,13 +52,13 @@ func TestParseHashes(t *testing.T) {
 			defer os.RemoveAll(tempDir)
 
 			legalHoldPath := filepath.Join(tempDir, "legalhold")
-			err = os.MkdirAll(legalHoldPath, 0755)
+			err = os.MkdirAll(legalHoldPath, 0o755)
 			require.NoError(t, err)
 
-			err = os.WriteFile(filepath.Join(legalHoldPath, "hashes.json"), []byte(testCase.hashesFile), 0644)
+			err = os.WriteFile(filepath.Join(legalHoldPath, "hashes.json"), []byte(testCase.hashesFile), 0o644)
 			require.NoError(t, err)
 
-			err = os.WriteFile(filepath.Join(tempDir, "file.json"), []byte(testCase.fileJSON), 0644)
+			err = os.WriteFile(filepath.Join(tempDir, "file.json"), []byte(testCase.fileJSON), 0o644)
 			require.NoError(t, err)
 
 			err = ParseHashes(tempDir, legalHoldPath, testCase.secret)

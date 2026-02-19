@@ -2,7 +2,7 @@ import {Client4, ClientError} from '@mattermost/client';
 
 import {CreateLegalHold, UpdateLegalHold} from '@/types';
 
-import {manifest} from './manifest';
+import manifest from './manifest';
 
 class APIClient {
     private readonly url = `/plugins/${manifest.id}/api/v1`;
