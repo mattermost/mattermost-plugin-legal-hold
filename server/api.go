@@ -34,6 +34,7 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 	// All HTTP endpoints of this plugin require the user to be a System Admin
 	if !p.Client.User.HasPermissionTo(userID, mattermostModel.PermissionManageSystem) {
 		http.Error(w, "Not authorized", http.StatusUnauthorized)
+		return
 	}
 
 	p.Client.Log.Info(r.URL.Path)
