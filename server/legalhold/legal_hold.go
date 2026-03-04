@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"strings"
 	"time"
 
@@ -450,9 +451,7 @@ func (ex *Execution) WriteFileHashes() error {
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal hashes.json file: %w", err)
 		}
-		for path, hash := range ex.hashes {
-			currentHashes[path] = hash
-		}
+		maps.Copy(currentHashes, ex.hashes)
 
 		// Write the updated hashes to the file
 		hashesFileContent, err := json.MarshalIndent(currentHashes, "", "  ")
