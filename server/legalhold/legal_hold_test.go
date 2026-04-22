@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	dbsql "database/sql"
+	"strings"
 	"testing"
 	"time"
 
@@ -117,6 +118,105 @@ func TestApp_LegalHoldExecution_Execute(t *testing.T) {
 	// require.NoError(t, err)
 
 	// TODO: Do some proper assertions here to really test the functionality.
+}
+
+func TestExecution_FilePath(t *testing.T) {
+	ex := &Execution{
+		LegalHold: &model.LegalHold{
+			ID:   "abc123",
+			Name: "holdname",
+		},
+	}
+	const (
+		channelID     = "channelid1"
+		batchCreateAt = int64(1700000000000)
+		batchPostID   = "postid1"
+		fileID        = "fileid1"
+	)
+	basePath := ex.LegalHold.BasePath()
+	expectedPrefix := basePath + "/"
+
+	testCases := []struct {
+		name      string
+		fileName  string
+		expectErr bool
+		expected  string
+	}{
+		{
+			name:     "normal filename",
+			fileName: "document.pdf",
+			expected: basePath + "/channelid1/files/files-1700000000000-postid1/fileid1/document.pdf",
+		},
+		{
+			name:     "filename with spaces",
+			fileName: "my document.pdf",
+			expected: basePath + "/channelid1/files/files-1700000000000-postid1/fileid1/my document.pdf",
+		},
+		{
+			name:      "path traversal with forward slashes",
+			fileName:  "../../../../plugins/com.mattermost.plugin-legal-hold.tar.gz",
+			expectErr: false,
+			expected:  basePath + "/channelid1/files/files-1700000000000-postid1/fileid1/com.mattermost.plugin-legal-hold.tar.gz",
+		},
+		{
+			name:      "absolute path",
+			fileName:  "/etc/passwd",
+			expectErr: false,
+			expected:  basePath + "/channelid1/files/files-1700000000000-postid1/fileid1/passwd",
+		},
+		{
+			name:      "single dot-dot",
+			fileName:  "..",
+			expectErr: true,
+		},
+		{
+			name:      "single dot",
+			fileName:  ".",
+			expectErr: true,
+		},
+		{
+			name:      "empty name",
+			fileName:  "",
+			expectErr: true,
+		},
+		{
+			name:      "just a slash",
+			fileName:  "/",
+			expectErr: true,
+		},
+		{
+			name:      "trailing slash gets cleaned",
+			fileName:  "foo/",
+			expectErr: false,
+			expected:  basePath + "/channelid1/files/files-1700000000000-postid1/fileid1/foo",
+		},
+		{
+			name:      "filename with embedded traversal via backslashes (linux-safe)",
+			fileName:  "..\\..\\plugins\\evil.tar.gz",
+			expectErr: false,
+			// On Linux, backslashes are valid filename characters; Base returns the whole string.
+			expected: basePath + "/channelid1/files/files-1700000000000-postid1/fileid1/..\\..\\plugins\\evil.tar.gz",
+		},
+		{
+			name:      "ends with dot-dot segment",
+			fileName:  "foo/..",
+			expectErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ex.filePath(channelID, batchCreateAt, batchPostID, fileID, tc.fileName)
+			if tc.expectErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, got)
+			require.True(t, strings.HasPrefix(got, expectedPrefix),
+				"path %q must stay inside base %q", got, basePath)
+		})
+	}
 }
 
 func TestLegalHold_Hash(t *testing.T) {
