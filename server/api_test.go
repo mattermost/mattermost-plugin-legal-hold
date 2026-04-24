@@ -49,6 +49,72 @@ func (m *MockLegalHoldJob) GetRunningLegalHolds() ([]string, error) {
 	return args.Get(0).([]string), args.Error(1)
 }
 
+func setupTestPlugin(t *testing.T) (*Plugin, *plugintest.API) {
+	t.Helper()
+	p := &Plugin{}
+	api := &plugintest.API{}
+	p.SetDriver(&plugintest.Driver{})
+	p.SetAPI(api)
+	p.Client = pluginapi.NewClient(p.API, p.Driver)
+	return p, api
+}
+
+func TestServeHTTPAuthorization(t *testing.T) {
+	endpoints := []struct {
+		method string
+		path   string
+	}{
+		{http.MethodGet, "/api/v1/legalholds"},
+		{http.MethodPost, "/api/v1/legalholds"},
+		{http.MethodPost, fmt.Sprintf("/api/v1/legalholds/%s/release", model.NewId())},
+		{http.MethodPut, fmt.Sprintf("/api/v1/legalholds/%s", model.NewId())},
+		{http.MethodGet, fmt.Sprintf("/api/v1/legalholds/%s/download", model.NewId())},
+		{http.MethodPost, fmt.Sprintf("/api/v1/legalholds/%s/run", model.NewId())},
+		{http.MethodPost, "/api/v1/test_amazon_s3_connection"},
+		{http.MethodGet, "/api/v1/groups/search"},
+		{http.MethodPost, "/api/v1/legalhold/run"},
+	}
+
+	t.Run("unauthenticated user is rejected", func(t *testing.T) {
+		for _, ep := range endpoints {
+			t.Run(fmt.Sprintf("%s %s", ep.method, ep.path), func(t *testing.T) {
+				p, _ := setupTestPlugin(t)
+
+				req, err := http.NewRequest(ep.method, ep.path, nil)
+				require.NoError(t, err)
+				// No Mattermost-User-ID header set
+
+				recorder := httptest.NewRecorder()
+				p.ServeHTTP(nil, recorder, req)
+
+				require.Equal(t, http.StatusUnauthorized, recorder.Code)
+				require.Equal(t, "Not authorized\n", recorder.Body.String())
+			})
+		}
+	})
+
+	t.Run("non-admin user is rejected", func(t *testing.T) {
+		for _, ep := range endpoints {
+			t.Run(fmt.Sprintf("%s %s", ep.method, ep.path), func(t *testing.T) {
+				p, api := setupTestPlugin(t)
+
+				api.On("HasPermissionTo", "regular_user_id", model.PermissionManageSystem).Return(false)
+
+				req, err := http.NewRequest(ep.method, ep.path, nil)
+				require.NoError(t, err)
+				req.Header.Set("Mattermost-User-Id", "regular_user_id")
+
+				recorder := httptest.NewRecorder()
+				p.ServeHTTP(nil, recorder, req)
+
+				require.Equal(t, http.StatusUnauthorized, recorder.Code)
+				require.Equal(t, "Not authorized\n", recorder.Body.String(),
+					"response body must only contain the error message, no leaked data")
+			})
+		}
+	})
+}
+
 func TestRunSingleLegalHold(t *testing.T) {
 	p := &Plugin{}
 	api := &plugintest.API{}

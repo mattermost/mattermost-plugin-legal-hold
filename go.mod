@@ -1,8 +1,8 @@
 module github.com/mattermost/mattermost-plugin-legal-hold
 
-go 1.21
+go 1.24.0
 
-toolchain go1.22.1
+toolchain go1.24.11
 
 require (
 	github.com/Masterminds/squirrel v1.5.4

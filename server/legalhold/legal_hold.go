@@ -8,6 +8,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
+	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -249,7 +252,7 @@ func (ex *Execution) ExportData() error {
 // WritePostsBatchToFile writes a batch of posts from a channel to the appropriate file
 // in the file backend.
 func (ex *Execution) WritePostsBatchToFile(channelID string, posts []model.LegalHoldPost) error {
-	path := ex.messagesBatchPath(channelID, posts[0].PostCreateAt, posts[0].PostID)
+	msgKey := ex.messagesBatchPath(channelID, posts[0].PostCreateAt, posts[0].PostID)
 
 	csvContent, err := gocsv.MarshalString(&posts)
 	if err != nil {
@@ -258,7 +261,7 @@ func (ex *Execution) WritePostsBatchToFile(channelID string, posts []model.Legal
 
 	csvReader := strings.NewReader(csvContent)
 
-	_, err = ex.fileBackend.WriteFile(csvReader, path)
+	_, err = ex.fileBackend.WriteFile(csvReader, msgKey)
 	if err != nil {
 		return err
 	}
@@ -270,7 +273,7 @@ func (ex *Execution) WritePostsBatchToFile(channelID string, posts []model.Legal
 		return err
 	}
 
-	err = ex.WriteFileHash(path, h)
+	err = ex.WriteFileHash(msgKey, h)
 
 	return err
 }
@@ -289,14 +292,23 @@ func (ex *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPos
 
 	// Copy the files from one to another.
 	for _, fileInfo := range fileInfos {
-		path := ex.filePath(
+		destPath, err := ex.filePath(
 			channelID,
 			batchCreateAt,
 			batchPostID,
 			fileInfo.ID,
 			fileInfo.Name,
 		)
-		err = ex.fileBackend.CopyFile(fileInfo.Path, path)
+		if err != nil {
+			ex.papi.LogWarn(
+				"Skipping file with unsafe name in legal hold export",
+				"file_id", fileInfo.ID,
+				"error", err.Error(),
+			)
+			continue
+		}
+
+		err = ex.fileBackend.CopyFile(fileInfo.Path, destPath)
 		if err != nil {
 			ex.papi.LogError(fmt.Sprintf("Failed to find file attachment to copy %s", fileInfo.Path))
 			// Continue anyway so the job doesn't get completely stuck.
@@ -313,7 +325,7 @@ func (ex *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPos
 			return err
 		}
 
-		err = ex.WriteFileHash(path, h)
+		err = ex.WriteFileHash(destPath, h)
 		if err != nil {
 			return err
 		}
@@ -417,8 +429,8 @@ func (ex *Execution) UpdateIndexes(now int64) error {
 	return err
 }
 
-func (ex *Execution) WriteFileHash(path, hash string) error {
-	ex.hashes[path] = hash
+func (ex *Execution) WriteFileHash(key, hash string) error {
+	ex.hashes[key] = hash
 	return nil
 }
 
@@ -450,9 +462,7 @@ func (ex *Execution) WriteFileHashes() error {
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal hashes.json file: %w", err)
 		}
-		for path, hash := range ex.hashes {
-			currentHashes[path] = hash
-		}
+		maps.Copy(currentHashes, ex.hashes)
 
 		// Write the updated hashes to the file
 		hashesFileContent, err := json.MarshalIndent(currentHashes, "", "  ")
@@ -499,16 +509,30 @@ func (ex *Execution) indexPath() string {
 }
 
 // filePath returns the file path for a given file attachment within
-// this Execution.
-func (ex *Execution) filePath(channelID string, batchCreateAt int64, batchPostID string, fileID string, fileName string) string {
-	return fmt.Sprintf(
-		"%s/files/files-%d-%s/%s/%s",
+// this Execution. The fileName is reduced to its base component before being
+// used in path construction, and the resulting path is verified to stay within
+// the Execution's base path so that a hostile FileInfo cannot cause writes
+// outside the legal hold directory.
+func (ex *Execution) filePath(channelID string, batchCreateAt int64, batchPostID string, fileID string, fileName string) (string, error) {
+	cleanName := filepath.Base(fileName)
+	if cleanName == "" || cleanName == "." || cleanName == ".." || cleanName == "/" {
+		return "", fmt.Errorf("invalid file name %q", fileName)
+	}
+
+	p := path.Join(
 		ex.channelPath(channelID),
-		batchCreateAt,
-		batchPostID,
+		"files",
+		fmt.Sprintf("files-%d-%s", batchCreateAt, batchPostID),
 		fileID,
-		fileName,
+		cleanName,
 	)
+
+	base := ex.basePath()
+	if cleaned := filepath.ToSlash(filepath.Clean(p)); cleaned != p || !strings.HasPrefix(cleaned, base+"/") {
+		return "", fmt.Errorf("constructed legal hold file path %q escapes base %q", p, base)
+	}
+
+	return p, nil
 }
 
 // hashFromReader returns the HMAC-SHA512 hash of the reader's contents.
