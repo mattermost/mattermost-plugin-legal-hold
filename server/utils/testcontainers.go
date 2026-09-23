@@ -110,7 +110,11 @@ func createTestDBPostgres(ctx context.Context, databaseName string) (string, Tea
 func CreateMinio(ctx context.Context) (string, TearDownFunc, error) {
 	minioContainer, err := minio.RunContainer(
 		ctx,
-		testcontainers.WithImage("minio/minio:RELEASE.2024-01-16T16-07-38Z"),
+		testcontainers.WithImage("cgr.dev/chainguard/minio:latest"),
+		testcontainers.WithWaitStrategy(
+			wait.ForHTTP("/minio/health/live").WithPort("9000"),
+			wait.ForExec([]string{"mc", "ready", "local"}),
+		),
 		// Create default bucket
 		testcontainers.WithStartupCommand(testcontainers.NewRawCommand([]string{"mkdir", "/data/" + model.MinioBucket})),
 		testcontainers.WithEnv(map[string]string{
