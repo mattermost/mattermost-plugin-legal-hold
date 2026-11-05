@@ -2,11 +2,14 @@ import dayjs from 'dayjs';
 import React, {useEffect, useState} from 'react';
 
 import {UserProfile} from 'mattermost-redux/types/users';
+import {Group} from 'mattermost-redux/types/groups';
 
 import {GenericModal} from '@/components/mattermost-webapp/generic_modal/generic_modal';
 import Input from '@/components/mattermost-webapp/input/input';
 import UsersInput from '@/components/users_input';
+import GroupsInput from '@/components/groups_input';
 import {LegalHold, UpdateLegalHold} from '@/types';
+import {isValidDate} from '@/utils/date_validation';
 
 import '../create_legal_hold_form.scss';
 
@@ -16,24 +19,33 @@ interface UpdateLegalHoldFormProps {
     visible: boolean;
     legalHold: LegalHold | null;
     users: Array<UserProfile>;
+    groups: Array<Group>;
 }
 
 const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
     const [id, setId] = useState('');
     const [displayName, setDisplayName] = useState('');
     const [users, setUsers] = useState(Array<UserProfile>());
+    const [groups, setGroups] = useState(Array<Group>());
     const [startsAt, setStartsAt] = useState('');
     const [endsAt, setEndsAt] = useState('');
     const [saving, setSaving] = useState(false);
     const [includePublicChannels, setIncludePublicChannels] = useState(false);
     const [serverError, setServerError] = useState('');
+    const [endsAtInvalid, setEndsAtInvalid] = useState(false);
 
     const displayNameChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
         setDisplayName(e.target.value);
     };
 
     const endsAtChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setEndsAt(e.target.value);
+        const dateValue = e.target.value;
+        if (dateValue && !isValidDate(dateValue)) {
+            setEndsAtInvalid(true);
+            return;
+        }
+        setEndsAtInvalid(false);
+        setEndsAt(dateValue);
     };
 
     const includePublicChannelsChanged: (e: React.ChangeEvent<HTMLInputElement>) => void = (e) => {
@@ -45,9 +57,11 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
         setDisplayName('');
         setEndsAt('');
         setUsers([]);
+        setGroups([]);
         setServerError('');
         setIncludePublicChannels(false);
         setSaving(false);
+        setEndsAtInvalid(false);
     };
 
     // Populate initial form field values when the Legal Hold being edited changes.
@@ -60,6 +74,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
             setId(props.legalHold.id);
             setDisplayName(props.legalHold?.display_name);
             setUsers(props.users);
+            setGroups(props.groups);
             setIncludePublicChannels(props.legalHold.include_public_channels);
 
             if (props.legalHold.starts_at) {
@@ -72,7 +87,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
                 setEndsAt(endsAtString);
             }
         }
-    }, [props.legalHold, props.users, props.visible, id]);
+    }, [props.legalHold, props.users, props.groups, props.visible, id]);
 
     const onSave = () => {
         if (saving) {
@@ -87,6 +102,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
         const data = {
             id: props.legalHold.id,
             user_ids: users.map((user) => user.id),
+            group_ids: groups.map((group) => group.id),
             ends_at: (new Date(endsAt)).getTime(),
             include_public_channels: includePublicChannels,
             display_name: displayName,
@@ -114,7 +130,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
             return false;
         }
 
-        if (users.length < 1) {
+        if (users.length < 1 && groups.length < 1) {
             return false;
         }
 
@@ -166,10 +182,19 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
                         inputClassName={'create-legal-hold-input'}
                     />
                     <div>
+                        <label>{'Users'}</label>
                         <UsersInput
                             placeholder='@username1 @username2'
                             users={users}
                             onChange={setUsers}
+                        />
+                    </div>
+                    <div>
+                        <label>{'LDAP Groups'}</label>
+                        <GroupsInput
+                            placeholder='group1 group2'
+                            groups={groups}
+                            onChange={setGroups}
                         />
                     </div>
                     <div
@@ -233,6 +258,7 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
                             onBlur={endsAtChanged}
                             containerClassName={'create-legal-hold-container'}
                             inputClassName={'create-legal-hold-input'}
+                            hasError={endsAtInvalid}
                         />
                     </div>
                 </div>

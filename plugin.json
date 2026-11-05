@@ -4,9 +4,9 @@
   "description": "This plugin adds Legal Hold functionality to Mattermost.",
   "homepage_url": "https://github.com/mattermost/mattermost-plugin-legal-hold",
   "support_url": "https://github.com/mattermost/mattermost-plugin-legal-hold/issues",
-  "release_notes_url": "https://github.com/mattermost/mattermost-plugin-legal-hold/releases/tag/v1.0.1",
+  "release_notes_url": "https://github.com/mattermost/mattermost-plugin-legal-hold/releases/tag/v1.1.6",
   "icon_path": "assets/starter-template-icon.svg",
-  "version": "1.0.2",
+  "version": "1.1.6",
   "min_server_version": "6.2.1",
   "server": {
     "executables": {
@@ -30,6 +30,13 @@
         "type": "text",
         "help_text": "Time of day to run the Legal Hold task, in the form 'HH:MM ±HHMM' (e.g. '3:00am -0700').  Use +0000 for UTC.",
         "default": "1:00am -0700"
+      },
+      {
+        "key": "EnableFilestoreConnectionTest",
+        "display_name": "Enable Filestore Connection Test:",
+        "type": "bool",
+        "default": true,
+        "help_text": "If enabled, the plugin will perform a filestore connection test to ensure that the filestore is accessible on every node."
       },
       {
         "key": "LegalHoldsSettings",

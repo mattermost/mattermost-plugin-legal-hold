@@ -118,10 +118,14 @@ func (ss SQLStore) GetChannelIDsForUserDuring(userID string, startTime int64, en
 		Where(sq.Or{sq.Eq{"cmh.leavetime": nil}, sq.GtOrEq{"cmh.leavetime": startTime}}).
 		Where(sq.Eq{"cmh.userid": userID})
 
-	// Exclude all public channels from the results if includePublic is false.
+	// Exclude existing public channels from the results if includePublic is false.
+	// Use LEFT JOIN to preserve deleted channels (which no longer exist in Channels table).
 	if !includePublic {
-		query = query.Join("Channels on cmh.channelid = Channels.id").
-			Where(sq.NotEq{"Channels.type": mattermostModel.ChannelTypeOpen})
+		query = query.LeftJoin("Channels on cmh.channelid = Channels.id").
+			Where(sq.Or{
+				sq.Eq{"Channels.id": nil},                                  // Include deleted channels
+				sq.NotEq{"Channels.type": mattermostModel.ChannelTypeOpen}, // Include non-public channels
+			})
 	}
 
 	rows, err := query.Query()

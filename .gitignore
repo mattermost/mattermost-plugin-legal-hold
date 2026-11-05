@@ -1,3 +1,4 @@
+bin/
 dist/
 
 # Mac
@@ -19,3 +20,4 @@ dist/
 .idea/
 
 processor/temp
+.aider*

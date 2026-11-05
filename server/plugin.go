@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/mux"
-	"github.com/mattermost/mattermost/server/public/model"
+	mattermostModel "github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 	pluginapi "github.com/mattermost/mattermost/server/public/pluginapi"
 	"github.com/mattermost/mattermost/server/v8/platform/shared/filestore"
@@ -19,7 +19,8 @@ import (
 )
 
 const (
-	LegalHoldJobID = "legal_hold_job"
+	LegalHoldJobID              = "legal_hold_job"
+	MattermostEntrySkuShortName = "entry"
 )
 
 // Plugin implements the interface expected by the Mattermost server to communicate between the server and plugin processes.
@@ -49,7 +50,7 @@ type Plugin struct {
 	jobManager *jobs.JobManager
 
 	// legalHoldJob runs the legal hold jobs
-	legalHoldJob *jobs.LegalHoldJob
+	legalHoldJob jobs.LegalHoldJobInterface
 
 	// router holds the HTTP router for the plugin's rest API
 	router *mux.Router
@@ -60,7 +61,7 @@ func (p *Plugin) OnActivate() error {
 	config := p.API.GetConfig()
 	license := p.API.GetLicense()
 
-	if !pluginapi.IsEnterpriseLicensedOrDevelopment(config, license) {
+	if !pluginapi.IsEnterpriseLicensedOrDevelopment(config, license) || (!pluginapi.IsConfiguredForDevelopment(config) && license.SkuShortName == MattermostEntrySkuShortName) {
 		return fmt.Errorf("this plugin requires an Enterprise license")
 	}
 
@@ -133,7 +134,7 @@ func (p *Plugin) setConfiguration(configuration *config.Configuration) {
 
 // OnConfigurationChange is invoked when Configuration changes may have been made.
 func (p *Plugin) OnConfigurationChange() error {
-	var configuration = new(config.Configuration)
+	configuration := new(config.Configuration)
 
 	// Load the public Configuration fields from the Mattermost server Configuration.
 	if err := p.API.LoadPluginConfiguration(configuration); err != nil {
@@ -173,24 +174,66 @@ func (p *Plugin) Reconfigure() error {
 		return errors.New("unable to initialize the files storage")
 	}
 
-	if err = filesBackend.TestConnection(); err != nil {
-		pluginConfig := p.Client.Configuration.GetPluginConfig()
+	// Perform a filesystem check if enabled
+	if p.configuration.EnableFilestoreConnectionTest {
+		p.Client.Log.Debug("Performing filestore connection test")
+		if err = filesBackend.TestConnection(); err != nil {
+			pluginConfig := p.Client.Configuration.GetPluginConfig()
 
-		// Disable the S3 settings in case the AWS config is invalid
-		pluginConfig["amazons3bucketsettings"].(map[string]interface{})["Enable"] = false
+			// Disable the S3 settings in case the AWS config is invalid
+			if s3Settings, ok := pluginConfig["amazons3bucketsettings"].(map[string]any); ok && s3Settings != nil {
+				s3Settings["Enable"] = false
 
-		confErr := p.Client.Configuration.SavePluginConfig(pluginConfig)
-		if confErr != nil {
-			p.Client.Log.Error("Error while saving plugin config.", "Error", confErr.Error())
-			return confErr
+				confErr := p.Client.Configuration.SavePluginConfig(pluginConfig)
+				if confErr != nil {
+					p.Client.Log.Error("Error while saving plugin config.", "Error", confErr.Error())
+					return confErr
+				}
+			} else {
+				p.Client.Log.Warn("S3 bucket settings not found or invalid in plugin config. Could not disable S3 configuration potentially leading to errors. Check your storage configuration.")
+			}
+
+			err = errors.Wrap(err, "connection test for filestore failed")
+			p.Client.Log.Error(err.Error())
+			return err
 		}
-
-		err = errors.Wrap(err, "connection test for filestore failed")
-		p.Client.Log.Error(err.Error())
-		return err
+	} else {
+		p.Client.Log.Debug("Skipping filestore connection test")
 	}
 
 	p.FileBackend = filesBackend
+
+	// Check all legal holds on plugin activation to prevent corrupt states:
+	// - For legal holds that supposedly don't have messages, check if the index exist
+	//   and update the field accordingly.
+	//
+	// Ignore errors during plugin activation to ensure working operation and
+	// allowing debugging in parallel since most errors on this block would come
+	// from KVStorage problems and that would require manual intervention in the
+	// database.
+	legalHolds, err := p.KVStore.GetAllLegalHolds()
+	if err != nil {
+		p.Client.Log.Error("Failed to get legal holds during activation", "err", err)
+		return err
+	}
+
+	for _, lh := range legalHolds {
+		oldLH := lh.DeepCopy()
+
+		// Check the filebackend if the legal hold doesn't have messages, continue otherwise.
+		if !lh.HasMessages {
+			// Update the field value
+			lh.HasMessages, err = p.FileBackend.FileExists(lh.IndexPath())
+			if err != nil {
+				p.Client.Log.Error("Failed to check if legal hold index exists during activation", "legal_hold_id", lh.ID, "err", err)
+			}
+		}
+
+		// Update the legal hold
+		if _, err = p.KVStore.UpdateLegalHold(lh, oldLH); err != nil {
+			p.Client.Log.Error("Failed to update legal hold during activation", "legal_hold_id", lh.ID, "err", err)
+		}
+	}
 
 	// Remove old job if exists
 	if p.legalHoldJob != nil {
@@ -213,38 +256,32 @@ func (p *Plugin) Reconfigure() error {
 	return nil
 }
 
-func FixedFileSettingsToFileBackendSettings(fileSettings model.FileSettings) filestore.FileBackendSettings {
-	if *fileSettings.DriverName == model.ImageDriverLocal {
+// FixedFileSettingsToFileBackendSettings converts FileSettings to FileBackendSettings.
+// This is a copy of FileSettings.ToFileBackendSettings from mattermost-server with nil-safe
+// handling for boolean pointer fields, as the original method may be removed in future versions.
+// This function internally calls SetDefaults(true) to ensure all pointer fields are initialized.
+func FixedFileSettingsToFileBackendSettings(fileSettings mattermostModel.FileSettings) filestore.FileBackendSettings {
+	// SetDefaults(true) initializes nil pointer fields with sensible defaults while preserving
+	// any existing user-configured values. This prevents nil pointer dereferences when accessing
+	// string and int64 pointer fields like AmazonS3Bucket, AmazonS3Region, etc.
+	fileSettings.SetDefaults(true)
+
+	if *fileSettings.DriverName == mattermostModel.ImageDriverLocal {
 		return filestore.FileBackendSettings{
 			DriverName: *fileSettings.DriverName,
 			Directory:  *fileSettings.Directory,
 		}
 	}
 
-	amazonS3Bucket := ""
-	if fileSettings.AmazonS3Bucket != nil {
-		amazonS3Bucket = *fileSettings.AmazonS3Bucket
-	}
-
-	amazonS3PathPrefix := ""
-	if fileSettings.AmazonS3PathPrefix != nil {
-		amazonS3PathPrefix = *fileSettings.AmazonS3PathPrefix
-	}
-
-	amazonS3Region := ""
-	if fileSettings.AmazonS3Region != nil {
-		amazonS3Region = *fileSettings.AmazonS3Region
-	}
-
 	return filestore.FileBackendSettings{
 		DriverName:                         *fileSettings.DriverName,
 		AmazonS3AccessKeyId:                *fileSettings.AmazonS3AccessKeyId,
 		AmazonS3SecretAccessKey:            *fileSettings.AmazonS3SecretAccessKey,
-		AmazonS3Bucket:                     amazonS3Bucket,
-		AmazonS3PathPrefix:                 amazonS3PathPrefix,
-		AmazonS3Region:                     amazonS3Region,
+		AmazonS3Bucket:                     *fileSettings.AmazonS3Bucket,
+		AmazonS3PathPrefix:                 *fileSettings.AmazonS3PathPrefix,
+		AmazonS3Region:                     *fileSettings.AmazonS3Region,
 		AmazonS3Endpoint:                   *fileSettings.AmazonS3Endpoint,
-		AmazonS3SSL:                        fileSettings.AmazonS3SSL != nil && *fileSettings.AmazonS3SSL,
+		AmazonS3SSL:                        fileSettings.AmazonS3SSL == nil || *fileSettings.AmazonS3SSL,
 		AmazonS3SignV2:                     fileSettings.AmazonS3SignV2 != nil && *fileSettings.AmazonS3SignV2,
 		AmazonS3SSE:                        fileSettings.AmazonS3SSE != nil && *fileSettings.AmazonS3SSE,
 		AmazonS3Trace:                      fileSettings.AmazonS3Trace != nil && *fileSettings.AmazonS3Trace,

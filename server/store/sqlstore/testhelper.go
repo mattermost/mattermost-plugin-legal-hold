@@ -9,15 +9,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
-	"github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 	"github.com/mattermost/mattermost/server/public/shared/request"
 	mmstore "github.com/mattermost/mattermost/server/v8/channels/store/sqlstore"
 	"github.com/mattermost/mattermost/server/v8/platform/shared/filestore"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
 )
 
 const (
@@ -54,7 +54,7 @@ func SetupHelper(t *testing.T) *TestHelper {
 		dbDriverName = "postgres"
 	}
 
-	if !(dbDriverName == "postgres" || dbDriverName == "mysql") {
+	if dbDriverName != "postgres" && dbDriverName != "mysql" {
 		t.Fatalf("invalid TEST_DB_DRIVER_NAME environment variable: %s", dbDriverName)
 	}
 
@@ -131,7 +131,7 @@ func (th *TestHelper) TearDown(t *testing.T) {
 
 func (th *TestHelper) CreateTeams(num int, namePrefix string) ([]*model.Team, error) {
 	var teams []*model.Team
-	for i := 0; i < num; i++ {
+	for i := range num {
 		team := &model.Team{
 			Name:        fmt.Sprintf("%s-%d", namePrefix, i),
 			DisplayName: fmt.Sprintf("%s-%d", namePrefix, i),
@@ -166,7 +166,7 @@ func (th *TestHelper) CreateChannel(name, userID, teamID string, channelType mod
 func (th *TestHelper) CreateChannels(num int, namePrefix string, userID string, teamID string) ([]*model.Channel, error) {
 	rctx := request.EmptyContext(nil)
 	var channels []*model.Channel
-	for i := 0; i < num; i++ {
+	for i := range num {
 		channel := &model.Channel{
 			Name:        fmt.Sprintf("%s-%d", namePrefix, i),
 			DisplayName: fmt.Sprintf("%s-%d", namePrefix, i),
@@ -187,7 +187,7 @@ func (th *TestHelper) CreateChannelsWithChannelMemberHistory(num int, namePrefix
 	rctx := request.EmptyContext(nil)
 
 	var channels []*model.Channel
-	for i := 0; i < num; i++ {
+	for i := range num {
 		channel := &model.Channel{
 			Name:        fmt.Sprintf("%s-%d", namePrefix, i),
 			DisplayName: fmt.Sprintf("%s-%d", namePrefix, i),
@@ -219,7 +219,7 @@ func (th *TestHelper) CreateUsers(num int, namePrefix string) ([]*model.User, er
 	rctx := request.EmptyContext(nil)
 
 	var users []*model.User
-	for i := 0; i < num; i++ {
+	for i := range num {
 		user := &model.User{
 			Username: fmt.Sprintf("%s-%d", namePrefix, i),
 			Password: namePrefix,
@@ -238,7 +238,7 @@ func (th *TestHelper) CreatePosts(num int, userID string, channelID string) ([]*
 	rctx := request.EmptyContext(nil)
 
 	var posts []*model.Post
-	for i := 0; i < num; i++ {
+	for i := range num {
 		post := &model.Post{
 			UserId:    userID,
 			ChannelId: channelID,
@@ -257,7 +257,7 @@ func (th *TestHelper) CreatePosts(num int, userID string, channelID string) ([]*
 func (th *TestHelper) CreatePostsWithAttachments(num int, userID string, channelID string) ([]*model.Post, error) {
 	rctx := request.EmptyContext(nil)
 	var posts []*model.Post
-	for i := 0; i < num; i++ {
+	for i := range num {
 		text := "This is a test uploaded file."
 		reader := strings.NewReader(text)
 		size, err := th.FileBackend.WriteFile(reader, "data/file_upload_test.txt")
@@ -338,26 +338,26 @@ type testLogger struct {
 }
 
 // Error logs an error message, optionally structured with alternating key, value parameters.
-func (l *testLogger) Error(message string, keyValuePairs ...interface{}) {
+func (l *testLogger) Error(message string, keyValuePairs ...any) {
 	l.log("error", message, keyValuePairs...)
 }
 
 // Warn logs an error message, optionally structured with alternating key, value parameters.
-func (l *testLogger) Warn(message string, keyValuePairs ...interface{}) {
+func (l *testLogger) Warn(message string, keyValuePairs ...any) {
 	l.log("warn", message, keyValuePairs...)
 }
 
 // Info logs an error message, optionally structured with alternating key, value parameters.
-func (l *testLogger) Info(message string, keyValuePairs ...interface{}) {
+func (l *testLogger) Info(message string, keyValuePairs ...any) {
 	l.log("info", message, keyValuePairs...)
 }
 
 // Debug logs an error message, optionally structured with alternating key, value parameters.
-func (l *testLogger) Debug(message string, keyValuePairs ...interface{}) {
+func (l *testLogger) Debug(message string, keyValuePairs ...any) {
 	l.log("debug", message, keyValuePairs...)
 }
 
-func (l *testLogger) log(level string, message string, keyValuePairs ...interface{}) {
+func (l *testLogger) log(level string, message string, keyValuePairs ...any) {
 	var args strings.Builder
 
 	if len(keyValuePairs) > 0 && len(keyValuePairs)%2 != 0 {
@@ -365,7 +365,7 @@ func (l *testLogger) log(level string, message string, keyValuePairs ...interfac
 	}
 
 	for i := 0; i < len(keyValuePairs); i += 2 {
-		args.WriteString(fmt.Sprintf("%v:%v  ", keyValuePairs[i], keyValuePairs[i+1]))
+		fmt.Fprintf(&args, "%v:%v  ", keyValuePairs[i], keyValuePairs[i+1])
 	}
 
 	l.tb.Logf("level=%s  message=%s  %s", level, message, args.String())

@@ -3,9 +3,11 @@ import React, {useState} from 'react';
 import {UserProfile} from 'mattermost-redux/types/users';
 
 import UsersInput from '@/components/users_input';
+import GroupsInput from '@/components/groups_input';
 import {CreateLegalHold} from '@/types';
 import {GenericModal} from '@/components/mattermost-webapp/generic_modal/generic_modal';
 import Input from '@/components/mattermost-webapp/input/input';
+import {isValidDate} from '@/utils/date_validation';
 
 import './create_legal_hold_form.scss';
 
@@ -18,9 +20,12 @@ interface CreateLegalHoldFormProps {
 const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
     const [displayName, setDisplayName] = useState('');
     const [users, setUsers] = useState(Array<UserProfile>());
+    const [groups, setGroups] = useState(Array<any>());
     const [startsAt, setStartsAt] = useState('');
     const [endsAt, setEndsAt] = useState('');
     const [saving, setSaving] = useState(false);
+    const [startsAtInvalid, setStartsAtInvalid] = useState(false);
+    const [endsAtInvalid, setEndsAtInvalid] = useState(false);
     const [includePublicChannels, setIncludePublicChannels] = useState(false);
     const [serverError, setServerError] = useState('');
 
@@ -29,11 +34,23 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
     };
 
     const startsAtChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setStartsAt(e.target.value);
+        const dateValue = e.target.value;
+        if (dateValue && !isValidDate(dateValue)) {
+            setStartsAtInvalid(true);
+            return;
+        }
+        setStartsAtInvalid(false);
+        setStartsAt(dateValue);
     };
 
     const endsAtChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setEndsAt(e.target.value);
+        const dateValue = e.target.value;
+        if (dateValue && !isValidDate(dateValue)) {
+            setEndsAtInvalid(true);
+            return;
+        }
+        setEndsAtInvalid(false);
+        setEndsAt(dateValue);
     };
 
     const includePublicChannelsChanged: (e: React.ChangeEvent<HTMLInputElement>) => void = (e) => {
@@ -45,9 +62,12 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
         setStartsAt('');
         setEndsAt('');
         setUsers([]);
+        setGroups([]);
         setSaving(false);
         setIncludePublicChannels(false);
         setServerError('');
+        setStartsAtInvalid(false);
+        setEndsAtInvalid(false);
     };
 
     const onSave = () => {
@@ -58,6 +78,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
 
         const data = {
             user_ids: users.map((user) => user.id),
+            group_ids: groups.map((group) => group.id),
             ends_at: (new Date(endsAt)).getTime(),
             starts_at: (new Date(startsAt)).getTime(),
             display_name: displayName,
@@ -91,7 +112,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
             return false;
         }
 
-        if (users.length < 1) {
+        if (users.length < 1 && groups.length < 1) {
             return false;
         }
 
@@ -139,10 +160,19 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
                         inputClassName={'create-legal-hold-input'}
                     />
                     <div>
+                        <label>{'Users'}</label>
                         <UsersInput
                             placeholder='@username1 @username2'
                             users={users}
                             onChange={setUsers}
+                        />
+                    </div>
+                    <div>
+                        <label>{'LDAP Groups'}</label>
+                        <GroupsInput
+                            placeholder='group1 group2'
+                            groups={groups}
+                            onChange={setGroups}
                         />
                     </div>
                     <div
@@ -192,6 +222,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
                             onBlur={startsAtChanged}
                             containerClassName={'create-legal-hold-container'}
                             inputClassName={'create-legal-hold-input'}
+                            hasError={startsAtInvalid}
                         />
                         <Input
                             type='date'
@@ -207,6 +238,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
                             onBlur={endsAtChanged}
                             containerClassName={'create-legal-hold-container'}
                             inputClassName={'create-legal-hold-input'}
+                            hasError={endsAtInvalid}
                         />
                     </div>
                 </div>

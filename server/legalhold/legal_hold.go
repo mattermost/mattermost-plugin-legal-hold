@@ -2,35 +2,48 @@ package legalhold
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
+	"path"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/gocarina/gocsv"
+	mm_model "github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
+	"github.com/mattermost/mattermost/server/public/pluginapi/cluster"
 	"github.com/mattermost/mattermost/server/v8/platform/shared/filestore"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/kvstore"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
 )
 
 const PostExportBatchLimit = 10000
 
+// executionWaitForLockTimeout is the time to wait for the lock to be acquired before failing the execution.
+// This is to prevent multiple executions at the same time.
+const executionWaitForLockTimeout = 5 * time.Second
+
 // Execution represents one execution of a LegalHold, i.e. a daily (or other duration)
 // batch process to hold all data relating to that particular LegalHold. It is defined by the
 // properties of the associated LegalHold as well as a start and end time for the period this
 // execution of the LegalHold relates to.
 type Execution struct {
-	LegalHold          model.LegalHold
+	LegalHold          *model.LegalHold
 	ExecutionStartTime int64
 	ExecutionEndTime   int64
 
 	papi        plugin.API
 	store       *sqlstore.SQLStore
+	kvstore     kvstore.KVStore
 	fileBackend filestore.FileBackend
 
 	channelIDs []string
@@ -40,12 +53,13 @@ type Execution struct {
 }
 
 // NewExecution creates a new Execution that is ready to use.
-func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQLStore, fileBackend filestore.FileBackend) Execution {
+func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQLStore, kvstore kvstore.KVStore, fileBackend filestore.FileBackend) Execution {
 	return Execution{
-		LegalHold:          legalHold,
+		LegalHold:          &legalHold,
 		ExecutionStartTime: legalHold.NextExecutionStartTime(),
 		ExecutionEndTime:   legalHold.NextExecutionEndTime(),
 		store:              store,
+		kvstore:            kvstore,
 		fileBackend:        fileBackend,
 		index:              model.NewLegalHoldIndex(),
 		papi:               papi,
@@ -53,53 +67,104 @@ func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQ
 	}
 }
 
-// Execute executes the Execution.
-func (ex *Execution) Execute() (int64, error) {
-	err := ex.GetChannels()
+// Execute executes the Execution and returns the updated LegalHold.
+func (ex *Execution) Execute(now int64) (*model.LegalHold, error) {
+	// Lock multiple executions behind a cluster mutex
+	mutex, err := cluster.NewMutex(ex.papi, "legal_hold_execution")
 	if err != nil {
-		return 0, err
+		return nil, fmt.Errorf("failed to create cluster mutex: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), executionWaitForLockTimeout)
+	defer cancel()
+
+	if lockErr := mutex.LockWithContext(ctx); lockErr != nil {
+		return nil, fmt.Errorf("failed to lock cluster mutex: %w", lockErr)
+	}
+	defer func() {
+		mutex.Unlock()
+	}()
+
+	err = ex.GetChannels()
+	if err != nil {
+		return nil, err
 	}
 
 	err = ex.ExportData()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	err = ex.UpdateIndexes()
+	err = ex.UpdateIndexes(now)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	err = ex.WriteFileHashes()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	return ex.ExecutionEndTime, nil
+	// Update the LegalHold with execution results
+	// Ensure that the LastExecutionEndedAt is not in the future, useful when running the job manually
+	ex.LegalHold.LastExecutionEndedAt = utils.Min(ex.ExecutionEndTime, now)
+
+	return ex.LegalHold, nil
 }
 
 // GetChannels populates the list of channels that the Execution needs to cover within the
 // internal state of the Execution struct.
 func (ex *Execution) GetChannels() error {
+	targetUsers, appErr := getUsersForGroups(ex.papi, ex.LegalHold.GroupIDs)
+	if appErr != nil {
+		return appErr
+	}
+
 	for _, userID := range ex.LegalHold.UserIDs {
 		user, appErr := ex.papi.GetUser(userID)
 		if appErr != nil {
 			return appErr
 		}
+		targetUsers = append(targetUsers, user)
+	}
 
-		channelIDs, err := ex.store.GetChannelIDsForUserDuring(userID, ex.ExecutionStartTime, ex.ExecutionEndTime, ex.LegalHold.IncludePublicChannels)
+	// keep track of which users have been processed
+	processedUsersList := make(map[string]struct{})
+	// processAndMarkUser is a helper function that will check if a user
+	// has been processed, and mark the user if they has not.
+	// Returns true if the user should be processed
+	processAndMarkUser := func(id string) bool {
+		if _, processed := processedUsersList[id]; processed {
+			return false
+		}
+		processedUsersList[id] = struct{}{}
+		return true
+	}
+
+	for _, user := range targetUsers {
+		if !processAndMarkUser(user.Id) {
+			continue
+		}
+
+		channelIDs, err := ex.store.GetChannelIDsForUserDuring(user.Id, ex.ExecutionStartTime, ex.ExecutionEndTime, ex.LegalHold.IncludePublicChannels)
 		if err != nil {
 			return err
 		}
 
 		ex.channelIDs = append(ex.channelIDs, channelIDs...)
 
-		ex.papi.LogDebug("Legal hold executor - GetChannels", "user_id", userID, "channel_count", len(channelIDs))
+		ex.papi.LogDebug(
+			"Legal hold executor - GetChannels",
+			"user_id", user.Id,
+			"channel_count", len(channelIDs),
+			"start_time", ex.ExecutionStartTime,
+			"end_time", ex.ExecutionEndTime,
+		)
 
 		// Add to channels index
 		for _, channelID := range channelIDs {
-			if idx, ok := ex.index.Users[userID]; !ok {
-				ex.index.Users[userID] = model.LegalHoldIndexUser{
+			if idx, ok := ex.index.Users[user.Id]; !ok {
+				ex.index.Users[user.Id] = model.LegalHoldIndexUser{
 					Username: user.Username,
 					Email:    user.Email,
 					Channels: []model.LegalHoldChannelMembership{
@@ -111,7 +176,7 @@ func (ex *Execution) GetChannels() error {
 					},
 				}
 			} else {
-				ex.index.Users[userID] = model.LegalHoldIndexUser{
+				ex.index.Users[user.Id] = model.LegalHoldIndexUser{
 					Username: user.Username,
 					Email:    user.Email,
 					Channels: append(idx.Channels, model.LegalHoldChannelMembership{
@@ -153,6 +218,10 @@ func (ex *Execution) ExportData() error {
 				return err
 			}
 
+			// Since at this point we have posts, ensure the `HasMessages` is set to true so users can
+			// download the legal hold.
+			ex.LegalHold.HasMessages = true
+
 			// Extract the FileIDs to export
 			var fileIDs []string
 			for _, post := range posts {
@@ -183,7 +252,7 @@ func (ex *Execution) ExportData() error {
 // WritePostsBatchToFile writes a batch of posts from a channel to the appropriate file
 // in the file backend.
 func (ex *Execution) WritePostsBatchToFile(channelID string, posts []model.LegalHoldPost) error {
-	path := ex.messagesBatchPath(channelID, posts[0].PostCreateAt, posts[0].PostID)
+	msgKey := ex.messagesBatchPath(channelID, posts[0].PostCreateAt, posts[0].PostID)
 
 	csvContent, err := gocsv.MarshalString(&posts)
 	if err != nil {
@@ -192,7 +261,7 @@ func (ex *Execution) WritePostsBatchToFile(channelID string, posts []model.Legal
 
 	csvReader := strings.NewReader(csvContent)
 
-	_, err = ex.fileBackend.WriteFile(csvReader, path)
+	_, err = ex.fileBackend.WriteFile(csvReader, msgKey)
 	if err != nil {
 		return err
 	}
@@ -204,7 +273,7 @@ func (ex *Execution) WritePostsBatchToFile(channelID string, posts []model.Legal
 		return err
 	}
 
-	err = ex.WriteFileHash(path, h)
+	err = ex.WriteFileHash(msgKey, h)
 
 	return err
 }
@@ -223,14 +292,23 @@ func (ex *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPos
 
 	// Copy the files from one to another.
 	for _, fileInfo := range fileInfos {
-		path := ex.filePath(
+		destPath, err := ex.filePath(
 			channelID,
 			batchCreateAt,
 			batchPostID,
 			fileInfo.ID,
 			fileInfo.Name,
 		)
-		err = ex.fileBackend.CopyFile(fileInfo.Path, path)
+		if err != nil {
+			ex.papi.LogWarn(
+				"Skipping file with unsafe name in legal hold export",
+				"file_id", fileInfo.ID,
+				"error", err.Error(),
+			)
+			continue
+		}
+
+		err = ex.fileBackend.CopyFile(fileInfo.Path, destPath)
 		if err != nil {
 			ex.papi.LogError(fmt.Sprintf("Failed to find file attachment to copy %s", fileInfo.Path))
 			// Continue anyway so the job doesn't get completely stuck.
@@ -247,7 +325,7 @@ func (ex *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPos
 			return err
 		}
 
-		err = ex.WriteFileHash(path, h)
+		err = ex.WriteFileHash(destPath, h)
 		if err != nil {
 			return err
 		}
@@ -257,7 +335,7 @@ func (ex *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPos
 }
 
 // UpdateIndexes updates the index files in the file backend in relation to this legal hold.
-func (ex *Execution) UpdateIndexes() error {
+func (ex *Execution) UpdateIndexes(now int64) error {
 	filePath := ex.indexPath()
 
 	// Populate the metadata in the index.
@@ -265,7 +343,7 @@ func (ex *Execution) UpdateIndexes() error {
 	ex.index.LegalHold.DisplayName = ex.LegalHold.DisplayName
 	ex.index.LegalHold.Name = ex.LegalHold.Name
 	ex.index.LegalHold.StartsAt = ex.LegalHold.StartsAt
-	ex.index.LegalHold.LastExecutionEndedAt = ex.ExecutionEndTime
+	ex.index.LegalHold.LastExecutionEndedAt = utils.Min(ex.ExecutionEndTime, now)
 
 	if len(ex.channelIDs) > 0 {
 		metadata, err := ex.store.GetChannelMetadataForIDs(ex.channelIDs)
@@ -351,8 +429,8 @@ func (ex *Execution) UpdateIndexes() error {
 	return err
 }
 
-func (ex *Execution) WriteFileHash(path, hash string) error {
-	ex.hashes[path] = hash
+func (ex *Execution) WriteFileHash(key, hash string) error {
+	ex.hashes[key] = hash
 	return nil
 }
 
@@ -384,9 +462,7 @@ func (ex *Execution) WriteFileHashes() error {
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal hashes.json file: %w", err)
 		}
-		for path, hash := range ex.hashes {
-			currentHashes[path] = hash
-		}
+		maps.Copy(currentHashes, ex.hashes)
 
 		// Write the updated hashes to the file
 		hashesFileContent, err := json.MarshalIndent(currentHashes, "", "  ")
@@ -429,20 +505,34 @@ func (ex *Execution) messagesBatchPath(channelID string, batchCreateAt int64, ba
 
 // indexPath returns the file path for the Index file for this LegalHold.
 func (ex *Execution) indexPath() string {
-	return fmt.Sprintf("%s/index.json", ex.basePath())
+	return ex.LegalHold.IndexPath()
 }
 
 // filePath returns the file path for a given file attachment within
-// this Execution.
-func (ex *Execution) filePath(channelID string, batchCreateAt int64, batchPostID string, fileID string, fileName string) string {
-	return fmt.Sprintf(
-		"%s/files/files-%d-%s/%s/%s",
+// this Execution. The fileName is reduced to its base component before being
+// used in path construction, and the resulting path is verified to stay within
+// the Execution's base path so that a hostile FileInfo cannot cause writes
+// outside the legal hold directory.
+func (ex *Execution) filePath(channelID string, batchCreateAt int64, batchPostID string, fileID string, fileName string) (string, error) {
+	cleanName := filepath.Base(fileName)
+	if cleanName == "" || cleanName == "." || cleanName == ".." || cleanName == "/" {
+		return "", fmt.Errorf("invalid file name %q", fileName)
+	}
+
+	p := path.Join(
 		ex.channelPath(channelID),
-		batchCreateAt,
-		batchPostID,
+		"files",
+		fmt.Sprintf("files-%d-%s", batchCreateAt, batchPostID),
 		fileID,
-		fileName,
+		cleanName,
 	)
+
+	base := ex.basePath()
+	if cleaned := filepath.ToSlash(filepath.Clean(p)); cleaned != p || !strings.HasPrefix(cleaned, base+"/") {
+		return "", fmt.Errorf("constructed legal hold file path %q escapes base %q", p, base)
+	}
+
+	return p, nil
 }
 
 // hashFromReader returns the HMAC-SHA512 hash of the reader's contents.
@@ -455,4 +545,30 @@ func hashFromReader(secret string, reader io.Reader) (string, error) {
 	}
 
 	return fmt.Sprintf("%x", hasher.Sum(nil)), nil
+}
+
+func getUsersForGroups(api plugin.API, groupIDs []string) ([]*mm_model.User, error) {
+	const GroupPageLimit = 100
+	const GroupPageSize = 50
+
+	var allUsers []*mm_model.User
+	for _, groupID := range groupIDs {
+		currPage := 0
+		for {
+			users, appErr := api.GetGroupMemberUsers(groupID, currPage, GroupPageSize)
+			if appErr != nil {
+				return nil, appErr
+			}
+			if currPage > GroupPageLimit {
+				return nil, fmt.Errorf("cannot execute legal hold: a group (%s) exceeds the maximum number of members (%d)", groupID, GroupPageLimit*GroupPageSize)
+			}
+			if len(users) < 1 {
+				break
+			}
+			allUsers = append(allUsers, users...)
+			currPage++
+		}
+	}
+
+	return allUsers, nil
 }

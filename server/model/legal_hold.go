@@ -10,6 +10,13 @@ import (
 )
 
 // LegalHold represents one legal hold.
+type LegalHoldStatus string
+
+const (
+	// LegalHoldStatusExecuting is the status of a legal hold that is currently being executed
+	LegalHoldStatusExecuting LegalHoldStatus = "executing"
+)
+
 type LegalHold struct {
 	ID                    string   `json:"id"`
 	Name                  string   `json:"name"`
@@ -17,12 +24,23 @@ type LegalHold struct {
 	CreateAt              int64    `json:"create_at"`
 	UpdateAt              int64    `json:"update_at"`
 	UserIDs               []string `json:"user_ids"`
+	GroupIDs              []string `json:"group_ids"`
 	StartsAt              int64    `json:"starts_at"`
 	EndsAt                int64    `json:"ends_at"`
 	IncludePublicChannels bool     `json:"include_public_channels"`
 	LastExecutionEndedAt  int64    `json:"last_execution_ended_at"`
 	ExecutionLength       int64    `json:"execution_length"`
 	Secret                string   `json:"secret"`
+
+	// HasMessages is a denormalized field that indicates whether the legal hold has messages or not, to prevent
+	// the download button from working in case of empty legal hold and prevent user confusion.
+	// This value can be dynamically calculated by checking for the index in the store, and it's updated every time
+	// a legal hold is executed and on plugin startup.
+	// It's being persisted in the store to prevent unnecessary calls to the store.
+	HasMessages bool `json:"has_messages,omitempty"`
+
+	// DTO attributes not persisted in the store but used to display logic in the webapp
+	Status LegalHoldStatus `json:"status,omitempty"`
 }
 
 // DeepCopy creates a deep copy of the LegalHold.
@@ -43,11 +61,17 @@ func (lh *LegalHold) DeepCopy() LegalHold {
 		LastExecutionEndedAt:  lh.LastExecutionEndedAt,
 		ExecutionLength:       lh.ExecutionLength,
 		Secret:                lh.Secret,
+		HasMessages:           lh.HasMessages,
 	}
 
 	if len(lh.UserIDs) > 0 {
 		newLegalHold.UserIDs = make([]string, len(lh.UserIDs))
 		copy(newLegalHold.UserIDs, lh.UserIDs)
+	}
+
+	if len(lh.GroupIDs) > 0 {
+		newLegalHold.GroupIDs = make([]string, len(lh.GroupIDs))
+		copy(newLegalHold.GroupIDs, lh.GroupIDs)
 	}
 
 	return newLegalHold
@@ -75,13 +99,19 @@ func (lh *LegalHold) IsValidForCreate() error {
 		return errors.New("LegalHold display name must be between 2 and 64 characters in length")
 	}
 
-	if len(lh.UserIDs) < 1 {
-		return errors.New("LegalHold must include at least 1 user")
+	if len(lh.UserIDs) < 1 && len(lh.GroupIDs) < 1 {
+		return errors.New("LegalHold must include at least 1 user or 1 group")
 	}
 
 	for _, userID := range lh.UserIDs {
 		if !mattermostModel.IsValidId(userID) {
 			return errors.New("LegalHold users must have valid IDs")
+		}
+	}
+
+	for _, groupID := range lh.GroupIDs {
+		if !mattermostModel.IsValidId(groupID) {
+			return errors.New("LegalHold groups must have valid IDs")
 		}
 	}
 
@@ -135,11 +165,17 @@ func (lh *LegalHold) BasePath() string {
 	return fmt.Sprintf("legal_hold/%s_%s", lh.Name, lh.ID)
 }
 
+// IndexPath returns the file storage path for the index file for this legal hold.
+func (lh *LegalHold) IndexPath() string {
+	return fmt.Sprintf("%s/index.json", lh.BasePath())
+}
+
 // CreateLegalHold holds the data that is specified in the API call to create a LegalHold.
 type CreateLegalHold struct {
 	Name                  string   `json:"name"`
 	DisplayName           string   `json:"display_name"`
 	UserIDs               []string `json:"user_ids"`
+	GroupIDs              []string `json:"group_ids"`
 	StartsAt              int64    `json:"starts_at"`
 	EndsAt                int64    `json:"ends_at"`
 	IncludePublicChannels bool     `json:"include_public_channels"`
@@ -153,6 +189,7 @@ func NewLegalHoldFromCreate(lhc CreateLegalHold) LegalHold {
 		Name:                  lhc.Name,
 		DisplayName:           lhc.DisplayName,
 		UserIDs:               lhc.UserIDs,
+		GroupIDs:              lhc.GroupIDs,
 		StartsAt:              lhc.StartsAt,
 		EndsAt:                lhc.EndsAt,
 		IncludePublicChannels: lhc.IncludePublicChannels,
@@ -166,6 +203,7 @@ type UpdateLegalHold struct {
 	ID                    string   `json:"id"`
 	DisplayName           string   `json:"display_name"`
 	UserIDs               []string `json:"user_ids"`
+	GroupIDs              []string `json:"group_ids"`
 	IncludePublicChannels bool     `json:"include_public_channels"`
 	EndsAt                int64    `json:"ends_at"`
 }
@@ -179,13 +217,19 @@ func (ulh UpdateLegalHold) IsValid() error {
 		return errors.New("LegalHold display name must be between 2 and 64 characters in length")
 	}
 
-	if len(ulh.UserIDs) < 1 {
-		return errors.New("LegalHold must include at least 1 user")
+	if len(ulh.UserIDs) < 1 && len(ulh.GroupIDs) < 1 {
+		return errors.New("LegalHold must include at least 1 user or 1 group")
 	}
 
 	for _, userID := range ulh.UserIDs {
 		if !mattermostModel.IsValidId(userID) {
 			return errors.New("LegalHold users must have valid IDs")
+		}
+	}
+
+	for _, groupID := range ulh.GroupIDs {
+		if !mattermostModel.IsValidId(groupID) {
+			return errors.New("LegalHold groups must have valid IDs")
 		}
 	}
 
@@ -199,6 +243,7 @@ func (ulh UpdateLegalHold) IsValid() error {
 func (lh *LegalHold) ApplyUpdates(updates UpdateLegalHold) {
 	lh.DisplayName = updates.DisplayName
 	lh.UserIDs = updates.UserIDs
+	lh.GroupIDs = updates.GroupIDs
 	lh.EndsAt = updates.EndsAt
 	lh.IncludePublicChannels = updates.IncludePublicChannels
 }

@@ -14,8 +14,9 @@ import "github.com/mattermost/mattermost/server/public/model"
 // If you add non-reference types to your Configuration struct, be sure to rewrite Clone as a deep
 // copy appropriate for your types.
 type Configuration struct {
-	TimeOfDay              string
-	AmazonS3BucketSettings AmazonS3BucketSettings
+	TimeOfDay                     string
+	EnableFilestoreConnectionTest bool
+	AmazonS3BucketSettings        AmazonS3BucketSettings
 }
 
 type AmazonS3BucketSettings struct {
@@ -26,6 +27,6 @@ type AmazonS3BucketSettings struct {
 // Clone shallow copies the Configuration. Your implementation may require a deep copy if
 // your Configuration has reference types.
 func (c *Configuration) Clone() *Configuration {
-	var clone = *c
+	clone := *c
 	return &clone
 }

@@ -71,6 +71,12 @@
         .post {
 
         }
+
+        .empty-state {
+            grid-column: 1 / -1;
+            color: rgba(63, 67, 80, 0.64);
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -85,6 +91,9 @@
     </div>
 </div>
 <div class="posts">
+    {{ if not .Posts }}
+    <div class="empty-state">No messages were recorded in this channel during the legal hold period.</div>
+    {{ else }}
     {{ range .Posts}}
     <div class="time">{{ .PrintCreateAt }}</div>
     <div class="user">@{{ .UserUsername }}</div>
@@ -99,6 +108,7 @@
         {{ end }}
     </div>
 
+    {{ end }}
     {{ end }}
 </div>
 </body>

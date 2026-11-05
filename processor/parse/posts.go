@@ -89,12 +89,12 @@ func AddFilesToPosts(posts []*model.Post, fileLookup model.FileLookup) []*model.
 			Files: []string{},
 		}
 
-		fileIDsStirng := strings.ReplaceAll(post.PostFileIDs, "[", "")
-		fileIDsStirng = strings.ReplaceAll(fileIDsStirng, "]", "")
-		fileIDsStirng = strings.ReplaceAll(fileIDsStirng, "\"", "")
-		fileIDs := strings.Split(post.PostFileIDs, ",")
+		fileIDsString := strings.ReplaceAll(post.PostFileIDs, "[", "")
+		fileIDsString = strings.ReplaceAll(fileIDsString, "]", "")
+		fileIDsString = strings.ReplaceAll(fileIDsString, "\"", "")
+		fileIDs := strings.Split(fileIDsString, ",")
 		for _, fileID := range fileIDs {
-			fileID = strings.TrimSpace(fileIDsStirng)
+			fileID = strings.TrimSpace(fileID)
 			if len(fileID) == 0 {
 				continue
 			}

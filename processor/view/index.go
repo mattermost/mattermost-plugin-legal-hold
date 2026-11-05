@@ -41,7 +41,27 @@ func WriteIndexFile(legalHold model.LegalHold, legalHoldIndex model.LegalHoldInd
 		}
 
 		for _, channelIndex := range userIndex.Channels {
+			// Get team data from lookup, or create fallback for DMs/GMs
 			team := teamForChannelLookup[channelIndex.ChannelID]
+			if team == nil {
+				// Fallback for DMs/GMs which don't belong to a team
+				team = &model.LegalHoldTeam{
+					ID:          "",
+					Name:        "Direct Messages",
+					DisplayName: "Direct Messages",
+				}
+			}
+
+			// Get channel data from lookup, or create fallback
+			channel := channelLookup[channelIndex.ChannelID]
+			if channel == nil {
+				channel = &model.LegalHoldChannel{
+					ID:          channelIndex.ChannelID,
+					Name:        "Direct/Group Message",
+					DisplayName: "Direct/Group Message",
+					Type:        "D",
+				}
+			}
 
 			userTeam := &UserTeam{
 				TeamData: team,
@@ -57,7 +77,7 @@ func WriteIndexFile(legalHold model.LegalHold, legalHoldIndex model.LegalHoldInd
 			}
 
 			userTeam.Channels = append(userTeam.Channels, &UserChannel{
-				ChannelData: channelLookup[channelIndex.ChannelID],
+				ChannelData: channel,
 			})
 
 			if !found {

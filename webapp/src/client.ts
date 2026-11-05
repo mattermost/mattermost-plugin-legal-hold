@@ -32,9 +32,24 @@ class APIClient {
         return this.doWithBody(url, 'put', data);
     };
 
+    runLegalHold = (id: string) => {
+        const url = `${this.url}/legalholds/${id}/run`;
+        return this.doWithBody(url, 'post', {});
+    };
+
     testAmazonS3Connection = () => {
         const url = `${this.url}/test_amazon_s3_connection`;
         return this.doWithBody(url, 'post', {}) as Promise<{message: string}>;
+    };
+
+    getGroup = (id: string) => {
+        const url = `/api/v4/groups/${id}`;
+        return this.doGet(url);
+    };
+
+    searchGroups = (term: string) => {
+        const url = `${this.url}/groups/search?prefix=${encodeURIComponent(term)}`;
+        return this.doGet(url);
     };
 
     private doGet = async (url: string, headers = {}) => {

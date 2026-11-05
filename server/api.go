@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -32,6 +34,7 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 	// All HTTP endpoints of this plugin require the user to be a System Admin
 	if !p.Client.User.HasPermissionTo(userID, mattermostModel.PermissionManageSystem) {
 		http.Error(w, "Not authorized", http.StatusUnauthorized)
+		return
 	}
 
 	p.Client.Log.Info(r.URL.Path)
@@ -44,7 +47,9 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 	router.HandleFunc("/api/v1/legalholds/{legalhold_id:[A-Za-z0-9]+}/release", p.releaseLegalHold).Methods(http.MethodPost)
 	router.HandleFunc("/api/v1/legalholds/{legalhold_id:[A-Za-z0-9]+}", p.updateLegalHold).Methods(http.MethodPut)
 	router.HandleFunc("/api/v1/legalholds/{legalhold_id:[A-Za-z0-9]+}/download", p.downloadLegalHold).Methods(http.MethodGet)
+	router.HandleFunc("/api/v1/legalholds/{legalhold_id:[A-Za-z0-9]+}/run", p.runSingleLegalHold).Methods(http.MethodPost)
 	router.HandleFunc("/api/v1/test_amazon_s3_connection", p.testAmazonS3Connection).Methods(http.MethodPost)
+	router.HandleFunc("/api/v1/groups/search", p.searchLDAPGroups).Methods(http.MethodGet)
 
 	// Other routes
 	router.HandleFunc("/api/v1/legalhold/run", p.runJobFromAPI).Methods(http.MethodPost)
@@ -60,6 +65,17 @@ func (p *Plugin) listLegalHolds(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "an error occurred fetching the legal holds", http.StatusInternalServerError)
 		p.Client.Log.Error(err.Error())
 		return
+	}
+
+	runningHolds, err := p.legalHoldJob.GetRunningLegalHolds()
+	if err != nil {
+		p.Client.Log.Error("failed to get running legal holds", err.Error())
+	} else {
+		for i, lh := range legalHolds {
+			if slices.Contains(runningHolds, lh.ID) {
+				legalHolds[i].Status = model.LegalHoldStatusExecuting
+			}
+		}
 	}
 
 	b, jsonErr := json.Marshal(legalHolds)
@@ -135,6 +151,12 @@ func (p *Plugin) releaseLegalHold(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if the legal hold is currently executing
+	if lh.Status == model.LegalHoldStatusExecuting {
+		http.Error(w, "cannot release legal hold while it is executing", http.StatusConflict)
+		return
+	}
+
 	// Remove the LegalHold files.
 	err = p.FileBackend.RemoveDirectory(lh.BasePath())
 	if err != nil {
@@ -151,7 +173,7 @@ func (p *Plugin) releaseLegalHold(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b, jsonErr := json.Marshal(make(map[string]interface{}))
+	b, jsonErr := json.Marshal(make(map[string]any))
 	if jsonErr != nil {
 		http.Error(w, "Error encoding json", http.StatusInternalServerError)
 		return
@@ -317,7 +339,39 @@ func (p *Plugin) runJobFromAPI(w http.ResponseWriter, _ *http.Request) {
 		p.API.LogError("failed to write http response", err.Error())
 	}
 
-	go p.legalHoldJob.RunFromAPI()
+	go p.legalHoldJob.RunAll()
+}
+
+func (p *Plugin) runSingleLegalHold(w http.ResponseWriter, r *http.Request) {
+	legalholdID, err := RequireLegalHoldID(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = p.legalHoldJob.RunSingleLegalHold(legalholdID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to run legal hold: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	response := struct {
+		Message string `json:"message"`
+	}{
+		Message: fmt.Sprintf("Processing Legal Hold %s. Please check the MM server logs for more details.", legalholdID),
+	}
+
+	b, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, "Error encoding json", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(b)
+	if err != nil {
+		p.API.LogError("failed to write http response", err.Error())
+	}
 }
 
 // testAmazonS3Connection tests the plugin's custom Amazon S3 connection
@@ -358,6 +412,27 @@ func (p *Plugin) testAmazonS3Connection(w http.ResponseWriter, _ *http.Request) 
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		p.Client.Log.Error("failed to write http response", err.Error())
+	}
+}
+
+// searchLDAPGroups searches for groups by display name
+func (p *Plugin) searchLDAPGroups(w http.ResponseWriter, r *http.Request) {
+	prefix := strings.TrimSpace(r.URL.Query().Get("prefix"))
+	if prefix == "" {
+		http.Error(w, "missing search prefix", http.StatusBadRequest)
+		return
+	}
+
+	groups, err := p.SQLStore.SearchLDAPGroupsByPrefix(prefix)
+	if err != nil {
+		http.Error(w, "failed to search groups", http.StatusInternalServerError)
+		p.Client.Log.Error("failed to search groups", "error", err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(groups); err != nil {
+		p.Client.Log.Error("failed to write http response", "error", err.Error())
 	}
 }
 
