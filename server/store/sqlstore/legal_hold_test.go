@@ -81,17 +81,17 @@ func TestSQLStore_LegalHold_GetChannelIDsForUserDuring(t *testing.T) {
 	// Add a bunch of Channel Member History records.
 	// 1. In and out before the first search window.
 	require.NoError(t, th.mmStore.ChannelMemberHistory().LogJoinEvent(th.User1.Id, channels[0].Id, startOne-1000))
-	require.NoError(t, th.mmStore.ChannelMemberHistory().LogLeaveEvent(th.User1.Id, channels[0].Id, startOne-100))
+	require.NoError(t, th.mmStore.ChannelMemberHistory().LogLeaveEvent(request.EmptyContext(th.logger), th.User1.Id, channels[0].Id, startOne-100))
 
 	// 2. In and out before the first window, but then again during the first window.
 	require.NoError(t, th.mmStore.ChannelMemberHistory().LogJoinEvent(th.User1.Id, channels[1].Id, startOne-1000))
-	require.NoError(t, th.mmStore.ChannelMemberHistory().LogLeaveEvent(th.User1.Id, channels[1].Id, startOne-100))
+	require.NoError(t, th.mmStore.ChannelMemberHistory().LogLeaveEvent(request.EmptyContext(th.logger), th.User1.Id, channels[1].Id, startOne-100))
 	require.NoError(t, th.mmStore.ChannelMemberHistory().LogJoinEvent(th.User1.Id, channels[1].Id, startOne+1000))
-	require.NoError(t, th.mmStore.ChannelMemberHistory().LogLeaveEvent(th.User1.Id, channels[1].Id, startOne+2000))
+	require.NoError(t, th.mmStore.ChannelMemberHistory().LogLeaveEvent(request.EmptyContext(th.logger), th.User1.Id, channels[1].Id, startOne+2000))
 
 	// 3. In before and out after the first search window.
 	require.NoError(t, th.mmStore.ChannelMemberHistory().LogJoinEvent(th.User1.Id, channels[2].Id, startOne-1000))
-	require.NoError(t, th.mmStore.ChannelMemberHistory().LogLeaveEvent(th.User1.Id, channels[2].Id, startOne+1000))
+	require.NoError(t, th.mmStore.ChannelMemberHistory().LogLeaveEvent(request.EmptyContext(th.logger), th.User1.Id, channels[2].Id, startOne+1000))
 
 	// 4. In before the window and not yet left.
 	require.NoError(t, th.mmStore.ChannelMemberHistory().LogJoinEvent(th.User1.Id, channels[3].Id, startOne-1000))
@@ -104,20 +104,20 @@ func TestSQLStore_LegalHold_GetChannelIDsForUserDuring(t *testing.T) {
 
 	// 7. In and out twice during the first window.
 	require.NoError(t, th.mmStore.ChannelMemberHistory().LogJoinEvent(th.User1.Id, channels[6].Id, startOne+1000))
-	require.NoError(t, th.mmStore.ChannelMemberHistory().LogLeaveEvent(th.User1.Id, channels[6].Id, startOne+2000))
+	require.NoError(t, th.mmStore.ChannelMemberHistory().LogLeaveEvent(request.EmptyContext(th.logger), th.User1.Id, channels[6].Id, startOne+2000))
 	require.NoError(t, th.mmStore.ChannelMemberHistory().LogJoinEvent(th.User1.Id, channels[6].Id, startOne+3000))
-	require.NoError(t, th.mmStore.ChannelMemberHistory().LogLeaveEvent(th.User1.Id, channels[6].Id, startOne+4000))
+	require.NoError(t, th.mmStore.ChannelMemberHistory().LogLeaveEvent(request.EmptyContext(th.logger), th.User1.Id, channels[6].Id, startOne+4000))
 
 	// 8. Leaves at exactly the start of the first window.
 	require.NoError(t, th.mmStore.ChannelMemberHistory().LogJoinEvent(th.User1.Id, channels[7].Id, startOne-1000))
-	require.NoError(t, th.mmStore.ChannelMemberHistory().LogLeaveEvent(th.User1.Id, channels[7].Id, startOne))
+	require.NoError(t, th.mmStore.ChannelMemberHistory().LogLeaveEvent(request.EmptyContext(th.logger), th.User1.Id, channels[7].Id, startOne))
 
 	// 9. Joins at exactly the end of the first window.
 	require.NoError(t, th.mmStore.ChannelMemberHistory().LogJoinEvent(th.User1.Id, channels[8].Id, endOne))
 
 	// 10. Joins during first window, leaves during second window.
 	require.NoError(t, th.mmStore.ChannelMemberHistory().LogJoinEvent(th.User1.Id, channels[9].Id, startOne+1000))
-	require.NoError(t, th.mmStore.ChannelMemberHistory().LogLeaveEvent(th.User1.Id, channels[9].Id, endTwo-1000))
+	require.NoError(t, th.mmStore.ChannelMemberHistory().LogLeaveEvent(request.EmptyContext(th.logger), th.User1.Id, channels[9].Id, endTwo-1000))
 
 	// Check channel IDs for first window.
 	firstWindowChannelIDs, err := th.Store.GetChannelIDsForUserDuring(th.User1.Id, startOne, endOne, true)

@@ -262,5 +262,5 @@ func (p *Plugin) Reconfigure() error {
 func FixedFileSettingsToFileBackendSettings(fileSettings mattermostModel.FileSettings) filestore.FileBackendSettings {
 	fileSettings.SetDefaults(true)
 
-	return filestore.NewFileBackendSettingsFromConfig(&fileSettings, true, false)
+	return filestore.NewFileBackendSettingsFromConfig(&fileSettings, true, false, "")
 }
