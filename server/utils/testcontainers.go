@@ -49,8 +49,7 @@ func CreateTestDB(ctx context.Context, driverName string, databaseName string) (
 }
 
 func createTestDBMySQL(ctx context.Context, databaseName string) (string, TearDownFunc, error) {
-	mysqlContainer, err := mysql.RunContainer(ctx,
-		testcontainers.WithImage("mysql:8.0.32"),
+	mysqlContainer, err := mysql.Run(ctx, "mysql:8.0.32",
 		mysql.WithDatabase(databaseName),
 		mysql.WithUsername(dbUser),
 		mysql.WithPassword(dbPassword),
@@ -72,8 +71,7 @@ func createTestDBMySQL(ctx context.Context, databaseName string) (string, TearDo
 }
 
 func createTestDBPostgres(ctx context.Context, databaseName string) (string, TearDownFunc, error) {
-	postgresContainer, err := postgres.RunContainer(ctx,
-		testcontainers.WithImage("docker.io/library/postgres:15.2-alpine"),
+	postgresContainer, err := postgres.Run(ctx, "docker.io/library/postgres:15.2-alpine",
 		postgres.WithDatabase(databaseName),
 		postgres.WithUsername(dbUser),
 		postgres.WithPassword(dbPassword),
@@ -108,9 +106,9 @@ func createTestDBPostgres(ctx context.Context, databaseName string) (string, Tea
 // CreateMinio instantiates a minio container and returns the connection string needed to connect to it.
 // A teardown function is also returned to close the container and free resources.
 func CreateMinio(ctx context.Context) (string, TearDownFunc, error) {
-	minioContainer, err := minio.RunContainer(
+	minioContainer, err := minio.Run(
 		ctx,
-		testcontainers.WithImage("cgr.dev/chainguard/minio:latest"),
+		"cgr.dev/chainguard/minio:latest",
 		testcontainers.WithWaitStrategy(
 			wait.ForHTTP("/minio/health/live").WithPort("9000"),
 			wait.ForExec([]string{"mc", "ready", "local"}),
