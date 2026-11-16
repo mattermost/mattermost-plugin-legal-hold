@@ -257,37 +257,10 @@ func (p *Plugin) Reconfigure() error {
 }
 
 // FixedFileSettingsToFileBackendSettings converts FileSettings to FileBackendSettings.
-// This is a copy of FileSettings.ToFileBackendSettings from mattermost-server with nil-safe
-// handling for boolean pointer fields, as the original method may be removed in future versions.
-// This function internally calls SetDefaults(true) to ensure all pointer fields are initialized.
+// It calls SetDefaults(true) first, so every nil pointer field is initialized before the
+// conversion and the upstream helper cannot dereference a nil pointer.
 func FixedFileSettingsToFileBackendSettings(fileSettings mattermostModel.FileSettings) filestore.FileBackendSettings {
-	// SetDefaults(true) initializes nil pointer fields with sensible defaults while preserving
-	// any existing user-configured values. This prevents nil pointer dereferences when accessing
-	// string and int64 pointer fields like AmazonS3Bucket, AmazonS3Region, etc.
 	fileSettings.SetDefaults(true)
 
-	if *fileSettings.DriverName == mattermostModel.ImageDriverLocal {
-		return filestore.FileBackendSettings{
-			DriverName: *fileSettings.DriverName,
-			Directory:  *fileSettings.Directory,
-		}
-	}
-
-	return filestore.FileBackendSettings{
-		DriverName:                         *fileSettings.DriverName,
-		AmazonS3AccessKeyId:                *fileSettings.AmazonS3AccessKeyId,
-		AmazonS3SecretAccessKey:            *fileSettings.AmazonS3SecretAccessKey,
-		AmazonS3Bucket:                     *fileSettings.AmazonS3Bucket,
-		AmazonS3PathPrefix:                 *fileSettings.AmazonS3PathPrefix,
-		AmazonS3Region:                     *fileSettings.AmazonS3Region,
-		AmazonS3Endpoint:                   *fileSettings.AmazonS3Endpoint,
-		AmazonS3SSL:                        fileSettings.AmazonS3SSL == nil || *fileSettings.AmazonS3SSL,
-		AmazonS3SignV2:                     fileSettings.AmazonS3SignV2 != nil && *fileSettings.AmazonS3SignV2,
-		AmazonS3SSE:                        fileSettings.AmazonS3SSE != nil && *fileSettings.AmazonS3SSE,
-		AmazonS3Trace:                      fileSettings.AmazonS3Trace != nil && *fileSettings.AmazonS3Trace,
-		AmazonS3RequestTimeoutMilliseconds: *fileSettings.AmazonS3RequestTimeoutMilliseconds,
-		SkipVerify:                         false,
-		AmazonS3UploadPartSizeBytes:        *fileSettings.AmazonS3UploadPartSizeBytes,
-		AmazonS3StorageClass:               *fileSettings.AmazonS3StorageClass,
-	}
+	return filestore.NewFileBackendSettingsFromConfig(&fileSettings, true, false)
 }
