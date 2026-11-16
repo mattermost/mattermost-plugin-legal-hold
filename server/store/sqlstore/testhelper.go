@@ -27,6 +27,7 @@ const (
 type TestHelper struct {
 	tearDowns []utils.TearDownFunc
 
+	logger      *mlog.Logger
 	mmStore     *mmstore.SqlStore
 	Store       *SQLStore
 	FileBackend filestore.FileBackend
@@ -74,6 +75,7 @@ func SetupHelper(t *testing.T) *TestHelper {
 
 	logger, err := mlog.NewLogger()
 	require.NoError(t, err)
+	th.logger = logger
 	th.tearDowns = append(th.tearDowns, func(context.Context) error {
 		return logger.Shutdown()
 	})
@@ -157,7 +159,7 @@ func (th *TestHelper) CreateOpenChannel(name string, userID string, teamID strin
 }
 
 func (th *TestHelper) CreateChannel(name, userID, teamID string, channelType model.ChannelType) (*model.Channel, error) {
-	rctx := request.EmptyContext(nil)
+	rctx := request.EmptyContext(th.logger)
 
 	channel := &model.Channel{
 		Name:        name,
@@ -170,7 +172,7 @@ func (th *TestHelper) CreateChannel(name, userID, teamID string, channelType mod
 }
 
 func (th *TestHelper) CreateChannels(num int, namePrefix string, userID string, teamID string) ([]*model.Channel, error) {
-	rctx := request.EmptyContext(nil)
+	rctx := request.EmptyContext(th.logger)
 	var channels []*model.Channel
 	for i := range num {
 		channel := &model.Channel{
@@ -190,7 +192,7 @@ func (th *TestHelper) CreateChannels(num int, namePrefix string, userID string, 
 }
 
 func (th *TestHelper) CreateChannelsWithChannelMemberHistory(num int, namePrefix string, userID string, teamID string) ([]*model.Channel, error) {
-	rctx := request.EmptyContext(nil)
+	rctx := request.EmptyContext(th.logger)
 
 	var channels []*model.Channel
 	for i := range num {
@@ -216,13 +218,13 @@ func (th *TestHelper) CreateChannelsWithChannelMemberHistory(num int, namePrefix
 }
 
 func (th *TestHelper) CreateDirectMessageChannel(user1 *model.User, user2 *model.User) (*model.Channel, error) {
-	rctx := request.EmptyContext(nil)
+	rctx := request.EmptyContext(th.logger)
 
 	return th.mmStore.Channel().CreateDirectChannel(rctx, user1, user2)
 }
 
 func (th *TestHelper) CreateUsers(num int, namePrefix string) ([]*model.User, error) {
-	rctx := request.EmptyContext(nil)
+	rctx := request.EmptyContext(th.logger)
 
 	var users []*model.User
 	for i := range num {
@@ -241,7 +243,7 @@ func (th *TestHelper) CreateUsers(num int, namePrefix string) ([]*model.User, er
 }
 
 func (th *TestHelper) CreatePosts(num int, userID string, channelID string) ([]*model.Post, error) {
-	rctx := request.EmptyContext(nil)
+	rctx := request.EmptyContext(th.logger)
 
 	var posts []*model.Post
 	for i := range num {
@@ -261,7 +263,7 @@ func (th *TestHelper) CreatePosts(num int, userID string, channelID string) ([]*
 }
 
 func (th *TestHelper) CreatePostsWithAttachments(num int, userID string, channelID string) ([]*model.Post, error) {
-	rctx := request.EmptyContext(nil)
+	rctx := request.EmptyContext(th.logger)
 	var posts []*model.Post
 	for i := range num {
 		text := "This is a test uploaded file."

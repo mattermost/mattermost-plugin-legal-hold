@@ -196,7 +196,7 @@ func TestLegalHold_GetChannelIDsForUserDuring_DeletedChannels(t *testing.T) {
 
 	// Delete the private channel from the Channels table (simulating a permanently deleted channel)
 	// The ChannelMemberHistory record will still exist
-	err = th.mmStore.Channel().PermanentDelete(request.EmptyContext(nil), privateChannel.Id)
+	err = th.mmStore.Channel().PermanentDelete(request.EmptyContext(th.logger), privateChannel.Id)
 	require.NoError(t, err)
 
 	// With includePublic=false, the LEFT JOIN should still return the deleted channel
