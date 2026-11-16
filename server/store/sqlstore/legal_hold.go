@@ -28,16 +28,6 @@ func (ss SQLStore) GetPostsBatch(channelID string, endTime int64, cursor model.L
 						(select Users.Username from Users where Users.Id = split_part(Channels.Name, '__', 2))
 						`
 
-	if ss.src.DriverName() == mattermostModel.DatabaseDriverMysql {
-		dmDisplayName = `
-						concat(
-							(select Users.Username from Users where Users.Id = substring_index(Channels.Name, '__', 1)),
-							', ',
-							(select Users.Username from Users where Users.Id = substring_index(Channels.Name, '__', -1))
-						)
-						`
-	}
-
 	query := `
 		SELECT
 			COALESCE(Teams.Name, 'direct-messages') AS TeamName,
@@ -187,16 +177,6 @@ func (ss SQLStore) GetChannelMetadataForIDs(channelIDs []string) ([]model.Channe
 							|| ', ' ||
 						(select Users.Username from Users where Users.Id = split_part(Channels.Name, '__', 2))
 	`
-
-	if ss.src.DriverName() == mattermostModel.DatabaseDriverMysql {
-		channelDisplayName = `
-						concat(
-							(select Users.Username from Users where Users.Id = substring_index(Channels.Name, '__', 1)),
-							', ',
-							(select Users.Username from Users where Users.Id = substring_index(Channels.Name, '__', -1))
-						)
-						`
-	}
 
 	query := `
 		SELECT

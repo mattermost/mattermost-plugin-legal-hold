@@ -56,7 +56,7 @@ func SetupHelper(t *testing.T) *TestHelper {
 		dbDriverName = "postgres"
 	}
 
-	if dbDriverName != "postgres" && dbDriverName != "mysql" {
+	if dbDriverName != "postgres" {
 		t.Fatalf("invalid TEST_DB_DRIVER_NAME environment variable: %s", dbDriverName)
 	}
 

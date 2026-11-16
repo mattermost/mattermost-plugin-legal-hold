@@ -228,7 +228,6 @@ detach: setup-attach
 test: webapp/node_modules install-go-tools
 ifneq ($(HAS_SERVER),)
 	TEST_DB_DRIVER_NAME=postgres $(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./server/...
-	TEST_DB_DRIVER_NAME=mysql $(GOBIN)/gotestsum -- -v $(GO_TEST_FLAGS) ./server/...
 endif
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && $(NPM) run test;
