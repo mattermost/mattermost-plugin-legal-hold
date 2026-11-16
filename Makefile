@@ -56,7 +56,7 @@ manifest-check:
 ## Install go tools
 install-go-tools:
 	@echo Installing go tools
-	$(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.9.0
+	$(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
 	$(GO) install gotest.tools/gotestsum@v1.13.0
 
 ## Runs eslint and golangci-lint

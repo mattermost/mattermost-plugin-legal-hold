@@ -47,6 +47,14 @@ linters:
       - path: _test\.go
         linters:
           - bodyclose
+      # LegalHold.Secret is part of the admin API response by design.
+      - linters:
+          - gosec
+        text: "G117"
+      - path: build/pluginctl/
+        linters:
+          - gosec
+        text: "G70[46]"
 
 formatters:
   enable:

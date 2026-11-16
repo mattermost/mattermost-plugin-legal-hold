@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -132,8 +133,8 @@ func (th *TestHelper) SetupBasic(t *testing.T) *TestHelper {
 func (th *TestHelper) TearDown(t *testing.T) {
 	ctx := context.Background()
 	// Tear down in reverse order, so each resource closes before the one it depends on.
-	for i := len(th.tearDowns) - 1; i >= 0; i-- {
-		assert.NoError(t, th.tearDowns[i](ctx))
+	for _, tearDown := range slices.Backward(th.tearDowns) {
+		assert.NoError(t, tearDown(ctx))
 	}
 }
 
