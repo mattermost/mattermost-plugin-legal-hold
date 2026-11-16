@@ -74,9 +74,16 @@ func SetupHelper(t *testing.T) *TestHelper {
 
 	logger, err := mlog.NewLogger()
 	require.NoError(t, err)
+	th.tearDowns = append(th.tearDowns, func(context.Context) error {
+		return logger.Shutdown()
+	})
 
 	th.mmStore, err = mmstore.New(settings, logger, nil)
 	require.NoError(t, err, "cannot instantiate test database")
+	th.tearDowns = append(th.tearDowns, func(context.Context) error {
+		th.mmStore.Close()
+		return nil
+	})
 
 	store, err := New(storeWrapper{th.mmStore}, &testLogger{t})
 	require.NoError(t, err, "could not create store")
@@ -122,10 +129,9 @@ func (th *TestHelper) SetupBasic(t *testing.T) *TestHelper {
 
 func (th *TestHelper) TearDown(t *testing.T) {
 	ctx := context.Background()
-	for _, f := range th.tearDowns {
-		if err := f(ctx); err != nil {
-			assert.NoError(t, err)
-		}
+	// Tear down in reverse order, so each resource closes before the one it depends on.
+	for i := len(th.tearDowns) - 1; i >= 0; i-- {
+		assert.NoError(t, th.tearDowns[i](ctx))
 	}
 }
 
