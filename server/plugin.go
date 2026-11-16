@@ -287,5 +287,7 @@ func FixedFileSettingsToFileBackendSettings(fileSettings mattermostModel.FileSet
 		AmazonS3Trace:                      fileSettings.AmazonS3Trace != nil && *fileSettings.AmazonS3Trace,
 		AmazonS3RequestTimeoutMilliseconds: *fileSettings.AmazonS3RequestTimeoutMilliseconds,
 		SkipVerify:                         false,
+		AmazonS3UploadPartSizeBytes:        *fileSettings.AmazonS3UploadPartSizeBytes,
+		AmazonS3StorageClass:               *fileSettings.AmazonS3StorageClass,
 	}
 }

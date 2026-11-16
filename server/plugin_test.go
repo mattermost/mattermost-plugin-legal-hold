@@ -46,6 +46,8 @@ func TestFixedFileSettingsToFileBackendSettings_S3WithAllFieldsSet(t *testing.T)
 		AmazonS3SSE:                        new(true),
 		AmazonS3Trace:                      new(false),
 		AmazonS3RequestTimeoutMilliseconds: new(int64(30000)),
+		AmazonS3UploadPartSizeBytes:        new(int64(10485760)),
+		AmazonS3StorageClass:               new("STANDARD_IA"),
 	}
 
 	result := FixedFileSettingsToFileBackendSettings(fileSettings)
@@ -62,6 +64,8 @@ func TestFixedFileSettingsToFileBackendSettings_S3WithAllFieldsSet(t *testing.T)
 	assert.True(t, result.AmazonS3SSE)
 	assert.False(t, result.AmazonS3Trace)
 	assert.Equal(t, int64(30000), result.AmazonS3RequestTimeoutMilliseconds)
+	assert.Equal(t, int64(10485760), result.AmazonS3UploadPartSizeBytes)
+	assert.Equal(t, "STANDARD_IA", result.AmazonS3StorageClass)
 	assert.False(t, result.SkipVerify)
 }
 
