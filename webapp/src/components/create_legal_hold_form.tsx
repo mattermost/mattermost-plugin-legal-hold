@@ -74,7 +74,11 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
         });
     };
 
+    // A close request during a save is ignored, so the pending request cannot reset a form that was reopened.
     const onCancel = () => {
+        if (saving) {
+            return;
+        }
         resetForm();
         props.onClose();
     };
@@ -103,6 +107,7 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
             <Button
                 type='button'
                 emphasis='tertiary'
+                disabled={saving}
                 onClick={onCancel}
             >
                 {'Cancel'}

@@ -1,4 +1,4 @@
-import {render, screen, within} from '@testing-library/react';
+import {render, screen, waitFor, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import dayjs from 'dayjs';
 
@@ -118,5 +118,23 @@ describe('CreateLegalHoldForm', () => {
         await userEvent.click(screen.getByRole('button', {name: 'Clear end date'}));
 
         expect(screen.queryByRole('button', {name: 'Clear end date'})).not.toBeInTheDocument();
+    });
+
+    test('ignores a close request while the legal hold saves', async () => {
+        let finish: (value: unknown) => void = () => {};
+        const {onClose} = setup(jest.fn().mockReturnValue(new Promise((resolve) => {
+            finish = resolve;
+        })));
+        await fillValidForm();
+
+        await userEvent.click(screen.getByRole('button', {name: 'Create legal hold'}));
+        await userEvent.keyboard('{Escape}');
+
+        expect(screen.getByRole('button', {name: 'Cancel'})).toBeDisabled();
+        expect(onClose).not.toHaveBeenCalled();
+        expect(screen.getByRole('textbox', {name: 'Name'})).toHaveValue('My Hold');
+
+        finish({});
+        await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     });
 });

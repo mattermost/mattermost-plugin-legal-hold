@@ -105,6 +105,23 @@ describe('UpdateLegalHoldForm', () => {
         expect(await screen.findByRole('alert')).toHaveTextContent('denied');
     });
 
+    test('ignores a close request while the legal hold saves', async () => {
+        let finish: (value: unknown) => void = () => {};
+        const {onClose} = setup(jest.fn().mockReturnValue(new Promise((resolve) => {
+            finish = resolve;
+        })));
+
+        await userEvent.click(await screen.findByRole('button', {name: 'Update legal hold'}));
+        await userEvent.keyboard('{Escape}');
+
+        expect(screen.getByRole('button', {name: 'Cancel'})).toBeDisabled();
+        expect(onClose).not.toHaveBeenCalled();
+        expect(screen.getByRole('textbox', {name: 'Name'})).toHaveValue('Audit');
+
+        finish({});
+        await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    });
+
     test('keeps the end date on the day that was saved in a time zone behind UTC', async () => {
         expect(new Date(legalHold.ends_at).getDate()).toBe(19);
         const {updateLegalHold} = setup();
