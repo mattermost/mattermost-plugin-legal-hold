@@ -1,26 +1,28 @@
-import React, {useEffect, useState, useCallback} from 'react';
+import {useEffect, useState} from 'react';
 
-import {IntlProvider} from 'react-intl';
+import RefreshIcon from '@mattermost/compass-icons/components/refresh';
+import {AdminPanel} from '@mattermost/compass-ui/components/admin-panel';
+import {Button} from '@mattermost/compass-ui/components/button';
+import {EmptyState} from '@mattermost/compass-ui/components/empty-state';
+import {Icon} from '@mattermost/compass-ui/components/icon';
+import {IconButton} from '@mattermost/compass-ui/components/icon-button';
 
 import Client from '@/client';
-import {CreateLegalHold, LegalHold, UpdateLegalHold} from '@/types';
-
-import CreateLegalHoldButton from '@/components/create_legal_hold_button';
+import ConfirmRelease from '@/components/confirm_release';
 import CreateLegalHoldForm from '@/components/create_legal_hold_form';
 import LegalHoldTable from '@/components/legal_hold_table';
-import UpdateLegalHoldForm from '@/components/update_legal_hold_form';
 import ShowSecretModal from '@/components/show_secret_modal';
+import UpdateLegalHoldForm from '@/components/update_legal_hold_form';
+import type {CreateLegalHold, LegalHold, UpdateLegalHold} from '@/types';
 
-import ConfirmRelease from '@/components/confirm_release';
-import LegalHoldIcon from '@/components/legal_hold_icon.svg';
-import RefreshIcon from '@/components/legal_holds_setting/refresh-outline.svg';
+import './legal_holds_setting.css';
 
 const POLLING_INTERVAL = 30000; // 30 seconds in milliseconds
 
 const LegalHoldsSetting = () => {
     const [legalHoldsFetched, setLegalHoldsFetched] = useState(false);
     const [legalHoldsFetching, setLegalHoldsFetching] = useState(false);
-    const [legalHolds, setLegalHolds] = useState(Array<LegalHold>());
+    const [legalHolds, setLegalHolds] = useState<LegalHold[]>([]);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showUpdateModal, setShowUpdateModal] = useState(false);
     const [showReleaseModal, setShowReleaseModal] = useState(false);
@@ -116,147 +118,79 @@ const LegalHoldsSetting = () => {
         return () => clearInterval(interval);
     }, []);
 
+    // The header button is the primary action, so the one in the empty state is lower emphasis.
+    const createButton = (testId: string, emphasis: 'primary' | 'secondary' = 'primary') => (
+        <Button
+            type='button'
+            emphasis={emphasis}
+            data-testid={testId}
+            onClick={() => setShowCreateModal(true)}
+        >
+            {'Create new'}
+        </Button>
+    );
+
     return (
-        <IntlProvider locale='en-US'>
-            <div
-                style={{
-                    padding: '28px 32px',
-                    border: '1px solid rgba(var(--sys-center-channel-color-rgb), 0.08)',
-                    background: 'var(--sys-center-channel-bg)',
-                    borderRadius: '4px',
-                    boxShadow: '0 2px 3px rgba(0, 0, 0, 0.08)',
-                    marginBottom: '24px',
-                }}
-            >
-                <div
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                    }}
-                >
-                    <div
-                        style={{
-                            color: '#3f4350',
-                            fontFamily: 'Metropolis',
-                            fontSize: '18px',
-                            fontWeight: '700',
-                            lineHeight: '24px',
-                            flexGrow: 1,
-                        }}
-                    >
-                        {'Legal Holds'}
-                    </div>
-                    <div style={{display: 'flex', gap: '8px'}}>
-                        <button
-                            className='btn btn-link'
-                            onClick={() => setLegalHoldsFetched(false)}
-                            aria-label='Refresh legal holds'
-                            style={{
-                                padding: '0 5px',
-                                height: '36px',
-                            }}
-                        >
-                            <span
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    fill: 'rgba(0, 0, 0, 0.5)',
-                                }}
-                            >
-                                <RefreshIcon/>
-                            </span>
-                        </button>
-                        <CreateLegalHoldButton
-                            onClick={() => setShowCreateModal(true)}
-                            dataTestId='createNewLegalHoldOnTop'
-                        />
-                    </div>
-                </div>
-                <hr/>
-
-                {legalHolds.length === 0 && (
-                    <div
-                        style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            marginTop: '60px',
-                            marginBottom: '60px',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                        }}
-                    >
-                        <LegalHoldIcon/>
-                        <p
-                            style={{
-                                fontSize: '20px',
-                                fontWeight: 700,
-                                marginBottom: 0,
-                            }}
-                        >
-                            {'No legal holds'}
-                        </p>
-                        <p
-                            style={{
-                                paddingTop: '5px',
-                                paddingBottom: '10px',
-                            }}
-                        >
-                            {'You have no legal holds at the moment'}
-                        </p>
-                        <CreateLegalHoldButton
-                            onClick={() => setShowCreateModal(true)}
-                            dataTestId='createNewLegalHoldOnList'
-                        />
-                    </div>
-                )}
-
-                {legalHolds.length > 0 && (
-                    <LegalHoldTable
-                        legalHolds={legalHolds}
-                        releaseLegalHold={doShowReleaseModal}
-                        showUpdateModal={doShowUpdateModal}
-                        showSecretModal={doShowSecretModal}
-                        runLegalHold={doRunLegalHold}
-                        refresh={() => setLegalHoldsFetched(false)}
+        <AdminPanel
+            className='legal-hold-panel'
+            title='Legal holds'
+            headerActions={(
+                <>
+                    <IconButton
+                        aria-label='Refresh legal holds'
+                        title='Refresh legal holds'
+                        icon={<Icon glyph={<RefreshIcon/>}/>}
+                        onClick={() => setLegalHoldsFetched(false)}
                     />
-                )}
-
-                <CreateLegalHoldForm
-                    createLegalHold={createLegalHold}
-                    visible={showCreateModal}
-                    onExited={() => {
-                        setShowCreateModal(false);
-                    }}
+                    {createButton('createNewLegalHoldOnTop')}
+                </>
+            )}
+        >
+            {legalHolds.length === 0 && (
+                <EmptyState
+                    title='No legal holds'
+                    description='You have no legal holds at the moment'
+                    actionSlot={createButton('createNewLegalHoldOnList', 'secondary')}
                 />
+            )}
 
-                <UpdateLegalHoldForm
-                    updateLegalHold={updateLegalHold}
-                    visible={showUpdateModal}
-                    onExited={() => {
-                        setShowUpdateModal(false);
-                    }}
-                    legalHold={activeLegalHold}
+            {legalHolds.length > 0 && (
+                <LegalHoldTable
+                    legalHolds={legalHolds}
+                    releaseLegalHold={doShowReleaseModal}
+                    showUpdateModal={doShowUpdateModal}
+                    showSecretModal={doShowSecretModal}
+                    runLegalHold={doRunLegalHold}
+                    refresh={() => setLegalHoldsFetched(false)}
                 />
+            )}
 
-                <ShowSecretModal
-                    legalHold={activeLegalHold}
-                    visible={showSecretModal}
-                    onExited={() => {
-                        setShowSecretModal(false);
-                    }}
-                />
+            <CreateLegalHoldForm
+                createLegalHold={createLegalHold}
+                visible={showCreateModal}
+                onClose={() => setShowCreateModal(false)}
+            />
 
-                <ConfirmRelease
-                    legalHold={activeLegalHold}
-                    releaseLegalHold={releaseLegalHold}
-                    onExited={() => {
-                        setShowReleaseModal(false);
-                    }}
-                    visible={showReleaseModal}
-                />
+            <UpdateLegalHoldForm
+                updateLegalHold={updateLegalHold}
+                visible={showUpdateModal}
+                onClose={() => setShowUpdateModal(false)}
+                legalHold={activeLegalHold}
+            />
 
-            </div>
-        </IntlProvider>
+            <ShowSecretModal
+                legalHold={activeLegalHold}
+                visible={showSecretModal}
+                onClose={() => setShowSecretModal(false)}
+            />
+
+            <ConfirmRelease
+                legalHold={activeLegalHold}
+                releaseLegalHold={releaseLegalHold}
+                onClose={() => setShowReleaseModal(false)}
+                visible={showReleaseModal}
+            />
+        </AdminPanel>
     );
 };
 

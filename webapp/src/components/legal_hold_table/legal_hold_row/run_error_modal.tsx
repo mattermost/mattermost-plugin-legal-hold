@@ -1,5 +1,5 @@
-import React from 'react';
-import {Modal} from 'react-bootstrap';
+import {Button} from '@mattermost/compass-ui/components/button';
+import {Modal, ModalOverlay} from '@mattermost/compass-ui/components/modal';
 
 interface Props {
     onHide: () => void;
@@ -8,27 +8,29 @@ interface Props {
 
 const RunErrorModal = ({show, onHide}: Props) => {
     return (
-        <Modal
-            show={show}
-            onHide={onHide}
-            centered={true}
+        <ModalOverlay
+            open={show}
+            onClose={onHide}
         >
-            <Modal.Header closeButton={true}>
-                <Modal.Title>{'Error Running Legal Hold'}</Modal.Title>
-            </Modal.Header>
-            <Modal.Body>
+            <Modal
+                open={show}
+                onClose={onHide}
+                title='Error running legal hold'
+                size='small'
+                headerDivider={false}
+                footerDivider={false}
+                footer={(
+                    <Button
+                        type='button'
+                        onClick={onHide}
+                    >
+                        {'Close'}
+                    </Button>
+                )}
+            >
                 {'There was an error running the legal hold. Please check the logs for more details.'}
-            </Modal.Body>
-            <Modal.Footer>
-                <button
-                    type='button'
-                    className='btn btn-primary'
-                    onClick={onHide}
-                >
-                    {'Close'}
-                </button>
-            </Modal.Footer>
-        </Modal>
+            </Modal>
+        </ModalOverlay>
     );
 };
 

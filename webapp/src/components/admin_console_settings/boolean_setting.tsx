@@ -1,4 +1,4 @@
-import React from 'react';
+import {Radio} from '@mattermost/compass-ui/components/radio';
 
 import BaseSetting from './base_setting';
 
@@ -14,28 +14,31 @@ type Props = {
 const BooleanSetting = (props: Props) => {
     return (
         <BaseSetting
-            {...props}
+            id={props.id}
+            name={props.name}
+            helpText={props.helpText}
+            group={true}
         >
-            <label className='radio-inline'>
-                <input
+            <div className='legal-hold-setting__radios'>
+                <Radio
                     data-testid={`${props.id}-true`}
-                    type='radio'
+                    name={props.id}
                     onChange={() => props.onChange(true)}
                     checked={props.value}
                     disabled={props.disabled}
-                />
-                <span>{'true'}</span>
-            </label>
-            <label className='radio-inline'>
-                <input
+                >
+                    {'true'}
+                </Radio>
+                <Radio
                     data-testid={`${props.id}-false`}
-                    type='radio'
+                    name={props.id}
                     onChange={() => props.onChange(false)}
                     checked={!props.value}
                     disabled={props.disabled}
-                />
-                <span>{'false'}</span>
-            </label>
+                >
+                    {'false'}
+                </Radio>
+            </div>
         </BaseSetting>
     );
 };

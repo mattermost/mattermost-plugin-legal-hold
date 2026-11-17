@@ -1,107 +1,72 @@
-import React, {useEffect} from 'react';
+import {useEffect, useMemo} from 'react';
+import {useDispatch} from 'react-redux';
 
+import {getMissingProfilesByIds} from 'mattermost-redux/actions/users';
+
+import {getMissingGroupsByIds} from '@/actions/groups';
 import LegalHoldRow from '@/components/legal_hold_table/legal_hold_row';
-import {LegalHold} from '@/types';
+import type {LegalHold} from '@/types';
+
+import './legal_hold_table.css';
 
 interface LegalHoldTableProps {
     legalHolds: LegalHold[];
-    actions: {
-        getMissingProfilesByIds: Function,
-        getMissingGroupsByIds: Function,
-    },
-    releaseLegalHold: Function,
-    showUpdateModal: Function,
-    showSecretModal: Function,
-    runLegalHold: (id: string) => Promise<void>;
+    releaseLegalHold: (legalHold: LegalHold) => void;
+    showUpdateModal: (legalHold: LegalHold) => void;
+    showSecretModal: (legalHold: LegalHold) => void;
+    runLegalHold: (id: string) => Promise<unknown>;
     refresh: () => void;
 }
 
+const HEADERS = ['Name', 'Start date', 'End date', 'Targeted users', 'Targeted groups', 'Last run', 'Actions'];
+
+const uniqueIds = (lists: Array<string[] | null>) => {
+    return Array.from(new Set(lists.flatMap((ids) => ids ?? []).filter(Boolean)));
+};
+
 const LegalHoldTable = (props: LegalHoldTableProps) => {
-    const legalHolds = props.legalHolds;
+    const dispatch = useDispatch();
+    const {legalHolds} = props;
 
-    const user_ids = Array.from(
-        new Set(
-            legalHolds.
-                map((lh) => lh.user_ids). // Put each LH's array of user IDs into an array
-                filter((i) => i !== null). // Drop any arrays that are null
-                reduce((prev, cur) => prev.concat(cur), []). // Flatten the list into a single array
-                filter((i) => i !== null), // Drop any IDs that are null
-        ),
-    );
-
-    const group_ids = Array.from(
-        new Set(
-            legalHolds.
-                map((lh) => lh.group_ids). // Put each LH's array of group IDs into an array
-                filter((i) => i !== null). // Drop any arrays that are null
-                reduce((prev, cur) => prev.concat(cur), []). // Flatten the list into a single array
-                filter((i) => i !== null), // Drop any IDs that are null
-        ),
-    );
+    const userIds = useMemo(() => uniqueIds(legalHolds.map((lh) => lh.user_ids)), [legalHolds]);
+    const groupIds = useMemo(() => uniqueIds(legalHolds.map((lh) => lh.group_ids)), [legalHolds]);
 
     useEffect(() => {
-        props.actions.getMissingProfilesByIds(
-            user_ids,
-        );
-        props.actions.getMissingGroupsByIds(
-            group_ids,
-        );
-    }, [props.actions, user_ids, group_ids]);
+        dispatch(getMissingProfilesByIds(userIds));
+        dispatch(getMissingGroupsByIds(groupIds));
+    }, [dispatch, userIds, groupIds]);
 
     return (
-        <div>
+        <div
+            role='table'
+            aria-label='Legal holds table'
+            className='legal-hold-table'
+        >
             <div
-                aria-label='Legal Holds Table'
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'auto auto auto auto auto auto auto',
-                    columnGap: '10px',
-                    rowGap: '10px',
-                    alignItems: 'center',
-                }}
+                role='row'
+                className='legal-hold-table__row'
             >
-                <div
-                    aria-label='name header'
-                    style={{fontWeight: 'bold'}}
-                >{'Name'}</div>
-                <div
-                    aria-label='start date header'
-                    style={{fontWeight: 'bold'}}
-                >{'Start Date'}</div>
-                <div
-                    aria-label='end date header'
-                    style={{fontWeight: 'bold'}}
-                >{'End Date'}</div>
-                <div
-                    aria-label='users header'
-                    style={{fontWeight: 'bold'}}
-                >{'Targeted Users'}</div>
-                <div
-                    aria-label='groups header'
-                    style={{fontWeight: 'bold'}}
-                >{'Targeted Groups'}</div>
-                <div
-                    aria-label='actions header'
-                    style={{fontWeight: 'bold'}}
-                >{'Last Run'}</div>
-                <div
-                    aria-label='actions header'
-                    style={{fontWeight: 'bold'}}
-                >{'Actions'}</div>
-                {legalHolds.map((legalHold) => {
-                    return (
-                        <LegalHoldRow
-                            legalHold={legalHold}
-                            key={'legalhold_' + legalHold.id}
-                            releaseLegalHold={props.releaseLegalHold}
-                            showUpdateModal={props.showUpdateModal}
-                            showSecretModal={props.showSecretModal}
-                            runLegalHold={(id: string) => props.runLegalHold(id)}
-                            refresh={props.refresh}
-                        />
-                    );
-                })}
+                {HEADERS.map((header) => (
+                    <div
+                        key={header}
+                        role='columnheader'
+                        className='legal-hold-table__header'
+                    >
+                        {header}
+                    </div>
+                ))}
             </div>
+            {legalHolds.map((legalHold) => (
+                <LegalHoldRow
+                    legalHold={legalHold}
+                    key={'legalhold_' + legalHold.id}
+                    releaseLegalHold={props.releaseLegalHold}
+                    showUpdateModal={props.showUpdateModal}
+                    showSecretModal={props.showSecretModal}
+                    runLegalHold={props.runLegalHold}
+                    refresh={props.refresh}
+                />
+            ))}
         </div>
     );
 };

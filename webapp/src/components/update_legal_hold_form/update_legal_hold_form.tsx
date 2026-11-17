@@ -1,56 +1,54 @@
-import dayjs from 'dayjs';
-import React, {useEffect, useState} from 'react';
+import {useEffect, useState} from 'react';
+import type {FormEvent} from 'react';
+import {useDispatch} from 'react-redux';
 
-import {UserProfile} from 'mattermost-redux/types/users';
-import {Group} from 'mattermost-redux/types/groups';
+import {Button} from '@mattermost/compass-ui/components/button';
+import {Modal, ModalOverlay} from '@mattermost/compass-ui/components/modal';
+import {SectionNotice} from '@mattermost/compass-ui/components/section-notice';
+import type {Group} from '@mattermost/types/groups';
+import type {UserProfile} from '@mattermost/types/users';
 
-import {GenericModal} from '@/components/mattermost-webapp/generic_modal/generic_modal';
-import Input from '@/components/mattermost-webapp/input/input';
-import UsersInput from '@/components/users_input';
-import GroupsInput from '@/components/groups_input';
-import {LegalHold, UpdateLegalHold} from '@/types';
-import {isValidDate} from '@/utils/date_validation';
+import {getMissingProfilesByIds} from 'mattermost-redux/actions/users';
 
-import '../create_legal_hold_form.scss';
+import {getMissingGroupsByIds} from '@/actions/groups';
+import {useLegalHoldEntities} from '@/components/legal_hold_entities';
+import LegalHoldFormFields from '@/components/legal_hold_form_fields';
+import type {LegalHold, UpdateLegalHold} from '@/types';
+
+import '../legal_hold_form.css';
+
+const FORM_ID = 'edit-legal-hold-form';
+
+// The forms store a date as midnight UTC, so a stored date is read back in UTC.
+const toDateString = (timestamp: number) => new Date(timestamp).toISOString().slice(0, 10);
 
 interface UpdateLegalHoldFormProps {
-    updateLegalHold: (data: UpdateLegalHold) => Promise<any>;
-    onExited: () => void;
+    updateLegalHold: (data: UpdateLegalHold) => Promise<unknown>;
+    onClose: () => void;
     visible: boolean;
     legalHold: LegalHold | null;
-    users: Array<UserProfile>;
-    groups: Array<Group>;
 }
 
 const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
+    const dispatch = useDispatch();
+    const {users: storedUsers, groups: storedGroups, complete} = useLegalHoldEntities(props.legalHold);
+
     const [id, setId] = useState('');
     const [displayName, setDisplayName] = useState('');
-    const [users, setUsers] = useState(Array<UserProfile>());
-    const [groups, setGroups] = useState(Array<Group>());
+    const [users, setUsers] = useState<UserProfile[]>([]);
+    const [groups, setGroups] = useState<Group[]>([]);
     const [startsAt, setStartsAt] = useState('');
     const [endsAt, setEndsAt] = useState('');
     const [saving, setSaving] = useState(false);
     const [includePublicChannels, setIncludePublicChannels] = useState(false);
     const [serverError, setServerError] = useState('');
-    const [endsAtInvalid, setEndsAtInvalid] = useState(false);
+    const [loadError, setLoadError] = useState('');
+    const [targetsRequested, setTargetsRequested] = useState(false);
 
-    const displayNameChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setDisplayName(e.target.value);
-    };
-
-    const endsAtChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const dateValue = e.target.value;
-        if (dateValue && !isValidDate(dateValue)) {
-            setEndsAtInvalid(true);
-            return;
-        }
-        setEndsAtInvalid(false);
-        setEndsAt(dateValue);
-    };
-
-    const includePublicChannelsChanged: (e: React.ChangeEvent<HTMLInputElement>) => void = (e) => {
-        setIncludePublicChannels(e.target.checked);
-    };
+    // The form shows the targets only after the store holds all of them. Otherwise a save removes the missing targets.
+    const targetsReady = complete || targetsRequested;
+    const unresolvedTargets = targetsReady ? ((props.legalHold?.user_ids?.length ?? 0) - storedUsers.length) +
+        ((props.legalHold?.group_ids?.length ?? 0) - storedGroups.length) : 0;
 
     const resetForm = () => {
         setId('');
@@ -59,70 +57,99 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
         setUsers([]);
         setGroups([]);
         setServerError('');
+        setLoadError('');
+        setTargetsRequested(false);
         setIncludePublicChannels(false);
         setSaving(false);
-        setEndsAtInvalid(false);
     };
 
-    // Populate initial form field values when the Legal Hold being edited changes.
+    // Load the targeted users and groups that the store does not hold yet.
     useEffect(() => {
-        if (props.legalHold) {
-            if (props.legalHold.id === id) {
+        const legalHold = props.legalHold;
+        if (!props.visible || !legalHold || complete || targetsRequested) {
+            return undefined;
+        }
+
+        let cancelled = false;
+        type Result = {error?: unknown} | undefined;
+        Promise.all([
+            dispatch(getMissingProfilesByIds(legalHold.user_ids ?? [])) as unknown as Promise<Result>,
+            dispatch(getMissingGroupsByIds(legalHold.group_ids ?? [])) as unknown as Promise<Result>,
+        ]).then((results) => {
+            if (cancelled) {
                 return;
             }
-
-            setId(props.legalHold.id);
-            setDisplayName(props.legalHold?.display_name);
-            setUsers(props.users);
-            setGroups(props.groups);
-            setIncludePublicChannels(props.legalHold.include_public_channels);
-
-            if (props.legalHold.starts_at) {
-                const startsAtString = dayjs(props.legalHold.starts_at).format('YYYY-MM-DD');
-                setStartsAt(startsAtString);
+            if (results.some((result) => result?.error)) {
+                setLoadError('Could not load all the targeted users and groups. Close this dialog and try again.');
+                return;
             }
-
-            if (props.legalHold.ends_at) {
-                const endsAtString = dayjs(props.legalHold.ends_at).format('YYYY-MM-DD');
-                setEndsAt(endsAtString);
+            setTargetsRequested(true);
+        }).catch(() => {
+            if (!cancelled) {
+                setLoadError('Could not load all the targeted users and groups. Close this dialog and try again.');
             }
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [dispatch, props.legalHold, props.visible, complete, targetsRequested]);
+
+    // Populate initial form field values when the legal hold being edited changes.
+    useEffect(() => {
+        if (!props.legalHold || props.legalHold.id === id || !targetsReady) {
+            return;
         }
-    }, [props.legalHold, props.users, props.groups, props.visible, id]);
 
-    const onSave = () => {
-        if (saving) {
+        setId(props.legalHold.id);
+        setDisplayName(props.legalHold.display_name);
+        setUsers(storedUsers);
+        setGroups(storedGroups);
+        setIncludePublicChannels(props.legalHold.include_public_channels);
+
+        if (props.legalHold.starts_at) {
+            setStartsAt(toDateString(props.legalHold.starts_at));
+        }
+
+        if (props.legalHold.ends_at) {
+            setEndsAt(toDateString(props.legalHold.ends_at));
+        }
+    }, [props.legalHold, storedUsers, storedGroups, id, targetsReady]);
+
+    const onSave = (e: FormEvent) => {
+        e.preventDefault();
+        if (saving || !props.legalHold || !canUpdate()) {
             return;
         }
         setSaving(true);
-
-        if (!props.legalHold) {
-            return;
-        }
 
         const data = {
             id: props.legalHold.id,
             user_ids: users.map((user) => user.id),
             group_ids: groups.map((group) => group.id),
-            ends_at: (new Date(endsAt)).getTime(),
+            ends_at: endsAt ? new Date(endsAt).getTime() : 0,
             include_public_channels: includePublicChannels,
             display_name: displayName,
         };
 
         props.updateLegalHold(data).then(() => {
             resetForm();
-            props.onExited();
+            props.onClose();
         }).catch((error) => {
             setSaving(false);
-            setServerError(error.toString());
+            setServerError(String(error));
         });
     };
 
     const onCancel = () => {
         resetForm();
-        props.onExited();
+        props.onClose();
     };
 
     const canUpdate = () => {
+        if (!targetsReady) {
+            return false;
+        }
         if (endsAt !== '' && startsAt >= endsAt) {
             return false;
         }
@@ -137,133 +164,81 @@ const UpdateLegalHoldForm = (props: UpdateLegalHoldFormProps) => {
         return true;
     };
 
-    if (!props.legalHold) {
-        return <div/>;
-    }
+    const footer = (
+        <>
+            <Button
+                type='button'
+                emphasis='tertiary'
+                onClick={onCancel}
+            >
+                {'Cancel'}
+            </Button>
+            <Button
+                type='submit'
+                form={FORM_ID}
+                loading={saving}
+                disabled={!canUpdate()}
+            >
+                {'Update legal hold'}
+            </Button>
+        </>
+    );
 
     return (
-        <GenericModal
-            id='edit-legal-hold-modal'
-            className='edit-legal-hold-modal'
-            modalHeaderText='Update legal hold'
-            confirmButtonText='Update legal hold'
-            cancelButtonText='Cancel'
-            errorText={serverError}
-            isConfirmDisabled={!canUpdate()}
-            autoCloseOnConfirmButton={false}
-            compassDesign={true}
-            handleConfirm={onSave}
-            handleEnterKeyPress={onSave}
-            handleCancel={onCancel}
-            onExited={onCancel}
-            show={props.visible}
+        <ModalOverlay
+            open={props.visible && Boolean(props.legalHold)}
+            onClose={onCancel}
         >
-            <div>
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        rowGap: '20px',
-                    }}
+            <Modal
+                open={props.visible && Boolean(props.legalHold)}
+                onClose={onCancel}
+                title='Update legal hold'
+                size='medium'
+                footer={footer}
+            >
+                <form
+                    id={FORM_ID}
+                    className='legal-hold-form'
+                    onSubmit={onSave}
                 >
-                    <Input
-                        type='text'
-                        autoComplete='off'
-                        autoFocus={false}
-                        required={true}
-                        name={'Name'}
-                        label={'Name'}
-                        placeholder={'New Legal Hold...'}
-                        limit={64}
-                        value={displayName}
-                        onChange={displayNameChanged}
-                        onBlur={displayNameChanged}
-                        containerClassName={'create-legal-hold-container'}
-                        inputClassName={'create-legal-hold-input'}
+                    {loadError && (
+                        <SectionNotice
+                            role='alert'
+                            type='danger'
+                            title={loadError}
+                        />
+                    )}
+                    {unresolvedTargets > 0 && (
+                        <SectionNotice
+                            type='warning'
+                            title={`${unresolvedTargets} targeted users or groups no longer exist. Updating the legal hold removes them.`}
+                        />
+                    )}
+                    {serverError && (
+                        <SectionNotice
+                            role='alert'
+                            type='danger'
+                            title={serverError}
+                        />
+                    )}
+                    <LegalHoldFormFields
+                        displayName={displayName}
+                        onDisplayNameChange={setDisplayName}
+                        users={users}
+                        onUsersChange={setUsers}
+                        groups={groups}
+                        onGroupsChange={setGroups}
+                        includePublicChannels={includePublicChannels}
+                        onIncludePublicChannelsChange={setIncludePublicChannels}
+                        publicChannelsNotice='It is possible for users to access public content without becoming members of a public channel. This setting only captures public channels the users are members of.'
+                        startsAt={startsAt}
+                        startsAtLabel='Starting at'
+                        endsAt={endsAt}
+                        onEndsAtChange={setEndsAt}
                     />
-                    <div>
-                        <label>{'Users'}</label>
-                        <UsersInput
-                            placeholder='@username1 @username2'
-                            users={users}
-                            onChange={setUsers}
-                        />
-                    </div>
-                    <div>
-                        <label>{'LDAP Groups'}</label>
-                        <GroupsInput
-                            placeholder='group1 group2'
-                            groups={groups}
-                            onChange={setGroups}
-                        />
-                    </div>
-                    <div
-                        style={{
-                            display: 'flex',
-                            columnGap: '20px',
-                        }}
-                    >
-                        <input
-                            type='checkbox'
-                            id='legal-hold-include-public-channels'
-                            checked={includePublicChannels}
-                            onChange={includePublicChannelsChanged}
-                            className={'create-legal-hold-checkbox'}
-                        />
-                        <label htmlFor={'legal-hold-include-public-channels'}>
-                            {'Include public channels'}
-                        </label>
-                    </div>
-                    <div
-                        style={{
-                            display: (includePublicChannels) ? 'block' : 'none',
-                            marginTop: '-20px',
-                            marginBottom: '20px',
-                        }}
-                    >
-                        <i className='icon icon-alert-outline'/>
-                        <span>{'It is possible for users to access public content without becoming members of a public channel. This setting only captures public channels the users are members of.'}</span>
-                    </div>
-                    <div
-                        style={{
-                            display: 'flex',
-                            columnGap: '20px',
-                        }}
-                    >
-                        <Input
-                            type='date'
-                            autoComplete='off'
-                            autoFocus={false}
-                            required={true}
-                            name={'Starting at'}
-                            label={'Starting at'}
-                            placeholder={'Starting at'}
-                            limit={64}
-                            value={startsAt}
-                            containerClassName={'create-legal-hold-container'}
-                            inputClassName={'create-legal-hold-input'}
-                            disabled={true}
-                        />
-                        <Input
-                            type='date'
-                            autoComplete='off'
-                            autoFocus={false}
-                            required={false}
-                            name={'Ending at'}
-                            label={'Ending at'}
-                            placeholder={'Ending at'}
-                            limit={64}
-                            value={endsAt}
-                            onChange={endsAtChanged}
-                            onBlur={endsAtChanged}
-                            containerClassName={'create-legal-hold-container'}
-                            inputClassName={'create-legal-hold-input'}
-                            hasError={endsAtInvalid}
-                        />
-                    </div>
-                </div>
-            </div>
-        </GenericModal>
+                </form>
+            </Modal>
+        </ModalOverlay>
     );
 };
 

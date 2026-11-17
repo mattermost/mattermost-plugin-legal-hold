@@ -1,4 +1,4 @@
-import React from 'react';
+import {TextInput} from '@mattermost/compass-ui/components/text-input';
 
 import BaseSetting from './base_setting';
 
@@ -14,13 +14,14 @@ type Props = {
 const TextSetting = (props: Props) => {
     return (
         <BaseSetting
-            {...props}
+            id={props.id}
+            name={props.name}
+            helpText={props.helpText}
         >
-            <input
+            <TextInput
                 id={props.id}
                 data-testid={`${props.id}-input`}
-                className='form-control'
-                type='text'
+                autoComplete='off'
                 value={props.value}
                 onChange={(e) => props.onChange(e.target.value)}
                 disabled={props.disabled}
