@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
 
 import RefreshIcon from '@mattermost/compass-icons/components/refresh';
 import {AdminPanel} from '@mattermost/compass-ui/components/admin-panel';
@@ -29,6 +29,13 @@ const LegalHoldsSetting = () => {
     const [showSecretModal, setShowSecretModal] = useState(false);
     const [activeLegalHold, setActiveLegalHold] = useState<LegalHold|null>(null);
 
+    // A refresh that is requested while a fetch runs must start another fetch, because the running one can hold old data.
+    const refreshRequested = useRef(false);
+    const refresh = useCallback(() => {
+        refreshRequested.current = true;
+        setLegalHoldsFetched(false);
+    }, []);
+
     const doRunLegalHold = async (id: string) => {
         try {
             const response = await Client.runLegalHold(id);
@@ -42,7 +49,7 @@ const LegalHoldsSetting = () => {
     const createLegalHold = async (data: CreateLegalHold) => {
         try {
             const response = await Client.createLegalHold(data);
-            setLegalHoldsFetched(false);
+            refresh();
             return response;
         } catch (error) {
             console.log(error); //eslint-disable-line no-console
@@ -53,7 +60,7 @@ const LegalHoldsSetting = () => {
     const releaseLegalHold = async (id: string) => {
         try {
             const response = await Client.releaseLegalHold(id);
-            setLegalHoldsFetched(false);
+            refresh();
             setActiveLegalHold(null);
             return response;
         } catch (error) {
@@ -65,7 +72,7 @@ const LegalHoldsSetting = () => {
     const updateLegalHold = async (data: UpdateLegalHold) => {
         try {
             const response = await Client.updateLegalHold(data.id, data);
-            setLegalHoldsFetched(false);
+            refresh();
             setActiveLegalHold(null);
             return response;
         } catch (error) {
@@ -91,17 +98,16 @@ const LegalHoldsSetting = () => {
 
     useEffect(() => {
         const fetchLegalHolds = async () => {
+            refreshRequested.current = false;
             try {
                 setLegalHoldsFetching(true);
                 const data = await Client.getLegalHolds();
                 setLegalHolds(data);
-                setLegalHoldsFetching(false);
-                setLegalHoldsFetched(true);
             } catch (error) {
-                setLegalHoldsFetching(false);
-                setLegalHoldsFetched(true);
                 console.error(error); //eslint-disable-line no-console
             }
+            setLegalHoldsFetching(false);
+            setLegalHoldsFetched(!refreshRequested.current);
         };
 
         if (!legalHoldsFetched && !legalHoldsFetching) {
@@ -111,12 +117,10 @@ const LegalHoldsSetting = () => {
 
     // Set up polling
     useEffect(() => {
-        const interval = setInterval(() => {
-            setLegalHoldsFetched(false);
-        }, POLLING_INTERVAL);
+        const interval = setInterval(refresh, POLLING_INTERVAL);
 
         return () => clearInterval(interval);
-    }, []);
+    }, [refresh]);
 
     // The header button is the primary action, so the one in the empty state is lower emphasis.
     const createButton = (testId: string, emphasis: 'primary' | 'secondary' = 'primary') => (
@@ -140,7 +144,7 @@ const LegalHoldsSetting = () => {
                         aria-label='Refresh legal holds'
                         title='Refresh legal holds'
                         icon={<Icon glyph={<RefreshIcon/>}/>}
-                        onClick={() => setLegalHoldsFetched(false)}
+                        onClick={refresh}
                     />
                     {createButton('createNewLegalHoldOnTop')}
                 </>
@@ -161,7 +165,7 @@ const LegalHoldsSetting = () => {
                     showUpdateModal={doShowUpdateModal}
                     showSecretModal={doShowSecretModal}
                     runLegalHold={doRunLegalHold}
-                    refresh={() => setLegalHoldsFetched(false)}
+                    refresh={refresh}
                 />
             )}
 

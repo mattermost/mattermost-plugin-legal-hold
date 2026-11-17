@@ -1,4 +1,4 @@
-import {render, screen} from '@testing-library/react';
+import {render, screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import LegalHoldsSetting from './legal_holds_setting';
@@ -73,6 +73,25 @@ describe('LegalHoldsSetting', () => {
         await userEvent.click(screen.getByRole('button', {name: 'Refresh legal holds'}));
 
         await screen.findByText('Audit');
+        expect(Client.getLegalHolds).toHaveBeenCalledTimes(2);
+    });
+
+    test('fetches again when a refresh is requested during a fetch', async () => {
+        const stale = {...legalHold, display_name: 'Old name'};
+        let finishFirst: (value: LegalHold[]) => void = () => {};
+        (Client.getLegalHolds as jest.Mock).
+            mockReturnValueOnce(new Promise((resolve) => {
+                finishFirst = resolve;
+            })).
+            mockResolvedValue([legalHold]);
+        render(<LegalHoldsSetting/>);
+        await waitFor(() => expect(Client.getLegalHolds).toHaveBeenCalledTimes(1));
+
+        await userEvent.click(screen.getByRole('button', {name: 'Refresh legal holds'}));
+        expect(Client.getLegalHolds).toHaveBeenCalledTimes(1);
+        finishFirst([stale]);
+
+        expect(await screen.findByText('Audit')).toBeInTheDocument();
         expect(Client.getLegalHolds).toHaveBeenCalledTimes(2);
     });
 
