@@ -32,13 +32,24 @@ WORKTREE=$(basename "$ROOT")
 PATH_HASH=$(printf '%04x' $(($(printf '%s' "$ROOT" | cksum | cut -d' ' -f1) % 65536)))
 PROJECT="$(printf '%s' "$WORKTREE" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9_-]+/-/g; s/^[^a-z0-9]+//')-${PATH_HASH}"
 
-PORT=${MM_PORT:-$((18000 + $(printf '%s' "$PROJECT" | cksum | cut -d' ' -f1) % 1000))}
+# A port or image that you set stays in force for later commands. A new value overrides it.
+saved_setting() {
+    [ -f "$DEV_DIR/.env" ] || return 0
+    sed -n "s/^$1=//p" "$DEV_DIR/.env" | tail -n 1
+}
+
+CHOSEN_PORT=${MM_PORT:-$(saved_setting DEV_MM_PORT)}
+MM_IMAGE=${MM_IMAGE:-$(saved_setting MM_IMAGE)}
+PORT=${CHOSEN_PORT:-$((18000 + $(printf '%s' "$PROJECT" | cksum | cut -d' ' -f1) % 1000))}
 URL="http://localhost:${PORT}"
 
 write_env() {
     {
         echo "COMPOSE_PROJECT_NAME=${PROJECT}"
         echo "MM_PORT=${PORT}"
+        if [ -n "${CHOSEN_PORT:-}" ]; then
+            echo "DEV_MM_PORT=${CHOSEN_PORT}"
+        fi
         if [ -n "${MM_IMAGE:-}" ]; then
             echo "MM_IMAGE=${MM_IMAGE}"
         fi

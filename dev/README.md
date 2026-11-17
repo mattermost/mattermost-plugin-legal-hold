@@ -17,3 +17,4 @@ A Mattermost server with PostgreSQL, named after the git worktree, with the plug
 - The server image is `mattermost/mattermost-enterprise-edition:11.7`, the minimum server version. Set `MM_IMAGE` to test another one.
 - Developer and testing modes let the plugin run without an Enterprise license. Put a license in `dev/license.txt` to test with one.
 - LDAP groups need an LDAP server, which this stack does not include.
+- A `MM_PORT` or `MM_IMAGE` that you set is saved in `.env`. Later commands use it again, and a new value replaces it. Delete `.env` to go back to the defaults.
