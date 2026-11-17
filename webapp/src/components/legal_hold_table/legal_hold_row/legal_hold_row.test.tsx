@@ -108,8 +108,11 @@ describe('LegalHoldRow', () => {
         setup({ends_at: Date.UTC(2025, 5, 20)});
 
         expect(new Date(Date.UTC(2025, 0, 15)).getDate()).toBe(14);
-        expect(screen.getByTestId('start-date-lh1')).toHaveTextContent('1/15/2025');
-        expect(screen.getByTestId('end-date-lh1')).toHaveTextContent('6/20/2025');
+
+        // The row uses the default locale, so the expected text comes from the same call.
+        const utcDate = (timestamp: number) => new Date(timestamp).toLocaleDateString(undefined, {timeZone: 'UTC'});
+        expect(screen.getByTestId('start-date-lh1')).toHaveTextContent(utcDate(Date.UTC(2025, 0, 15)));
+        expect(screen.getByTestId('end-date-lh1')).toHaveTextContent(utcDate(Date.UTC(2025, 5, 20)));
     });
 
     test('shows an error dialog when the run fails', async () => {
