@@ -11,7 +11,7 @@ A Mattermost server with PostgreSQL, named after the git worktree, with the plug
 ./dev.sh env       # environment for the Playwright tests in e2e-tests/
 ```
 
-- The stack name and the port come from the worktree directory, so worktrees do not clash. `dev.sh` writes them to `.env`.
+- The stack name comes from the worktree directory name plus a hash of the full path, so worktrees do not clash. The port comes from the stack name. `dev.sh` writes both to `.env`.
 - Requirements: Docker, Go, and the Node version in `.nvmrc`.
 - Logins: `admin`, `user-1`, `user-2` and `user-3`, with the password that `./dev.sh status` shows.
 - The server image is `mattermost/mattermost-enterprise-edition:11.7`, the minimum server version. Set `MM_IMAGE` to test another one.

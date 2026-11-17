@@ -26,9 +26,12 @@ ADMIN_PASSWORD='Testing-123!'
 TEAM_NAME=dev
 USERS=(user-1 user-2 user-3)
 
-# The stack and the port follow the worktree, so worktrees do not clash.
+# The stack and the port follow the worktree. The name holds a hash of the full path,
+# so two worktrees with the same directory name do not share a stack.
 WORKTREE=$(basename "$ROOT")
-PROJECT=$(printf '%s' "$WORKTREE" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9_-]+/-/g; s/^[^a-z0-9]+//')
+PATH_HASH=$(printf '%04x' $(($(printf '%s' "$ROOT" | cksum | cut -d' ' -f1) % 65536)))
+PROJECT="$(printf '%s' "$WORKTREE" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9_-]+/-/g; s/^[^a-z0-9]+//')-${PATH_HASH}"
+
 PORT=${MM_PORT:-$((18000 + $(printf '%s' "$PROJECT" | cksum | cut -d' ' -f1) % 1000))}
 URL="http://localhost:${PORT}"
 
