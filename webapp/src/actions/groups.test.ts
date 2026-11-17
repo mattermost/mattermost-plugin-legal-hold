@@ -13,6 +13,8 @@ beforeEach(() => {
     jest.spyOn(console, 'log').mockImplementation(() => {});
 });
 
+const clientError = (status: number) => Object.assign(new Error('request failed'), {status_code: status});
+
 const getGroup = Client.getGroup as jest.Mock;
 
 const run = (ids: string[], stored: Record<string, unknown> = {}) => {
@@ -60,5 +62,20 @@ describe('getMissingGroupsByIds', () => {
 
         expect(await run(['g1']).result).toEqual({error: expect.any(Error)});
         expect(await run(['g1']).result).toEqual({data: [{id: 'g1'}]});
+    });
+
+    test('skips a group that does not exist without an error', async () => {
+        getGroup.mockImplementation((id: string) => (id === 'g2' ? Promise.reject(clientError(404)) : Promise.resolve({id})));
+        const {dispatch, result} = run(['g1', 'g2']);
+
+        expect(await result).toEqual({data: [{id: 'g1'}]});
+        expect(dispatch).toHaveBeenCalledWith({type: GroupTypes.RECEIVED_GROUPS, data: [{id: 'g1'}]});
+    });
+
+    test('returns an error for a failure that is not a missing group', async () => {
+        const error = clientError(500);
+        getGroup.mockRejectedValue(error);
+
+        expect(await run(['g1']).result).toEqual({error});
     });
 });
