@@ -27,10 +27,10 @@ export async function createLegalHold(
     }
 
     // Enter start and end date
-    await pluginPage.createModal.startingFromInput.fill(startDate);
+    await pluginPage.selectDate(pluginPage.createModal.startingFromField, startDate);
 
     if (endDate) {
-        await pluginPage.createModal.endingAtInput.fill(endDate);
+        await pluginPage.selectDate(pluginPage.createModal.endingAtField, endDate);
     }
 
     // Set wether to include public channels
