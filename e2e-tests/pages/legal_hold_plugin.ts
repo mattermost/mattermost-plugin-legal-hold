@@ -40,8 +40,12 @@ export class LegalHoldPluginPage {
         const today = new Date();
         const monthsAhead = ((year - today.getFullYear()) * 12) + (month - 1 - today.getMonth());
         const step = calendar.getByRole('button', {name: monthsAhead > 0 ? 'Next month' : 'Previous month'});
-        for (let i = 0; i < Math.abs(monthsAhead); i++) {
-            await step.click();
+        for (let i = 1; i <= Math.abs(monthsAhead); i++) {
+            // Both months are in the DOM while the calendar animates, so wait for the new month label before the next click.
+            const shown = new Date(today.getFullYear(), today.getMonth() + (Math.sign(monthsAhead) * i), 1);
+            const label = shown.toLocaleString('en-US', {month: 'short', year: 'numeric'});
+            await step.last().click();
+            await expect(calendar.getByText(label).first()).toBeVisible();
         }
 
         await calendar.getByRole('button', {name: isoDate, exact: true}).click();
