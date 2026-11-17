@@ -29,7 +29,8 @@ test('Admin user can create a legal hold successfully', async ({pw}) => {
 
     // Verify legal hold is created and details are correct
     await expect(pluginPage.getLegalHold(legalHoldName)).toBeVisible();
-    const dateString = today.toLocaleDateString('en-US');
+    // The legal hold stores the picked date as midnight UTC, and the table shows it in UTC.
+    const dateString = today.toLocaleDateString('en-US', {timeZone: 'UTC'});
     expect(await pluginPage.getStartDate(legalHoldName)).toHaveText(dateString);
     expect(await pluginPage.getEndDate(legalHoldName)).toHaveText('Never');
     expect(await pluginPage.getUsers(legalHoldName)).toHaveText('1 users');
