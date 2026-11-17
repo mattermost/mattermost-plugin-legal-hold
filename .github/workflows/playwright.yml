@@ -65,6 +65,9 @@ jobs:
         ports:
           - 8065:8065
     env:
+      # The Makefile builds only linux-amd64 on CI. The server in this job runs on that platform,
+      # and a bundle with every platform is larger than the server upload limit.
+      IS_CI: true
       MM_SERVICESETTINGS_SITEURL: http://localhost:8065
       MM_ADMIN_EMAIL: sysadmin@sample.mattermost.com
       MM_ADMIN_USERNAME: sysadmin
