@@ -1,6 +1,9 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
@@ -215,4 +218,116 @@ func TestFixedFileSettingsToFileBackendSettings_NilPointerSafety(t *testing.T) {
 			assert.NotZero(t, result.AmazonS3RequestTimeoutMilliseconds)
 		})
 	})
+}
+
+func TestLoadServerConfigJSON(t *testing.T) {
+	t.Run("relative MM_CONFIG uses the config directory search", func(t *testing.T) {
+		raw, err := loadServerConfigJSON("config.json", func(path string) ([]byte, error) {
+			if strings.HasSuffix(filepath.ToSlash(path), "config/config.json") {
+				return []byte(`{"FileSettings":{"AzureStorageAccount":"resolved"}}`), nil
+			}
+			return nil, os.ErrNotExist
+		}, func() ([]byte, error) {
+			t.Fatal("database reader should not run for a relative file")
+			return nil, nil
+		})
+		require.NoError(t, err)
+		require.Contains(t, string(raw), "resolved")
+	})
+
+	t.Run("relative MM_CONFIG that cannot be found is an error", func(t *testing.T) {
+		_, err := loadServerConfigJSON("config.json", func(string) ([]byte, error) {
+			return nil, os.ErrNotExist
+		}, func() ([]byte, error) {
+			t.Fatal("database reader should not run for a relative file")
+			return nil, nil
+		})
+		require.Error(t, err)
+	})
+
+	t.Run("file error is returned", func(t *testing.T) {
+		_, err := loadServerConfigJSON("/missing/config.json", func(string) ([]byte, error) {
+			return nil, assert.AnError
+		}, func() ([]byte, error) {
+			t.Fatal("database reader should not run for a file path")
+			return nil, nil
+		})
+		require.Error(t, err)
+	})
+
+	t.Run("dsn does not fall through to a file", func(t *testing.T) {
+		_, err := loadServerConfigJSON("postgres://db/mattermost", func(string) ([]byte, error) {
+			t.Fatal("file reader should not run for a DSN")
+			return []byte(`{"FileSettings":{"AzureStorageAccount":"leftover"}}`), nil
+		}, func() ([]byte, error) {
+			return nil, assert.AnError
+		})
+		require.Error(t, err)
+	})
+
+	t.Run("empty MM_CONFIG prefers config/config.json", func(t *testing.T) {
+		raw, err := loadServerConfigJSON("", func(path string) ([]byte, error) {
+			if strings.HasSuffix(filepath.ToSlash(path), "config/config.json") {
+				return []byte(`{"FileSettings":{"AzureStorageAccount":"fromconfigdir"}}`), nil
+			}
+			return nil, os.ErrNotExist
+		}, func() ([]byte, error) {
+			t.Fatal("database reader should not run when MM_CONFIG is empty")
+			return nil, nil
+		})
+		require.NoError(t, err)
+		require.Contains(t, string(raw), "fromconfigdir")
+	})
+
+	t.Run("empty MM_CONFIG falls through to config.json", func(t *testing.T) {
+		raw, err := loadServerConfigJSON("", func(path string) ([]byte, error) {
+			slash := filepath.ToSlash(path)
+			inConfigDir := strings.HasSuffix(slash, "config/"+defaultServerConfigFile)
+			inWorkingDir := slash == defaultServerConfigFile || (strings.HasSuffix(slash, "/"+defaultServerConfigFile) && !inConfigDir)
+			if inWorkingDir {
+				return []byte(`{"FileSettings":{"AzureStorageAccount":"fromcwd"}}`), nil
+			}
+			return nil, os.ErrNotExist
+		}, func() ([]byte, error) {
+			t.Fatal("database reader should not run when MM_CONFIG is empty")
+			return nil, nil
+		})
+		require.NoError(t, err)
+		require.Contains(t, string(raw), "fromcwd")
+	})
+
+	t.Run("empty MM_CONFIG with no default file is env only", func(t *testing.T) {
+		raw, err := loadServerConfigJSON("", func(string) ([]byte, error) {
+			return nil, os.ErrNotExist
+		}, func() ([]byte, error) {
+			t.Fatal("database reader should not run when the default file is missing")
+			return nil, nil
+		})
+		require.NoError(t, err)
+		require.Empty(t, raw)
+	})
+
+	t.Run("empty MM_CONFIG returns a real file error", func(t *testing.T) {
+		_, err := loadServerConfigJSON("", func(string) ([]byte, error) {
+			return nil, os.ErrPermission
+		}, func() ([]byte, error) {
+			t.Fatal("database reader should not run when the default file cannot be read")
+			return nil, nil
+		})
+		require.Error(t, err)
+	})
+}
+
+func TestConfigDSN(t *testing.T) {
+	driver, dataSource, table, err := configDSN("postgres://user:pass@db:5432/config?sslmode=disable")
+	require.NoError(t, err)
+	require.Equal(t, "postgres", driver)
+	require.Equal(t, "postgres://user:pass@db:5432/config?sslmode=disable", dataSource)
+	require.Equal(t, "configurations", table)
+
+	driver, dataSource, table, err = configDSN("mysql://user:pass@tcp(db:3306)/config")
+	require.NoError(t, err)
+	require.Equal(t, "mysql", driver)
+	require.Equal(t, "user:pass@tcp(db:3306)/config", dataSource)
+	require.Equal(t, "Configurations", table)
 }

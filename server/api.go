@@ -14,7 +14,6 @@ import (
 	"github.com/gorilla/mux"
 	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
-	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
@@ -382,14 +381,7 @@ func (p *Plugin) testAmazonS3Connection(w http.ResponseWriter, _ *http.Request) 
 
 	var err error
 
-	conf := p.getConfiguration()
-	if !conf.AmazonS3BucketSettings.Enable {
-		http.Error(w, "Amazon S3 bucket settings are not enabled", http.StatusBadRequest)
-		return
-	}
-
-	filesBackendSettings := FixedFileSettingsToFileBackendSettings(conf.AmazonS3BucketSettings.Settings)
-	filesBackend, err := filestore.NewFileBackend(filesBackendSettings)
+	filesBackend, err := p.openFileBackend()
 	if err != nil {
 		err = errors.Wrap(err, "unable to initialize the file store")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -398,14 +390,14 @@ func (p *Plugin) testAmazonS3Connection(w http.ResponseWriter, _ *http.Request) 
 	}
 
 	if err = filesBackend.TestConnection(); err != nil {
-		err = errors.Wrap(err, "failed to connect to Amazon S3 bucket")
+		err = errors.Wrap(err, "failed to connect to the selected filestore")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		p.Client.Log.Error(err.Error())
 		return
 	}
 
 	response := messageResponse{
-		Message: "Successfully connected to Amazon S3 bucket",
+		Message: "Successfully connected to the selected filestore",
 	}
 
 	w.Header().Set("Content-Type", "application/json")
