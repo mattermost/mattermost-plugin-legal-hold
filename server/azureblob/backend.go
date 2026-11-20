@@ -189,9 +189,10 @@ func (b *Backend) TestConnection() error {
 }
 
 func (b *Backend) Reader(p string) (filestore.ReadCloseSeeker, error) {
-	// The timeout covers opening the blob. The returned reader is cancelled
-	// only when the caller Closes it, so a download that runs longer than
-	// b.timeout is not cut off mid-stream.
+	// The timeout covers opening the blob. The reader then uses the same
+	// duration as an inactivity limit: it resets when bytes arrive, and it
+	// cancels a body that stops sending. A download that keeps making
+	// progress is not cut off.
 	propsCtx, propsCancel := context.WithTimeout(context.Background(), b.timeout)
 	defer propsCancel()
 	client, err := b.blobClient(p)
