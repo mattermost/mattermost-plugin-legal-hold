@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	pluginapi "github.com/mattermost/mattermost-plugin-api"
-	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
-	"github.com/mattermost/mattermost-server/v6/plugin/plugintest"
+	mattermostModel "github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
+	pluginapi "github.com/mattermost/mattermost/server/public/pluginapi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -32,7 +32,7 @@ func TestKVStore_CreateLegalHold(t *testing.T) {
 	}
 
 	// Mock GetAllLegalHolds to return empty list (no existing legal holds)
-	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+	api.On("KVListWithOptions", mock.AnythingOfType("int"), mock.AnythingOfType("int"), mock.AnythingOfType("model.PluginKVListOptions")).
 		Return([]string{}, nil).Once()
 
 	api.On("KVSetWithOptions",
@@ -68,7 +68,7 @@ func TestKVStore_CreateLegalHold(t *testing.T) {
 	}
 
 	// Mock GetAllLegalHolds to return empty list (no name conflicts)
-	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+	api.On("KVListWithOptions", mock.AnythingOfType("int"), mock.AnythingOfType("int"), mock.AnythingOfType("model.PluginKVListOptions")).
 		Return([]string{}, nil).Once()
 
 	api.On("KVSetWithOptions",
@@ -137,7 +137,7 @@ func TestKVStore_GetAllLegalHolds(t *testing.T) {
 	marshaled2, err := json.Marshal(lh2)
 	require.NoError(t, err)
 
-	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+	api.On("KVListWithOptions", mock.AnythingOfType("int"), mock.AnythingOfType("int"), mock.AnythingOfType("model.PluginKVListOptions")).
 		Return([]string{
 			fmt.Sprintf("%s%s", legalHoldPrefix, lh1.ID),
 			fmt.Sprintf("%s%s", legalHoldPrefix, lh2.ID),
@@ -153,7 +153,7 @@ func TestKVStore_GetAllLegalHolds(t *testing.T) {
 	require.Equal(t, lhs, result)
 
 	// Test with no data
-	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+	api.On("KVListWithOptions", mock.AnythingOfType("int"), mock.AnythingOfType("int"), mock.AnythingOfType("model.PluginKVListOptions")).
 		Return([]string{}, nil).
 		Once()
 
@@ -271,7 +271,7 @@ func TestKVStore_CreateLegalHold_DuplicateName(t *testing.T) {
 	existingMarshaled, err := json.Marshal(existingLH)
 	require.NoError(t, err)
 
-	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+	api.On("KVListWithOptions", mock.AnythingOfType("int"), mock.AnythingOfType("int"), mock.AnythingOfType("model.PluginKVListOptions")).
 		Return([]string{fmt.Sprintf("%s%s", legalHoldPrefix, existingLH.ID)}, nil).
 		Once()
 
@@ -322,7 +322,7 @@ func TestKVStore_CreateLegalHold_FunctionalDuplicate(t *testing.T) {
 	existingMarshaled, err := json.Marshal(existingLH)
 	require.NoError(t, err)
 
-	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+	api.On("KVListWithOptions", mock.AnythingOfType("int"), mock.AnythingOfType("int"), mock.AnythingOfType("model.PluginKVListOptions")).
 		Return([]string{fmt.Sprintf("%s%s", legalHoldPrefix, existingLH.ID)}, nil).
 		Once()
 
@@ -369,7 +369,7 @@ func TestKVStore_CreateLegalHold_DifferentParticipants(t *testing.T) {
 	existingMarshaled, err := json.Marshal(existingLH)
 	require.NoError(t, err)
 
-	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+	api.On("KVListWithOptions", mock.AnythingOfType("int"), mock.AnythingOfType("int"), mock.AnythingOfType("model.PluginKVListOptions")).
 		Return([]string{fmt.Sprintf("%s%s", legalHoldPrefix, existingLH.ID)}, nil).
 		Once()
 
@@ -426,7 +426,7 @@ func TestKVStore_CreateLegalHold_DifferentDates(t *testing.T) {
 	existingMarshaled, err := json.Marshal(existingLH)
 	require.NoError(t, err)
 
-	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+	api.On("KVListWithOptions", mock.AnythingOfType("int"), mock.AnythingOfType("int"), mock.AnythingOfType("model.PluginKVListOptions")).
 		Return([]string{fmt.Sprintf("%s%s", legalHoldPrefix, existingLH.ID)}, nil).
 		Once()
 
@@ -514,7 +514,7 @@ func TestKVStore_CreateLegalHold_WithGroupIDs(t *testing.T) {
 	existingMarshaled, err := json.Marshal(existingLH)
 	require.NoError(t, err)
 
-	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+	api.On("KVListWithOptions", mock.AnythingOfType("int"), mock.AnythingOfType("int"), mock.AnythingOfType("model.PluginKVListOptions")).
 		Return([]string{fmt.Sprintf("%s%s", legalHoldPrefix, existingLH.ID)}, nil).
 		Once()
 
@@ -561,7 +561,7 @@ func TestKVStore_CreateLegalHold_DifferentChannelSettings(t *testing.T) {
 	existingMarshaled, err := json.Marshal(existingLH)
 	require.NoError(t, err)
 
-	api.On("KVList", mock.AnythingOfType("int"), mock.AnythingOfType("int")).
+	api.On("KVListWithOptions", mock.AnythingOfType("int"), mock.AnythingOfType("int"), mock.AnythingOfType("model.PluginKVListOptions")).
 		Return([]string{fmt.Sprintf("%s%s", legalHoldPrefix, existingLH.ID)}, nil).
 		Once()
 

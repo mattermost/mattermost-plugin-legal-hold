@@ -1,0 +1,39 @@
+.legal-hold-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xxl);
+}
+
+.legal-hold-form__dates {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-l);
+    align-items: start;
+}
+
+.legal-hold-form__date {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+}
+
+.legal-hold-required-star {
+    color: var(--error-text, var(--color-danger));
+}
+
+.legal-hold-secret {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-l);
+}
+
+.legal-hold-secret__value {
+    padding: var(--spacing-m);
+    border-radius: var(--radius-m);
+    background: rgba(var(--center-channel-color-rgb), 0.08);
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-200);
+    font-weight: 600;
+    word-break: break-all;
+}

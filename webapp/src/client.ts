@@ -1,8 +1,8 @@
 import {Client4, ClientError} from '@mattermost/client';
 
-import {CreateLegalHold, UpdateLegalHold} from '@/types';
-
 import {manifest} from './manifest';
+
+import type {CreateLegalHold, UpdateLegalHold} from '@/types';
 
 class APIClient {
     private readonly url = `/plugins/${manifest.id}/api/v1`;

@@ -11,15 +11,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
-	"github.com/mattermost/mattermost-server/v6/shared/filestore"
+	mattermostModel "github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/v8/platform/shared/filestore"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/sqlstore"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/utils"
 
-	// Load the MySQL driver
-	_ "github.com/go-sql-driver/mysql"
 	// Load the Postgres driver
 	_ "github.com/lib/pq"
 )
@@ -37,26 +35,6 @@ func TestDBContainers(t *testing.T) {
 		time.Sleep(5 * time.Second)
 
 		db, err := dbsql.Open("postgres", connStr)
-		require.NoError(t, err)
-
-		err = db.Ping()
-		require.NoError(t, err)
-
-		assert.NoError(t, db.Close())
-	})
-
-	t.Run("MySQL", func(t *testing.T) {
-		connStr, tearDown, err := utils.CreateTestDB(context.TODO(), "mysql", "mattermost_test")
-		require.NoError(t, err)
-		defer func() {
-			assert.NoError(t, tearDown(context.Background()))
-		}()
-
-		t.Log("Connection string: ", connStr)
-
-		time.Sleep(5 * time.Second)
-
-		db, err := dbsql.Open("mysql", connStr)
 		require.NoError(t, err)
 
 		err = db.Ping()

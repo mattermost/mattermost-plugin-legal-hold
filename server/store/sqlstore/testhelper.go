@@ -5,13 +5,16 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/mattermost/mattermost-server/v6/model"
-	"github.com/mattermost/mattermost-server/v6/shared/filestore"
-	mmstore "github.com/mattermost/mattermost-server/v6/store/sqlstore"
+	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/shared/mlog"
+	"github.com/mattermost/mattermost/server/public/shared/request"
+	mmstore "github.com/mattermost/mattermost/server/v8/channels/store/sqlstore"
+	"github.com/mattermost/mattermost/server/v8/platform/shared/filestore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -25,6 +28,7 @@ const (
 type TestHelper struct {
 	tearDowns []utils.TearDownFunc
 
+	logger      *mlog.Logger
 	mmStore     *mmstore.SqlStore
 	Store       *SQLStore
 	FileBackend filestore.FileBackend
@@ -52,7 +56,7 @@ func SetupHelper(t *testing.T) *TestHelper {
 		dbDriverName = "postgres"
 	}
 
-	if dbDriverName != "postgres" && dbDriverName != "mysql" {
+	if dbDriverName != "postgres" {
 		t.Fatalf("invalid TEST_DB_DRIVER_NAME environment variable: %s", dbDriverName)
 	}
 
@@ -70,7 +74,19 @@ func SetupHelper(t *testing.T) *TestHelper {
 
 	t.Log("using database connection string: ", connStr)
 
-	th.mmStore = mmstore.New(settings, nil)
+	logger, err := mlog.NewLogger()
+	require.NoError(t, err)
+	th.logger = logger
+	th.tearDowns = append(th.tearDowns, func(context.Context) error {
+		return logger.Shutdown()
+	})
+
+	th.mmStore, err = mmstore.New(settings, logger, nil)
+	require.NoError(t, err, "cannot instantiate test database")
+	th.tearDowns = append(th.tearDowns, func(context.Context) error {
+		th.mmStore.Close()
+		return nil
+	})
 
 	store, err := New(storeWrapper{th.mmStore}, &testLogger{t})
 	require.NoError(t, err, "could not create store")
@@ -116,10 +132,9 @@ func (th *TestHelper) SetupBasic(t *testing.T) *TestHelper {
 
 func (th *TestHelper) TearDown(t *testing.T) {
 	ctx := context.Background()
-	for _, f := range th.tearDowns {
-		if err := f(ctx); err != nil {
-			assert.NoError(t, err)
-		}
+	// Tear down in reverse order, so each resource closes before the one it depends on.
+	for _, tearDown := range slices.Backward(th.tearDowns) {
+		assert.NoError(t, tearDown(ctx))
 	}
 }
 
@@ -145,6 +160,8 @@ func (th *TestHelper) CreateOpenChannel(name string, userID string, teamID strin
 }
 
 func (th *TestHelper) CreateChannel(name, userID, teamID string, channelType model.ChannelType) (*model.Channel, error) {
+	rctx := request.EmptyContext(th.logger)
+
 	channel := &model.Channel{
 		Name:        name,
 		DisplayName: name,
@@ -152,10 +169,11 @@ func (th *TestHelper) CreateChannel(name, userID, teamID string, channelType mod
 		CreatorId:   userID,
 		TeamId:      teamID,
 	}
-	return th.mmStore.Channel().Save(channel, 1024)
+	return th.mmStore.Channel().Save(rctx, channel, 1024)
 }
 
 func (th *TestHelper) CreateChannels(num int, namePrefix string, userID string, teamID string) ([]*model.Channel, error) {
+	rctx := request.EmptyContext(th.logger)
 	var channels []*model.Channel
 	for i := range num {
 		channel := &model.Channel{
@@ -165,7 +183,7 @@ func (th *TestHelper) CreateChannels(num int, namePrefix string, userID string, 
 			CreatorId:   userID,
 			TeamId:      teamID,
 		}
-		channel, err := th.mmStore.Channel().Save(channel, 1024)
+		channel, err := th.mmStore.Channel().Save(rctx, channel, 1024)
 		if err != nil {
 			return nil, err
 		}
@@ -175,6 +193,8 @@ func (th *TestHelper) CreateChannels(num int, namePrefix string, userID string, 
 }
 
 func (th *TestHelper) CreateChannelsWithChannelMemberHistory(num int, namePrefix string, userID string, teamID string) ([]*model.Channel, error) {
+	rctx := request.EmptyContext(th.logger)
+
 	var channels []*model.Channel
 	for i := range num {
 		channel := &model.Channel{
@@ -184,7 +204,7 @@ func (th *TestHelper) CreateChannelsWithChannelMemberHistory(num int, namePrefix
 			CreatorId:   userID,
 			TeamId:      teamID,
 		}
-		channel, err := th.mmStore.Channel().Save(channel, 1024)
+		channel, err := th.mmStore.Channel().Save(rctx, channel, 1024)
 		if err != nil {
 			return nil, err
 		}
@@ -199,10 +219,14 @@ func (th *TestHelper) CreateChannelsWithChannelMemberHistory(num int, namePrefix
 }
 
 func (th *TestHelper) CreateDirectMessageChannel(user1 *model.User, user2 *model.User) (*model.Channel, error) {
-	return th.mmStore.Channel().CreateDirectChannel(user1, user2)
+	rctx := request.EmptyContext(th.logger)
+
+	return th.mmStore.Channel().CreateDirectChannel(rctx, user1, user2)
 }
 
 func (th *TestHelper) CreateUsers(num int, namePrefix string) ([]*model.User, error) {
+	rctx := request.EmptyContext(th.logger)
+
 	var users []*model.User
 	for i := range num {
 		user := &model.User{
@@ -210,7 +234,7 @@ func (th *TestHelper) CreateUsers(num int, namePrefix string) ([]*model.User, er
 			Password: namePrefix,
 			Email:    fmt.Sprintf("%s@example.com", model.NewId()),
 		}
-		user, err := th.mmStore.User().Save(user)
+		user, err := th.mmStore.User().Save(rctx, user)
 		if err != nil {
 			return nil, err
 		}
@@ -220,6 +244,8 @@ func (th *TestHelper) CreateUsers(num int, namePrefix string) ([]*model.User, er
 }
 
 func (th *TestHelper) CreatePosts(num int, userID string, channelID string) ([]*model.Post, error) {
+	rctx := request.EmptyContext(th.logger)
+
 	var posts []*model.Post
 	for i := range num {
 		post := &model.Post{
@@ -228,7 +254,7 @@ func (th *TestHelper) CreatePosts(num int, userID string, channelID string) ([]*
 			Type:      model.PostTypeDefault,
 			Message:   fmt.Sprintf("test post %d of %d", i, num),
 		}
-		post, err := th.mmStore.Post().Save(post)
+		post, err := th.mmStore.Post().Save(rctx, post)
 		if err != nil {
 			return nil, err
 		}
@@ -238,6 +264,7 @@ func (th *TestHelper) CreatePosts(num int, userID string, channelID string) ([]*
 }
 
 func (th *TestHelper) CreatePostsWithAttachments(num int, userID string, channelID string) ([]*model.Post, error) {
+	rctx := request.EmptyContext(th.logger)
 	var posts []*model.Post
 	for i := range num {
 		text := "This is a test uploaded file."
@@ -258,7 +285,7 @@ func (th *TestHelper) CreatePostsWithAttachments(num int, userID string, channel
 			Size:      size,
 		}
 
-		fileInfo, err = th.mmStore.FileInfo().Save(fileInfo)
+		fileInfo, err = th.mmStore.FileInfo().Save(rctx, fileInfo)
 		if err != nil {
 			return nil, err
 		}
@@ -270,7 +297,7 @@ func (th *TestHelper) CreatePostsWithAttachments(num int, userID string, channel
 			Message:   fmt.Sprintf("test post %d of %d", i, num),
 			FileIds:   []string{fileInfo.Id},
 		}
-		post, err = th.mmStore.Post().Save(post)
+		post, err = th.mmStore.Post().Save(rctx, post)
 		if err != nil {
 			return nil, err
 		}

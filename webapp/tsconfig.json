@@ -1,11 +1,9 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "baseUrl": "./",
+    "baseUrl": "./src",
     "paths": {
-      "@/*": ["src/*"],
-      "mattermost-redux/*": ["../node_modules/@mattermost/webapp/packages/mattermost-redux/src/*"],
-      "mattermost-webapp/*": ["../node_modules/@mattermost/webapp/*"]
+      "@/*": ["./*"]
     },
     "lib": [
       "dom",
@@ -17,24 +15,25 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
-    "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "experimentalDecorators": true,
-    "jsx": "react"
+    "jsx": "react-jsx",
+    "types": [
+      "jest",
+      "node",
+      "@testing-library/jest-dom"
+    ]
   },
   "include": [
     "src",
-    "tests",
-    "custom.d.ts"
+    "tests"
   ],
   "exclude": [
     "dist",
-    "node_modules",
-    "!node_modules/@types"
+    "node_modules"
   ]
 }

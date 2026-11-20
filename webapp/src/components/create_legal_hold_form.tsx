@@ -1,61 +1,41 @@
-import React, {useState} from 'react';
+import {useState} from 'react';
+import type {FormEvent} from 'react';
 
-import {UserProfile} from 'mattermost-redux/types/users';
+import {Button} from '@mattermost/compass-ui/components/button';
+import {Modal, ModalOverlay} from '@mattermost/compass-ui/components/modal';
+import {SectionNotice} from '@mattermost/compass-ui/components/section-notice';
+import type {Group} from '@mattermost/types/groups';
+import type {UserProfile} from '@mattermost/types/users';
 
-import UsersInput from '@/components/users_input';
-import GroupsInput from '@/components/groups_input';
-import {CreateLegalHold} from '@/types';
-import {GenericModal} from '@/components/mattermost-webapp/generic_modal/generic_modal';
-import Input from '@/components/mattermost-webapp/input/input';
-import {isValidDate} from '@/utils/date_validation';
+import LegalHoldFormFields from '@/components/legal_hold_form_fields';
+import type {CreateLegalHold} from '@/types';
 
-import './create_legal_hold_form.scss';
+import './legal_hold_form.css';
+
+const FORM_ID = 'new-legal-hold-form';
 
 interface CreateLegalHoldFormProps {
-    createLegalHold: (data: CreateLegalHold) => Promise<any>;
-    onExited: () => void;
+    createLegalHold: (data: CreateLegalHold) => Promise<unknown>;
+    onClose: () => void;
     visible: boolean;
 }
 
+const slugify = (data: string) => {
+    return data.
+        replace(/[^0-9a-zA-Z _-]/g, '').
+        replace(/[ _]/g, '-').
+        toLowerCase();
+};
+
 const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
     const [displayName, setDisplayName] = useState('');
-    const [users, setUsers] = useState(Array<UserProfile>());
-    const [groups, setGroups] = useState(Array<any>());
+    const [users, setUsers] = useState<UserProfile[]>([]);
+    const [groups, setGroups] = useState<Group[]>([]);
     const [startsAt, setStartsAt] = useState('');
     const [endsAt, setEndsAt] = useState('');
     const [saving, setSaving] = useState(false);
-    const [startsAtInvalid, setStartsAtInvalid] = useState(false);
-    const [endsAtInvalid, setEndsAtInvalid] = useState(false);
     const [includePublicChannels, setIncludePublicChannels] = useState(false);
     const [serverError, setServerError] = useState('');
-
-    const displayNameChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setDisplayName(e.target.value);
-    };
-
-    const startsAtChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const dateValue = e.target.value;
-        if (dateValue && !isValidDate(dateValue)) {
-            setStartsAtInvalid(true);
-            return;
-        }
-        setStartsAtInvalid(false);
-        setStartsAt(dateValue);
-    };
-
-    const endsAtChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const dateValue = e.target.value;
-        if (dateValue && !isValidDate(dateValue)) {
-            setEndsAtInvalid(true);
-            return;
-        }
-        setEndsAtInvalid(false);
-        setEndsAt(dateValue);
-    };
-
-    const includePublicChannelsChanged: (e: React.ChangeEvent<HTMLInputElement>) => void = (e) => {
-        setIncludePublicChannels(e.target.checked);
-    };
 
     const resetForm = () => {
         setDisplayName('');
@@ -66,38 +46,41 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
         setSaving(false);
         setIncludePublicChannels(false);
         setServerError('');
-        setStartsAtInvalid(false);
-        setEndsAtInvalid(false);
     };
 
-    const onSave = () => {
-        if (saving) {
+    const onSave = (e: FormEvent) => {
+        e.preventDefault();
+        if (saving || !canCreate()) {
             return;
         }
         setSaving(true);
 
-        const data = {
+        const data: CreateLegalHold = {
             user_ids: users.map((user) => user.id),
             group_ids: groups.map((group) => group.id),
-            ends_at: (new Date(endsAt)).getTime(),
-            starts_at: (new Date(startsAt)).getTime(),
+            ends_at: endsAt ? new Date(endsAt).getTime() : 0,
+            starts_at: new Date(startsAt).getTime(),
             display_name: displayName,
             include_public_channels: includePublicChannels,
             name: slugify(displayName),
         };
 
-        props.createLegalHold(data).then((_) => {
+        props.createLegalHold(data).then(() => {
             resetForm();
-            props.onExited();
+            props.onClose();
         }).catch((error) => {
             setSaving(false);
-            setServerError(error.toString());
+            setServerError(String(error));
         });
     };
 
+    // A close request during a save is ignored, so the pending request cannot reset a form that was reopened.
     const onCancel = () => {
+        if (saving) {
+            return;
+        }
         resetForm();
-        props.onExited();
+        props.onClose();
     };
 
     const canCreate = () => {
@@ -119,139 +102,71 @@ const CreateLegalHoldForm = (props: CreateLegalHoldFormProps) => {
         return true;
     };
 
-    return (
-        <GenericModal
-            id='new-legal-hold-modal'
-            className='new-legal-hold-modal'
-            modalHeaderText='Create a new legal hold'
-            confirmButtonText='Create legal hold'
-            cancelButtonText='Cancel'
-            errorText={serverError}
-            isConfirmDisabled={!canCreate()}
-            autoCloseOnConfirmButton={false}
-            compassDesign={true}
-            handleConfirm={onSave}
-            handleEnterKeyPress={onSave}
-            handleCancel={onCancel}
-            onExited={onCancel}
-            show={props.visible}
-        >
-            <div>
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        rowGap: '20px',
-                    }}
-                >
-                    <Input
-                        type='text'
-                        autoComplete='off'
-                        autoFocus={false}
-                        required={true}
-                        name={'Name'}
-                        label={'Name'}
-                        placeholder={'New Legal Hold...'}
-                        limit={64}
-                        value={displayName}
-                        onChange={displayNameChanged}
-                        onBlur={displayNameChanged}
-                        containerClassName={'create-legal-hold-container'}
-                        inputClassName={'create-legal-hold-input'}
-                    />
-                    <div>
-                        <label>{'Users'}</label>
-                        <UsersInput
-                            placeholder='@username1 @username2'
-                            users={users}
-                            onChange={setUsers}
-                        />
-                    </div>
-                    <div>
-                        <label>{'LDAP Groups'}</label>
-                        <GroupsInput
-                            placeholder='group1 group2'
-                            groups={groups}
-                            onChange={setGroups}
-                        />
-                    </div>
-                    <div
-                        style={{
-                            display: 'flex',
-                            columnGap: '20px',
-                        }}
-                    >
-                        <input
-                            type='checkbox'
-                            id='legal-hold-include-public-channels'
-                            checked={includePublicChannels}
-                            onChange={includePublicChannelsChanged}
-                            className={'create-legal-hold-checkbox'}
-                        />
-                        <label htmlFor={'legal-hold-include-public-channels'}>
-                            {'Include public channels'}
-                        </label>
-                    </div>
-                    <div
-                        style={{
-                            display: (includePublicChannels) ? 'block' : 'none',
-                            marginTop: '-20px',
-                            marginBottom: '20px',
-                        }}
-                    >
-                        <i className='icon icon-alert-outline'/>
-                        <span>{'It is possible for users to access public content without becoming members of a public channel. This setting only captures public channels that users are members of.'}</span>
-                    </div>
-                    <div
-                        style={{
-                            display: 'flex',
-                            columnGap: '20px',
-                        }}
-                    >
-                        <Input
-                            type='date'
-                            autoComplete='off'
-                            autoFocus={false}
-                            required={true}
-                            name={'Starting from'}
-                            label={'Starting from'}
-                            placeholder={'Starting from'}
-                            limit={64}
-                            value={startsAt}
-                            onChange={startsAtChanged}
-                            onBlur={startsAtChanged}
-                            containerClassName={'create-legal-hold-container'}
-                            inputClassName={'create-legal-hold-input'}
-                            hasError={startsAtInvalid}
-                        />
-                        <Input
-                            type='date'
-                            autoComplete='off'
-                            autoFocus={false}
-                            required={false}
-                            name={'Ending at'}
-                            label={'Ending at'}
-                            placeholder={'Ending at'}
-                            limit={64}
-                            value={endsAt}
-                            onChange={endsAtChanged}
-                            onBlur={endsAtChanged}
-                            containerClassName={'create-legal-hold-container'}
-                            inputClassName={'create-legal-hold-input'}
-                            hasError={endsAtInvalid}
-                        />
-                    </div>
-                </div>
-            </div>
-        </GenericModal>
+    const footer = (
+        <>
+            <Button
+                type='button'
+                emphasis='tertiary'
+                disabled={saving}
+                onClick={onCancel}
+            >
+                {'Cancel'}
+            </Button>
+            <Button
+                type='submit'
+                form={FORM_ID}
+                loading={saving}
+                disabled={!canCreate()}
+            >
+                {'Create legal hold'}
+            </Button>
+        </>
     );
-};
 
-const slugify = (data: string) => {
-    return data.
-        replace(/[^0-9a-zA-Z _-]/g, '').
-        replace(/[ _]/g, '-').
-        toLowerCase();
+    return (
+        <ModalOverlay
+            open={props.visible}
+            onClose={onCancel}
+        >
+            <Modal
+                open={props.visible}
+                onClose={onCancel}
+                title='Create a new legal hold'
+                size='medium'
+                footer={footer}
+            >
+                <form
+                    id={FORM_ID}
+                    className='legal-hold-form'
+                    onSubmit={onSave}
+                >
+                    {serverError && (
+                        <SectionNotice
+                            role='alert'
+                            type='danger'
+                            title={serverError}
+                        />
+                    )}
+                    <LegalHoldFormFields
+                        displayName={displayName}
+                        onDisplayNameChange={setDisplayName}
+                        users={users}
+                        onUsersChange={setUsers}
+                        groups={groups}
+                        onGroupsChange={setGroups}
+                        includePublicChannels={includePublicChannels}
+                        onIncludePublicChannelsChange={setIncludePublicChannels}
+                        publicChannelsNotice='It is possible for users to access public content without becoming members of a public channel. This setting only captures public channels that users are members of.'
+                        startsAt={startsAt}
+                        startsAtLabel='Starting from'
+                        onStartsAtChange={setStartsAt}
+                        endsAt={endsAt}
+                        onEndsAtChange={setEndsAt}
+                    />
+                </form>
+            </Modal>
+        </ModalOverlay>
+    );
 };
 
 export default CreateLegalHoldForm;

@@ -7,7 +7,7 @@
   "release_notes_url": "https://github.com/mattermost/mattermost-plugin-legal-hold/releases/tag/v1.1.6",
   "icon_path": "assets/starter-template-icon.svg",
   "version": "1.1.6",
-  "min_server_version": "6.2.1",
+  "min_server_version": "11.7.0",
   "server": {
     "executables": {
       "linux-amd64": "server/dist/plugin-linux-amd64",

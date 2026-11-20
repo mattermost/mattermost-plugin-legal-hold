@@ -21,6 +21,8 @@ Usage:
     pluginctl disable <plugin id>
     pluginctl enable <plugin id>
     pluginctl reset <plugin id>
+    pluginctl logs <plugin id>
+    pluginctl logs-watch <plugin id>
 `
 
 func main() {
@@ -57,6 +59,10 @@ func pluginctl() error {
 		return enablePlugin(ctx, client, os.Args[2])
 	case "reset":
 		return resetPlugin(ctx, client, os.Args[2])
+	case "logs":
+		return logs(ctx, client, os.Args[2])
+	case "logs-watch":
+		return watchLogs(context.WithoutCancel(ctx), client, os.Args[2]) // Keep watching forever
 	default:
 		return errors.New("invalid second argument")
 	}
@@ -121,7 +127,7 @@ func getUnixClient(socketPath string) (*model.Client4, bool) {
 // deploy attempts to upload and enable a plugin via the Client4 API.
 // It will fail if plugin uploads are disabled.
 func deploy(ctx context.Context, client *model.Client4, pluginID, bundlePath string) error {
-	pluginBundle, err := os.Open(bundlePath) //nolint:gosec // G304: path is from trusted source
+	pluginBundle, err := os.Open(bundlePath) //nolint:gosec
 	if err != nil {
 		return fmt.Errorf("failed to open %s: %w", bundlePath, err)
 	}

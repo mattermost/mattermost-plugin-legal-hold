@@ -1,77 +1,51 @@
-import React from 'react';
+import {Button} from '@mattermost/compass-ui/components/button';
+import {Modal, ModalOverlay} from '@mattermost/compass-ui/components/modal';
 
-import {LegalHold} from '@/types';
-import {GenericModal} from '@/components/mattermost-webapp/generic_modal/generic_modal';
+import type {LegalHold} from '@/types';
 
-import './create_legal_hold_form.scss';
+import './legal_hold_form.css';
 
 interface ShowSecretModalProps {
     legalHold: LegalHold | null;
-    onExited: () => void;
+    onClose: () => void;
     visible: boolean;
 }
 
 const ShowSecretModal = (props: ShowSecretModalProps) => {
-    const onCancel = () => {
-        props.onExited();
-    };
-
-    const createMessage = (lh: LegalHold|null) => {
-        if (lh) {
-            return (
-                <React.Fragment>
-                    <div
-                        style={{
-                            textAlign: 'center',
-                        }}
-                    >
-                        <p>{'The secret key to check the authenticity of the legal hold is: '}</p>
-                        <p>
-                            <code
-                                style={{
-                                    fontSize: '1.5em',
-                                    fontWeight: 'bold',
-                                    padding: '10px',
-                                }}
-                            >{lh.secret}</code>
-                        </p>
-                        <p>{'Please keep this key safe and do not share it with anyone.'}</p>
-                        <hr/>
-                        <p>
-                            {'In order to verify the contents of the files in a legal hold, ensure you put the '}
-                        </p>
-                        <p><code>{'--legal-hold-secret'} {lh.secret}</code></p>
-                        <p>
-                            {' flag in the processor command execution.'}
-                        </p>
-                    </div>
-                </React.Fragment>
-            );
-        }
-
-        return (
-            <React.Fragment/>
-        );
-    };
-
-    const message = createMessage(props.legalHold);
+    const lh = props.legalHold;
 
     return (
-        <GenericModal
-            id='show-secret-legal-hold-modal'
-            className='show-secret-legal-hold-modal'
-            modalHeaderText={'Legal hold secret'}
-            cancelButtonText={'Close'}
-            compassDesign={true}
-            handleCancel={onCancel}
-            onExited={onCancel}
-            show={props.visible}
-            isDeleteModal={true}
+        <ModalOverlay
+            open={props.visible}
+            onClose={props.onClose}
         >
-            <div>
-                {message}
-            </div>
-        </GenericModal>
+            <Modal
+                open={props.visible}
+                onClose={props.onClose}
+                title='Legal hold secret'
+                size='medium'
+                headerDivider={false}
+                footerDivider={false}
+                footer={(
+                    <Button
+                        type='button'
+                        onClick={props.onClose}
+                    >
+                        {'Close'}
+                    </Button>
+                )}
+            >
+                {lh && (
+                    <div className='legal-hold-secret'>
+                        <p>{'The secret key to check the authenticity of the legal hold is:'}</p>
+                        <code className='legal-hold-secret__value'>{lh.secret}</code>
+                        <p>{'Please keep this key safe and do not share it with anyone.'}</p>
+                        <p>{'In order to verify the contents of the files in a legal hold, ensure you put the following flag in the processor command execution:'}</p>
+                        <code className='legal-hold-secret__value'>{`--legal-hold-secret ${lh.secret}`}</code>
+                    </div>
+                )}
+            </Modal>
+        </ModalOverlay>
     );
 };
 
