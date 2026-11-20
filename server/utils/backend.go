@@ -17,5 +17,6 @@ func GetBackendSettings(endPoint string) filestore.FileBackendSettings {
 		AmazonS3SSL:                        false,
 		AmazonS3SSE:                        false,
 		AmazonS3RequestTimeoutMilliseconds: 5000,
+		AmazonS3UploadPartSizeBytes:        model.FileSettingsDefaultS3UploadPartSizeBytes,
 	}
 }
