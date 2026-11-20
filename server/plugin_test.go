@@ -221,6 +221,30 @@ func TestFixedFileSettingsToFileBackendSettings_NilPointerSafety(t *testing.T) {
 }
 
 func TestLoadServerConfigJSON(t *testing.T) {
+	t.Run("relative MM_CONFIG uses the config directory search", func(t *testing.T) {
+		raw, err := loadServerConfigJSON("config.json", func(path string) ([]byte, error) {
+			if strings.HasSuffix(filepath.ToSlash(path), "config/config.json") {
+				return []byte(`{"FileSettings":{"AzureStorageAccount":"resolved"}}`), nil
+			}
+			return nil, os.ErrNotExist
+		}, func() ([]byte, error) {
+			t.Fatal("database reader should not run for a relative file")
+			return nil, nil
+		})
+		require.NoError(t, err)
+		require.Contains(t, string(raw), "resolved")
+	})
+
+	t.Run("relative MM_CONFIG that cannot be found is an error", func(t *testing.T) {
+		_, err := loadServerConfigJSON("config.json", func(string) ([]byte, error) {
+			return nil, os.ErrNotExist
+		}, func() ([]byte, error) {
+			t.Fatal("database reader should not run for a relative file")
+			return nil, nil
+		})
+		require.Error(t, err)
+	})
+
 	t.Run("file error is returned", func(t *testing.T) {
 		_, err := loadServerConfigJSON("/missing/config.json", func(string) ([]byte, error) {
 			return nil, assert.AnError

@@ -381,11 +381,14 @@ func loadServerConfigJSON(mmConfig string, readFile func(string) ([]byte, error)
 		}
 		return readDB()
 	}
-	raw, err := readFile(mmConfig)
-	if err != nil {
-		return nil, fmt.Errorf("read MM_CONFIG file: %w", err)
+	if filepath.IsAbs(mmConfig) {
+		raw, err := readFile(mmConfig)
+		if err != nil {
+			return nil, fmt.Errorf("read MM_CONFIG file: %w", err)
+		}
+		return raw, nil
 	}
-	return raw, nil
+	return readNamedServerConfig(mmConfig, readFile)
 }
 
 // readDefaultServerConfig follows the server's search for an unset MM_CONFIG:
@@ -396,7 +399,7 @@ func readDefaultServerConfig(readFile func(string) ([]byte, error)) ([]byte, err
 	if readFile == nil {
 		return nil, nil
 	}
-	for _, candidate := range defaultConfigCandidates() {
+	for _, candidate := range configCandidates(defaultServerConfigFile) {
 		raw, err := readFile(candidate)
 		if err == nil {
 			return raw, nil
@@ -409,11 +412,30 @@ func readDefaultServerConfig(readFile func(string) ([]byte, error)) ([]byte, err
 	return nil, nil
 }
 
-// defaultConfigCandidates matches mattermost-server config.resolveConfigFilePath
-// for the relative name "config.json": config/<name> walked up from the working
-// directory and the executable, then the name in the working directory.
-func defaultConfigCandidates() []string {
-	name := defaultServerConfigFile
+// readNamedServerConfig resolves a relative MM_CONFIG name the way the server
+// does. An explicit name that cannot be found is an error. A file that exists
+// but cannot be read is not replaced with a later candidate.
+func readNamedServerConfig(name string, readFile func(string) ([]byte, error)) ([]byte, error) {
+	if readFile == nil {
+		return nil, fmt.Errorf("read MM_CONFIG file %s: %w", name, os.ErrNotExist)
+	}
+	for _, candidate := range configCandidates(name) {
+		raw, err := readFile(candidate)
+		if err == nil {
+			return raw, nil
+		}
+		if os.IsNotExist(err) {
+			continue
+		}
+		return nil, fmt.Errorf("read MM_CONFIG file %s: %w", candidate, err)
+	}
+	return nil, fmt.Errorf("read MM_CONFIG file %s: %w", name, os.ErrNotExist)
+}
+
+// configCandidates matches mattermost-server config.resolveConfigFilePath for a
+// relative file name: config/<name> walked up from the working directory and
+// the executable, then the name in the working directory.
+func configCandidates(name string) []string {
 	var candidates []string
 	seen := map[string]struct{}{}
 	add := func(p string) {

@@ -315,6 +315,9 @@ func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 
 			if updatedLH, err := lhe.Execute(now); err != nil {
 				j.client.Log.Error("An error occurred executing the legal hold.", err)
+				// The checkpoint is unchanged. Stop this hold so the job can
+				// move on; the next scheduled run retries from the same point.
+				break
 			} else {
 				// Update legal hold with the new execution details (last execution time and last message)
 				// Also set it to IDLE again since the execution has ended.

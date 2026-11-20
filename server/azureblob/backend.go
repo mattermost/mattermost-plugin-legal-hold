@@ -205,7 +205,7 @@ func (b *Backend) Reader(p string) (filestore.ReadCloseSeeker, error) {
 	if props.ContentLength == nil {
 		return nil, fmt.Errorf("missing content length for %q", p)
 	}
-	return newRangeReader(client, *props.ContentLength), nil
+	return newRangeReader(client, *props.ContentLength, b.timeout), nil
 }
 
 func (b *Backend) ReadFile(p string) ([]byte, error) {
@@ -552,6 +552,7 @@ type blobAppendStore struct {
 	leaseClient *lease.BlobClient
 	leaseID     string
 	stopRenew   context.CancelFunc
+	renewDone   chan struct{}
 }
 
 func (s *blobAppendStore) lock(ctx context.Context) error {
@@ -574,7 +575,11 @@ func (s *blobAppendStore) lock(ctx context.Context) error {
 	s.leaseID = *lc.LeaseID()
 	renewCtx, cancel := context.WithCancel(ctx)
 	s.stopRenew = cancel
-	go s.renewLease(renewCtx)
+	s.renewDone = make(chan struct{})
+	go func() {
+		defer close(s.renewDone)
+		s.renewLease(renewCtx)
+	}()
 	return nil
 }
 
@@ -595,6 +600,10 @@ func (s *blobAppendStore) unlock(ctx context.Context) error {
 	if s.stopRenew != nil {
 		s.stopRenew()
 		s.stopRenew = nil
+	}
+	if s.renewDone != nil {
+		<-s.renewDone
+		s.renewDone = nil
 	}
 	if s.leaseClient == nil {
 		return nil
