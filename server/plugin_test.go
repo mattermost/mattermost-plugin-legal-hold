@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"testing"
 
 	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
@@ -238,15 +239,37 @@ func TestLoadServerConfigJSON(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("empty MM_CONFIG can be env only", func(t *testing.T) {
-		raw, err := loadServerConfigJSON("", func(string) ([]byte, error) {
-			t.Fatal("file reader should not run when MM_CONFIG is empty")
-			return nil, nil
+	t.Run("empty MM_CONFIG reads the default file and not the database", func(t *testing.T) {
+		raw, err := loadServerConfigJSON("", func(path string) ([]byte, error) {
+			require.Equal(t, defaultServerConfigFile, path)
+			return []byte(`{"FileSettings":{"AzureStorageAccount":"fromfile"}}`), nil
 		}, func() ([]byte, error) {
+			t.Fatal("database reader should not run when MM_CONFIG is empty")
+			return nil, nil
+		})
+		require.NoError(t, err)
+		require.Contains(t, string(raw), "fromfile")
+	})
+
+	t.Run("empty MM_CONFIG with no default file is env only", func(t *testing.T) {
+		raw, err := loadServerConfigJSON("", func(string) ([]byte, error) {
+			return nil, os.ErrNotExist
+		}, func() ([]byte, error) {
+			t.Fatal("database reader should not run when the default file is missing")
 			return nil, nil
 		})
 		require.NoError(t, err)
 		require.Empty(t, raw)
+	})
+
+	t.Run("empty MM_CONFIG returns a real file error", func(t *testing.T) {
+		_, err := loadServerConfigJSON("", func(string) ([]byte, error) {
+			return nil, os.ErrPermission
+		}, func() ([]byte, error) {
+			t.Fatal("database reader should not run when the default file cannot be read")
+			return nil, nil
+		})
+		require.Error(t, err)
 	})
 }
 

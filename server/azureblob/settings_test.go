@@ -1,7 +1,6 @@
 package azureblob
 
 import (
-	"path"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -76,10 +75,23 @@ func TestCheckMandatoryDefaultCredentialSkipsKey(t *testing.T) {
 }
 
 func TestStripPrefixUsesCleanedPrefix(t *testing.T) {
-	b := &Backend{pathPrefix: path.Clean("./holds")}
+	b := &Backend{pathPrefix: cleanPathPrefix("./holds")}
 	written := b.prefix("legalhold/index.json")
 	require.Equal(t, "holds/legalhold/index.json", written)
 	require.Equal(t, "legalhold/index.json", b.stripPrefix(written))
+}
+
+func TestDotPrefixKeepsNestedNamesDistinct(t *testing.T) {
+	b := &Backend{pathPrefix: cleanPathPrefix("./")}
+	require.Empty(t, b.pathPrefix)
+	first := b.prefix("legalhold/a/index.json")
+	second := b.prefix("legalhold/b/index.json")
+	require.Equal(t, "legalhold/a/index.json", first)
+	require.Equal(t, "legalhold/b/index.json", second)
+	require.NotEqual(t, first, second)
+	require.Equal(t, first, b.stripPrefix(first))
+	require.Equal(t, second, b.stripPrefix(second))
+	require.Equal(t, "holds", cleanPathPrefix("./holds"))
 }
 
 func TestSettingsFromConfigJSONEmpty(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,10 +23,25 @@ import (
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 )
 
-// azureBlockSize matches the Azure SDK UploadStream default and stays under
-// the per-block REST limit. Every write goes through StageBlock so a later
-// append can commit a new block list without clobbering a Put Blob.
-const azureBlockSize = 4 * 1024 * 1024
+const (
+	// azureBlockSize matches the Azure SDK UploadStream default and stays under
+	// the per-block REST limit. Every write goes through StageBlock so a later
+	// append can commit a new block list without clobbering a Put Blob.
+	azureBlockSize = 4 * 1024 * 1024
+
+	// Azure rejects a Commit Block List of 50,000 or more blocks.
+	azureMaxCommittedBlocks = 50000
+
+	// Consolidating a blob near that limit streams it back in chunks no larger
+	// than this, so one append cannot pin multiple gigabytes in the plugin.
+	azureConsolidateBlockBytes = 64 * 1024 * 1024
+
+	appendCommitAttempts = 8
+)
+
+// errAppendConflict is the local stand-in for Azure's 412 ConditionNotMet.
+// Commit retries while this, or the service error, is what came back.
+var errAppendConflict = errors.New("azure append commit conflict")
 
 // Backend stores legal-hold objects in Azure Blob Storage.
 // Two auth modes match the server: shared key, and DefaultAzureCredential
@@ -44,9 +60,7 @@ func New(settings Settings) (*Backend, error) {
 	// prefix() cleans the joined key, and stripPrefix removes this stored value.
 	// Cleaning once keeps "./holds" from being written as "holds/..." and then
 	// listed back with the "./holds" prefix still attached.
-	if settings.PathPrefix != "" {
-		settings.PathPrefix = path.Clean(settings.PathPrefix)
-	}
+	settings.PathPrefix = cleanPathPrefix(settings.PathPrefix)
 	if err := settings.CheckMandatory(); err != nil {
 		return nil, err
 	}
@@ -153,27 +167,20 @@ func (b *Backend) TestConnection() error {
 }
 
 func (b *Backend) Reader(p string) (filestore.ReadCloseSeeker, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	timer := time.AfterFunc(b.timeout, cancel)
+	// The timeout covers opening the blob. The returned reader is cancelled
+	// only when the caller Closes it, so a download that runs longer than
+	// b.timeout is not cut off mid-stream.
+	propsCtx, propsCancel := context.WithTimeout(context.Background(), b.timeout)
+	defer propsCancel()
 	client := b.blobClient(p)
-	props, err := client.GetProperties(ctx, nil)
+	props, err := client.GetProperties(propsCtx, nil)
 	if err != nil {
-		timer.Stop()
-		cancel()
 		return nil, fmt.Errorf("unable to read file %q: %w", p, err)
 	}
 	if props.ContentLength == nil {
-		timer.Stop()
-		cancel()
 		return nil, fmt.Errorf("missing content length for %q", p)
 	}
-	return &rangeReader{
-		ctx:        ctx,
-		cancel:     cancel,
-		timer:      timer,
-		blobClient: client,
-		size:       *props.ContentLength,
-	}, nil
+	return newRangeReader(client, *props.ContentLength), nil
 }
 
 func (b *Backend) ReadFile(p string) ([]byte, error) {
@@ -278,7 +285,7 @@ func (b *Backend) WriteFile(fr io.Reader, p string) (int64, error) {
 // with only the new bytes.
 func (b *Backend) write(ctx context.Context, fr io.Reader, p string) (int64, error) {
 	bb := b.blockBlobClient(p)
-	blockIDs, total, err := stageBlocks(ctx, bb, fr, p)
+	blockIDs, total, err := stageBlocks(ctx, bb, fr, p, azureBlockSize)
 	if err != nil {
 		return 0, err
 	}
@@ -301,36 +308,8 @@ func (b *Backend) write(ctx context.Context, fr io.Reader, p string) (int64, err
 func (b *Backend) AppendFile(fr io.Reader, p string) (int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), b.timeout)
 	defer cancel()
-	bb := b.blockBlobClient(p)
-	listResp, err := bb.GetBlockList(ctx, blockblob.BlockListTypeCommitted, nil)
-	if err != nil {
-		return 0, fmt.Errorf("unable to find file %q to append data: %w", p, err)
-	}
-	var existingIDs []string
-	if listResp.BlockList.CommittedBlocks != nil {
-		for _, blk := range listResp.BlockList.CommittedBlocks {
-			if blk.Name != nil {
-				existingIDs = append(existingIDs, *blk.Name)
-			}
-		}
-	}
-	if len(existingIDs) == 0 {
-		props, propsErr := bb.GetProperties(ctx, nil)
-		if propsErr != nil {
-			return 0, fmt.Errorf("unable to inspect %q before append: %w", p, propsErr)
-		}
-		if props.ContentLength != nil && *props.ContentLength > 0 {
-			return 0, fmt.Errorf("refusing to append to %q: blob has content but no committed block list", p)
-		}
-	}
-	newIDs, total, err := stageBlocks(ctx, bb, fr, p)
-	if err != nil {
-		return 0, err
-	}
-	if _, err := bb.CommitBlockList(ctx, append(existingIDs, newIDs...), nil); err != nil {
-		return 0, fmt.Errorf("unable to commit block list for %q: %w", p, err)
-	}
-	return total, nil
+	store := blobAppendStore{blocks: b.blockBlobClient(p), blob: b.blobClient(p), path: p}
+	return commitAppend(ctx, store, fr, p)
 }
 
 func (b *Backend) RemoveFile(p string) error {
@@ -416,8 +395,11 @@ func (b *Backend) RemoveDirectory(p string) error {
 	return nil
 }
 
-func stageBlocks(ctx context.Context, bb *blockblob.Client, fr io.Reader, p string) ([]string, int64, error) {
-	buf := make([]byte, azureBlockSize)
+func stageBlocks(ctx context.Context, bb *blockblob.Client, fr io.Reader, p string, blockSize int) ([]string, int64, error) {
+	if blockSize <= 0 {
+		blockSize = azureBlockSize
+	}
+	buf := make([]byte, blockSize)
 	var ids []string
 	var total int64
 	for {
@@ -463,4 +445,194 @@ func isAuthError(err error) bool {
 	return bloberror.HasCode(err, bloberror.AuthenticationFailed) ||
 		bloberror.HasCode(err, bloberror.AuthorizationFailure) ||
 		bloberror.HasCode(err, bloberror.InvalidAuthenticationInfo)
+}
+
+// cleanPathPrefix makes the stored prefix match the key prefix() writes.
+// path.Clean("./") is ".", and a "." prefix then rejects every nested path
+// and keeps only the base name, so two index.json files overwrite each other.
+func cleanPathPrefix(prefix string) string {
+	if prefix == "" {
+		return ""
+	}
+	cleaned := path.Clean(prefix)
+	if cleaned == "." {
+		return ""
+	}
+	return cleaned
+}
+
+// appendStore is the blob operations AppendFile needs. Tests substitute a
+// fake so a lost commit can be retried without Azure.
+type appendStore interface {
+	blockList(ctx context.Context) (ids []string, etag azcore.ETag, contentLength int64, err error)
+	stage(ctx context.Context, r io.Reader, blockSize int) (ids []string, n int64, err error)
+	open(ctx context.Context, etag azcore.ETag) (io.ReadCloser, error)
+	commit(ctx context.Context, ids []string, etag azcore.ETag) error
+}
+
+type blobAppendStore struct {
+	blocks *blockblob.Client
+	blob   *blob.Client
+	path   string
+}
+
+func (s blobAppendStore) blockList(ctx context.Context) ([]string, azcore.ETag, int64, error) {
+	resp, err := s.blocks.GetBlockList(ctx, blockblob.BlockListTypeCommitted, nil)
+	if err != nil {
+		return nil, "", 0, err
+	}
+	var ids []string
+	if resp.CommittedBlocks != nil {
+		for _, blk := range resp.CommittedBlocks {
+			if blk.Name != nil {
+				ids = append(ids, *blk.Name)
+			}
+		}
+	}
+	if resp.ETag == nil {
+		return nil, "", 0, fmt.Errorf("azure blob %q has no etag", s.path)
+	}
+	var length int64
+	if resp.BlobContentLength != nil {
+		length = *resp.BlobContentLength
+	}
+	return ids, *resp.ETag, length, nil
+}
+
+func (s blobAppendStore) stage(ctx context.Context, r io.Reader, blockSize int) ([]string, int64, error) {
+	return stageBlocks(ctx, s.blocks, r, s.path, blockSize)
+}
+
+func (s blobAppendStore) open(ctx context.Context, etag azcore.ETag) (io.ReadCloser, error) {
+	match := etag
+	resp, err := s.blob.DownloadStream(ctx, &blob.DownloadStreamOptions{
+		AccessConditions: &blob.AccessConditions{
+			ModifiedAccessConditions: &blob.ModifiedAccessConditions{IfMatch: &match},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if resp.Body == nil {
+		return nil, fmt.Errorf("azure blob %q download has no body", s.path)
+	}
+	return resp.Body, nil
+}
+
+func (s blobAppendStore) commit(ctx context.Context, ids []string, etag azcore.ETag) error {
+	match := etag
+	_, err := s.blocks.CommitBlockList(ctx, ids, &blockblob.CommitBlockListOptions{
+		AccessConditions: &blob.AccessConditions{
+			ModifiedAccessConditions: &blob.ModifiedAccessConditions{IfMatch: &match},
+		},
+	})
+	return err
+}
+
+// commitAppend stages the new bytes once, then commits them onto the current
+// block list. The commit is conditional on the etag from that read. A 412
+// means another writer committed in between, so the list is read again and
+// the same staged blocks are committed onto the new list. Near Azure's
+// 50,000-block cap the existing bytes are restaged into fewer blocks first.
+func commitAppend(ctx context.Context, store appendStore, fr io.Reader, p string) (int64, error) {
+	var newIDs []string
+	var total int64
+	staged := false
+	var lastErr error
+	for attempt := 0; attempt < appendCommitAttempts; attempt++ {
+		existing, etag, contentLength, err := store.blockList(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("unable to find file %q to append data: %w", p, err)
+		}
+		if len(existing) == 0 && contentLength > 0 {
+			return 0, fmt.Errorf("refusing to append to %q: blob has content but no committed block list", p)
+		}
+		if !staged {
+			newIDs, total, err = store.stage(ctx, fr, azureBlockSize)
+			if err != nil {
+				return 0, err
+			}
+			staged = true
+		}
+		ids := make([]string, 0, len(existing)+len(newIDs))
+		ids = append(ids, existing...)
+		ids = append(ids, newIDs...)
+		if len(ids) >= azureMaxCommittedBlocks {
+			ids, err = consolidatedIDs(ctx, store, p, contentLength, etag, newIDs)
+			if err != nil {
+				if isAppendConflict(err) {
+					lastErr = err
+					continue
+				}
+				return 0, err
+			}
+		}
+		if err = store.commit(ctx, ids, etag); err != nil {
+			if isAppendConflict(err) {
+				lastErr = err
+				continue
+			}
+			return 0, fmt.Errorf("unable to commit block list for %q: %w", p, err)
+		}
+		return total, nil
+	}
+	return 0, fmt.Errorf("unable to commit block list for %q after concurrent updates: %w", p, lastErr)
+}
+
+// consolidatedIDs restages the blob's current bytes so the commit that adds
+// newIDs stays under Azure's block cap. The download is conditional on etag;
+// a mismatch is a conflict and the caller reads the list again.
+func consolidatedIDs(ctx context.Context, store appendStore, p string, contentLength int64, etag azcore.ETag, newIDs []string) ([]string, error) {
+	blockSize, err := consolidateBlockSize(contentLength, len(newIDs))
+	if err != nil {
+		return nil, fmt.Errorf("unable to append to %q: %w", p, err)
+	}
+	body, err := store.open(ctx, etag)
+	if err != nil {
+		return nil, err
+	}
+	defer body.Close()
+	ids, n, err := store.stage(ctx, body, blockSize)
+	if err != nil {
+		return nil, err
+	}
+	if n != contentLength {
+		return nil, fmt.Errorf("unable to consolidate %q: read %d bytes, blob length is %d", p, n, contentLength)
+	}
+	combined := append(ids, newIDs...)
+	if len(combined) >= azureMaxCommittedBlocks {
+		return nil, fmt.Errorf("unable to append to %q: consolidating %d bytes still needs %d blocks", p, contentLength, len(combined))
+	}
+	return combined, nil
+}
+
+// consolidateBlockSize is the chunk size that keeps the rewritten blob, plus
+// the blocks about to be appended, under the committed-block cap.
+func consolidateBlockSize(contentLength int64, newBlocks int) (int, error) {
+	room := azureMaxCommittedBlocks - newBlocks
+	if room < 1 {
+		return 0, fmt.Errorf("append of %d blocks would exceed the %d block limit", newBlocks, azureMaxCommittedBlocks)
+	}
+	if contentLength <= 0 {
+		return azureBlockSize, nil
+	}
+	needed := (contentLength + int64(room) - 1) / int64(room)
+	if needed > azureConsolidateBlockBytes {
+		return 0, fmt.Errorf("blob of %d bytes cannot be consolidated under %d blocks", contentLength, azureMaxCommittedBlocks)
+	}
+	if needed < int64(azureBlockSize) {
+		return azureBlockSize, nil
+	}
+	return int(needed), nil
+}
+
+func isAppendConflict(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, errAppendConflict) || bloberror.HasCode(err, bloberror.ConditionNotMet) {
+		return true
+	}
+	var respErr *azcore.ResponseError
+	return errors.As(err, &respErr) && respErr.StatusCode == http.StatusPreconditionFailed
 }

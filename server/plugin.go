@@ -347,13 +347,10 @@ func (p *Plugin) azureBlobSettings() (azureblob.Settings, error) {
 		}
 		return p.SQLStore.ActiveConfiguration()
 	})
-	// An empty MM_CONFIG is env-only when the app database has no config row.
-	// A named file or DSN that fails is not replaced with some other file.
-	if err != nil && mmConfig == "" {
-		p.Client.Log.Debug("Application database has no active server configuration; using environment", "err", err)
-		raw = nil
-		err = nil
-	}
+	// A named file or DSN that fails is not replaced with some other source.
+	// An empty MM_CONFIG uses config.json when that file exists, and env-only
+	// when it does not. The application database is not consulted in that
+	// case: after a rollback off database config, its row is stale.
 	if err != nil {
 		return azureblob.Settings{}, err
 	}
@@ -364,15 +361,27 @@ func (p *Plugin) azureBlobSettings() (azureblob.Settings, error) {
 	return azureblob.ApplyEnv(settings, os.LookupEnv), nil
 }
 
+// defaultServerConfigFile is the path the server uses when --config and
+// MM_CONFIG are both unset.
+const defaultServerConfigFile = "config.json"
+
 // loadServerConfigJSON reads the server config document from the source
-// MM_CONFIG selects. An empty MM_CONFIG uses readDB, which is the application
-// database, and ignores a missing row so env-only configuration still works.
+// MM_CONFIG selects. An empty MM_CONFIG reads config.json. A missing default
+// file is env-only, not an error and not a database read. A named file or
+// DSN that fails is returned as-is.
 func loadServerConfigJSON(mmConfig string, readFile func(string) ([]byte, error), readDB func() ([]byte, error)) ([]byte, error) {
 	if mmConfig == "" {
-		if readDB == nil {
+		if readFile == nil {
 			return nil, nil
 		}
-		return readDB()
+		raw, err := readFile(defaultServerConfigFile)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil, nil
+			}
+			return nil, fmt.Errorf("read default config file: %w", err)
+		}
+		return raw, nil
 	}
 	if strings.Contains(mmConfig, "://") {
 		if readDB == nil {

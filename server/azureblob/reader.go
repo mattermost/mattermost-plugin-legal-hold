@@ -3,7 +3,6 @@ package azureblob
 import (
 	"context"
 	"io"
-	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
 	"github.com/pkg/errors"
@@ -16,16 +15,26 @@ type blobDownloader interface {
 
 // rangeReader is a seekable reader over one blob, backed by HTTP Range
 // requests. The first Read at the current offset opens a stream. Seek closes
-// that stream so the next Read starts at the new offset. Close, or the
-// backend timeout, cancels the context.
+// that stream so the next Read starts at the new offset. Close cancels the
+// context. There is no deadline on that context: cancelling it would end a
+// download the caller is still reading.
 type rangeReader struct {
 	ctx        context.Context
 	cancel     context.CancelFunc
-	timer      *time.Timer
 	blobClient blobDownloader
 	size       int64
 	offset     int64
 	body       io.ReadCloser
+}
+
+func newRangeReader(client blobDownloader, size int64) *rangeReader {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &rangeReader{
+		ctx:        ctx,
+		cancel:     cancel,
+		blobClient: client,
+		size:       size,
+	}
 }
 
 func (r *rangeReader) Read(p []byte) (int, error) {
@@ -81,9 +90,6 @@ func (r *rangeReader) Seek(offset int64, whence int) (int64, error) {
 }
 
 func (r *rangeReader) Close() error {
-	if r.timer != nil {
-		r.timer.Stop()
-	}
 	r.cancel()
 	if r.body != nil {
 		return r.body.Close()
