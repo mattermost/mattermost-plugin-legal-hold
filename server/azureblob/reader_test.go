@@ -24,7 +24,7 @@ func TestRangeReaderStaysOpenPastTheRequestTimeout(t *testing.T) {
 	payload := []byte("hold-bytes")
 	downloader := &fakeDownloader{body: io.NopCloser(bytes.NewReader(payload))}
 	reader := newRangeReader(downloader, int64(len(payload)))
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	got, err := io.ReadAll(reader)
 	require.NoError(t, err)

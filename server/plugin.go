@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
@@ -348,9 +349,9 @@ func (p *Plugin) azureBlobSettings() (azureblob.Settings, error) {
 		return p.SQLStore.ActiveConfiguration()
 	})
 	// A named file or DSN that fails is not replaced with some other source.
-	// An empty MM_CONFIG uses config.json when that file exists, and env-only
-	// when it does not. The application database is not consulted in that
-	// case: after a rollback off database config, its row is stale.
+	// An empty MM_CONFIG uses the server's default file search (config/config.json,
+	// then config.json). A missing file is env-only. The application database is
+	// not consulted: after a rollback off database config, its row is stale.
 	if err != nil {
 		return azureblob.Settings{}, err
 	}
@@ -361,27 +362,18 @@ func (p *Plugin) azureBlobSettings() (azureblob.Settings, error) {
 	return azureblob.ApplyEnv(settings, os.LookupEnv), nil
 }
 
-// defaultServerConfigFile is the path the server uses when --config and
-// MM_CONFIG are both unset.
+// defaultServerConfigFile is the file name the server uses when --config and
+// MM_CONFIG are both unset. The server looks for it under config/ before the
+// working directory.
 const defaultServerConfigFile = "config.json"
 
 // loadServerConfigJSON reads the server config document from the source
-// MM_CONFIG selects. An empty MM_CONFIG reads config.json. A missing default
-// file is env-only, not an error and not a database read. A named file or
-// DSN that fails is returned as-is.
+// MM_CONFIG selects. An empty MM_CONFIG uses the same relative search as the
+// server. A missing default file is env-only, not an error and not a database
+// read. A named file or DSN that fails is returned as-is.
 func loadServerConfigJSON(mmConfig string, readFile func(string) ([]byte, error), readDB func() ([]byte, error)) ([]byte, error) {
 	if mmConfig == "" {
-		if readFile == nil {
-			return nil, nil
-		}
-		raw, err := readFile(defaultServerConfigFile)
-		if err != nil {
-			if os.IsNotExist(err) {
-				return nil, nil
-			}
-			return nil, fmt.Errorf("read default config file: %w", err)
-		}
-		return raw, nil
+		return readDefaultServerConfig(readFile)
 	}
 	if strings.Contains(mmConfig, "://") {
 		if readDB == nil {
@@ -394,6 +386,69 @@ func loadServerConfigJSON(mmConfig string, readFile func(string) ([]byte, error)
 		return nil, fmt.Errorf("read MM_CONFIG file: %w", err)
 	}
 	return raw, nil
+}
+
+// readDefaultServerConfig follows the server's search for an unset MM_CONFIG:
+// config/config.json near the working directory or the executable, then
+// config.json itself. The first readable file wins. A path that exists but
+// cannot be read is returned; later candidates are not a fallback.
+func readDefaultServerConfig(readFile func(string) ([]byte, error)) ([]byte, error) {
+	if readFile == nil {
+		return nil, nil
+	}
+	for _, candidate := range defaultConfigCandidates() {
+		raw, err := readFile(candidate)
+		if err == nil {
+			return raw, nil
+		}
+		if os.IsNotExist(err) {
+			continue
+		}
+		return nil, fmt.Errorf("read default config file %s: %w", candidate, err)
+	}
+	return nil, nil
+}
+
+// defaultConfigCandidates matches mattermost-server config.resolveConfigFilePath
+// for the relative name "config.json": config/<name> walked up from the working
+// directory and the executable, then the name in the working directory.
+func defaultConfigCandidates() []string {
+	name := defaultServerConfigFile
+	var candidates []string
+	seen := map[string]struct{}{}
+	add := func(p string) {
+		if p == "" {
+			return
+		}
+		if _, ok := seen[p]; ok {
+			return
+		}
+		seen[p] = struct{}{}
+		candidates = append(candidates, p)
+	}
+	var roots []string
+	if wd, err := os.Getwd(); err == nil {
+		roots = append(roots, wd)
+	}
+	if exe, err := os.Executable(); err == nil {
+		roots = append(roots, filepath.Dir(exe))
+	}
+	for _, root := range roots {
+		dir := root
+		for range 8 {
+			add(filepath.Join(dir, "config", name))
+			parent := filepath.Dir(dir)
+			if parent == dir {
+				break
+			}
+			dir = parent
+		}
+	}
+	add(name)
+	if wd, err := os.Getwd(); err == nil {
+		add(filepath.Join(wd, name))
+	}
+	return candidates
 }
 
 // FixedFileSettingsToFileBackendSettings converts FileSettings to FileBackendSettings.

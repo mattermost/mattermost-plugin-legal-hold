@@ -19,6 +19,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blockblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/lease"
 	"github.com/google/uuid"
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 )
@@ -126,24 +127,45 @@ func clientOptions(settings Settings) *azblob.ClientOptions {
 // prefix keeps caller paths under the configured prefix. path.Join would let
 // "foo/../../secret" escape the prefix, so a joined path that is not the
 // prefix or a descendant falls back to the prefix plus the base name.
-func (b *Backend) prefix(p string) string {
+// A final element of ".." is rejected: path.Base leaves it unchanged, and
+// joining it would resolve to the parent of the prefix.
+func (b *Backend) prefix(p string) (string, error) {
+	if path.Base(p) == ".." {
+		return "", fmt.Errorf("path %q escapes the filestore prefix", p)
+	}
+	// path.Join("", "") is ".". An empty key is the container root, not a blob named ".".
+	if path.Clean(b.pathPrefix) == "." && path.Clean(p) == "." {
+		return "", nil
+	}
 	joined := path.Join(b.pathPrefix, p)
 	if b.pathPrefix == "" {
-		return joined
+		return joined, nil
 	}
 	cleanPrefix := strings.TrimSuffix(path.Clean(b.pathPrefix), "/")
 	if joined == cleanPrefix || strings.HasPrefix(joined, cleanPrefix+"/") {
-		return joined
+		return joined, nil
 	}
-	return path.Join(cleanPrefix, path.Base(p))
+	base := path.Base(p)
+	if base == ".." || base == "." {
+		return "", fmt.Errorf("path %q escapes the filestore prefix", p)
+	}
+	return path.Join(cleanPrefix, base), nil
 }
 
-func (b *Backend) blobClient(p string) *blob.Client {
-	return b.client.ServiceClient().NewContainerClient(b.container).NewBlobClient(b.prefix(p))
+func (b *Backend) blobClient(p string) (*blob.Client, error) {
+	key, err := b.prefix(p)
+	if err != nil {
+		return nil, err
+	}
+	return b.client.ServiceClient().NewContainerClient(b.container).NewBlobClient(key), nil
 }
 
-func (b *Backend) blockBlobClient(p string) *blockblob.Client {
-	return b.client.ServiceClient().NewContainerClient(b.container).NewBlockBlobClient(b.prefix(p))
+func (b *Backend) blockBlobClient(p string) (*blockblob.Client, error) {
+	key, err := b.prefix(p)
+	if err != nil {
+		return nil, err
+	}
+	return b.client.ServiceClient().NewContainerClient(b.container).NewBlockBlobClient(key), nil
 }
 
 func (b *Backend) containerClient() *container.Client {
@@ -172,7 +194,10 @@ func (b *Backend) Reader(p string) (filestore.ReadCloseSeeker, error) {
 	// b.timeout is not cut off mid-stream.
 	propsCtx, propsCancel := context.WithTimeout(context.Background(), b.timeout)
 	defer propsCancel()
-	client := b.blobClient(p)
+	client, err := b.blobClient(p)
+	if err != nil {
+		return nil, err
+	}
 	props, err := client.GetProperties(propsCtx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read file %q: %w", p, err)
@@ -188,14 +213,18 @@ func (b *Backend) ReadFile(p string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 	return io.ReadAll(r)
 }
 
 func (b *Backend) FileExists(p string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), b.timeout)
 	defer cancel()
-	_, err := b.blobClient(p).GetProperties(ctx, nil)
+	client, keyErr := b.blobClient(p)
+	if keyErr != nil {
+		return false, keyErr
+	}
+	_, err := client.GetProperties(ctx, nil)
 	if err != nil {
 		if bloberror.HasCode(err, bloberror.BlobNotFound) {
 			return false, nil
@@ -208,7 +237,11 @@ func (b *Backend) FileExists(p string) (bool, error) {
 func (b *Backend) FileSize(p string) (int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), b.timeout)
 	defer cancel()
-	props, err := b.blobClient(p).GetProperties(ctx, nil)
+	client, keyErr := b.blobClient(p)
+	if keyErr != nil {
+		return 0, keyErr
+	}
+	props, err := client.GetProperties(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("unable to get size of %q: %w", p, err)
 	}
@@ -221,7 +254,11 @@ func (b *Backend) FileSize(p string) (int64, error) {
 func (b *Backend) FileModTime(p string) (time.Time, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), b.timeout)
 	defer cancel()
-	props, err := b.blobClient(p).GetProperties(ctx, nil)
+	client, keyErr := b.blobClient(p)
+	if keyErr != nil {
+		return time.Time{}, keyErr
+	}
+	props, err := client.GetProperties(ctx, nil)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("unable to get modification time of %q: %w", p, err)
 	}
@@ -236,8 +273,15 @@ func (b *Backend) FileModTime(p string) (time.Time, error) {
 func (b *Backend) CopyFile(oldPath, newPath string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), b.timeout)
 	defer cancel()
-	src := b.blobClient(oldPath).URL()
-	dst := b.blockBlobClient(newPath)
+	srcClient, err := b.blobClient(oldPath)
+	if err != nil {
+		return err
+	}
+	dst, err := b.blockBlobClient(newPath)
+	if err != nil {
+		return err
+	}
+	src := srcClient.URL()
 	if _, err := dst.StartCopyFromURL(ctx, src, nil); err != nil {
 		return fmt.Errorf("unable to copy %q to %q: %w", oldPath, newPath, err)
 	}
@@ -284,8 +328,11 @@ func (b *Backend) WriteFile(fr io.Reader, p string) (int64, error) {
 // leaves no committed block list, and a later append would replace the blob
 // with only the new bytes.
 func (b *Backend) write(ctx context.Context, fr io.Reader, p string) (int64, error) {
-	bb := b.blockBlobClient(p)
-	blockIDs, total, err := stageBlocks(ctx, bb, fr, p, azureBlockSize)
+	bb, err := b.blockBlobClient(p)
+	if err != nil {
+		return 0, err
+	}
+	blockIDs, total, err := stageBlocks(ctx, bb, fr, p, azureBlockSize, "")
 	if err != nil {
 		return 0, err
 	}
@@ -308,14 +355,26 @@ func (b *Backend) write(ctx context.Context, fr io.Reader, p string) (int64, err
 func (b *Backend) AppendFile(fr io.Reader, p string) (int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), b.timeout)
 	defer cancel()
-	store := blobAppendStore{blocks: b.blockBlobClient(p), blob: b.blobClient(p), path: p}
+	blocks, err := b.blockBlobClient(p)
+	if err != nil {
+		return 0, err
+	}
+	blobs, err := b.blobClient(p)
+	if err != nil {
+		return 0, err
+	}
+	store := &blobAppendStore{blocks: blocks, blob: blobs, path: p}
 	return commitAppend(ctx, store, fr, p)
 }
 
 func (b *Backend) RemoveFile(p string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), b.timeout)
 	defer cancel()
-	_, err := b.blobClient(p).Delete(ctx, nil)
+	client, keyErr := b.blobClient(p)
+	if keyErr != nil {
+		return keyErr
+	}
+	_, err := client.Delete(ctx, nil)
 	if err != nil && !bloberror.HasCode(err, bloberror.BlobNotFound) {
 		return fmt.Errorf("unable to remove file %q: %w", p, err)
 	}
@@ -331,8 +390,15 @@ func (b *Backend) ListDirectoryRecursively(p string) ([]string, error) {
 }
 
 func (b *Backend) list(p string, hierarchy bool) ([]string, error) {
-	prefix := b.prefix(p)
-	if prefix != "" && !strings.HasSuffix(prefix, "/") {
+	prefix, err := b.prefix(p)
+	if err != nil {
+		return nil, err
+	}
+	// A root list must not be scoped to "./", or blobs such as legalhold/index.json
+	// are skipped and RemoveDirectory("") reports success without deleting them.
+	if prefix == "." {
+		prefix = ""
+	} else if prefix != "" && !strings.HasSuffix(prefix, "/") {
 		prefix += "/"
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), b.timeout)
@@ -395,9 +461,16 @@ func (b *Backend) RemoveDirectory(p string) error {
 	return nil
 }
 
-func stageBlocks(ctx context.Context, bb *blockblob.Client, fr io.Reader, p string, blockSize int) ([]string, int64, error) {
+func stageBlocks(ctx context.Context, bb *blockblob.Client, fr io.Reader, p string, blockSize int, leaseID string) ([]string, int64, error) {
 	if blockSize <= 0 {
 		blockSize = azureBlockSize
+	}
+	var stageOpts *blockblob.StageBlockOptions
+	if leaseID != "" {
+		id := leaseID
+		stageOpts = &blockblob.StageBlockOptions{
+			LeaseAccessConditions: &blob.LeaseAccessConditions{LeaseID: &id},
+		}
 	}
 	buf := make([]byte, blockSize)
 	var ids []string
@@ -409,7 +482,7 @@ func stageBlocks(ctx context.Context, bb *blockblob.Client, fr io.Reader, p stri
 			if idErr != nil {
 				return nil, 0, fmt.Errorf("failed to generate azure block id: %w", idErr)
 			}
-			if _, sbErr := bb.StageBlock(ctx, id, nopCloser{bytes.NewReader(buf[:n])}, nil); sbErr != nil {
+			if _, sbErr := bb.StageBlock(ctx, id, nopCloser{bytes.NewReader(buf[:n])}, stageOpts); sbErr != nil {
 				return nil, 0, fmt.Errorf("unable to stage block for %q: %w", p, sbErr)
 			}
 			ids = append(ids, id)
@@ -464,6 +537,8 @@ func cleanPathPrefix(prefix string) string {
 // appendStore is the blob operations AppendFile needs. Tests substitute a
 // fake so a lost commit can be retried without Azure.
 type appendStore interface {
+	lock(ctx context.Context) error
+	unlock(ctx context.Context) error
 	blockList(ctx context.Context) (ids []string, etag azcore.ETag, contentLength int64, err error)
 	stage(ctx context.Context, r io.Reader, blockSize int) (ids []string, n int64, err error)
 	open(ctx context.Context, etag azcore.ETag) (io.ReadCloser, error)
@@ -471,13 +546,84 @@ type appendStore interface {
 }
 
 type blobAppendStore struct {
-	blocks *blockblob.Client
-	blob   *blob.Client
-	path   string
+	blocks      *blockblob.Client
+	blob        *blob.Client
+	path        string
+	leaseClient *lease.BlobClient
+	leaseID     string
+	stopRenew   context.CancelFunc
 }
 
-func (s blobAppendStore) blockList(ctx context.Context) ([]string, azcore.ETag, int64, error) {
-	resp, err := s.blocks.GetBlockList(ctx, blockblob.BlockListTypeCommitted, nil)
+func (s *blobAppendStore) lock(ctx context.Context) error {
+	if s.leaseClient != nil {
+		return nil
+	}
+	lc, err := lease.NewBlobClient(s.blob, nil)
+	if err != nil {
+		return fmt.Errorf("unable to lease %q: %w", s.path, err)
+	}
+	// 60 seconds is Azure's longest fixed lease. A renewer keeps it alive for
+	// the rest of the append, including the check that the commit landed.
+	if _, err = lc.AcquireLease(ctx, 60, nil); err != nil {
+		return fmt.Errorf("unable to lease %q: %w", s.path, err)
+	}
+	if lc.LeaseID() == nil {
+		return fmt.Errorf("azure lease for %q has no id", s.path)
+	}
+	s.leaseClient = lc
+	s.leaseID = *lc.LeaseID()
+	renewCtx, cancel := context.WithCancel(ctx)
+	s.stopRenew = cancel
+	go s.renewLease(renewCtx)
+	return nil
+}
+
+func (s *blobAppendStore) renewLease(ctx context.Context) {
+	ticker := time.NewTicker(20 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			_, _ = s.leaseClient.RenewLease(ctx, nil)
+		}
+	}
+}
+
+func (s *blobAppendStore) unlock(ctx context.Context) error {
+	if s.stopRenew != nil {
+		s.stopRenew()
+		s.stopRenew = nil
+	}
+	if s.leaseClient == nil {
+		return nil
+	}
+	_, err := s.leaseClient.ReleaseLease(ctx, nil)
+	s.leaseClient = nil
+	s.leaseID = ""
+	return err
+}
+
+func (s *blobAppendStore) leaseConditions(match *azcore.ETag) *blob.AccessConditions {
+	conds := &blob.AccessConditions{}
+	if match != nil {
+		conds.ModifiedAccessConditions = &blob.ModifiedAccessConditions{IfMatch: match}
+	}
+	if s.leaseID != "" {
+		id := s.leaseID
+		conds.LeaseAccessConditions = &blob.LeaseAccessConditions{LeaseID: &id}
+	}
+	if conds.ModifiedAccessConditions == nil && conds.LeaseAccessConditions == nil {
+		return nil
+	}
+	return conds
+}
+
+func (s *blobAppendStore) blockList(ctx context.Context) ([]string, azcore.ETag, int64, error) {
+	resp, err := s.blocks.GetBlockList(ctx, blockblob.BlockListTypeCommitted, &blockblob.GetBlockListOptions{
+		AccessConditions: s.leaseConditions(nil),
+	})
 	if err != nil {
 		return nil, "", 0, err
 	}
@@ -499,16 +645,14 @@ func (s blobAppendStore) blockList(ctx context.Context) ([]string, azcore.ETag, 
 	return ids, *resp.ETag, length, nil
 }
 
-func (s blobAppendStore) stage(ctx context.Context, r io.Reader, blockSize int) ([]string, int64, error) {
-	return stageBlocks(ctx, s.blocks, r, s.path, blockSize)
+func (s *blobAppendStore) stage(ctx context.Context, r io.Reader, blockSize int) ([]string, int64, error) {
+	return stageBlocks(ctx, s.blocks, r, s.path, blockSize, s.leaseID)
 }
 
-func (s blobAppendStore) open(ctx context.Context, etag azcore.ETag) (io.ReadCloser, error) {
+func (s *blobAppendStore) open(ctx context.Context, etag azcore.ETag) (io.ReadCloser, error) {
 	match := etag
 	resp, err := s.blob.DownloadStream(ctx, &blob.DownloadStreamOptions{
-		AccessConditions: &blob.AccessConditions{
-			ModifiedAccessConditions: &blob.ModifiedAccessConditions{IfMatch: &match},
-		},
+		AccessConditions: s.leaseConditions(&match),
 	})
 	if err != nil {
 		return nil, err
@@ -519,27 +663,35 @@ func (s blobAppendStore) open(ctx context.Context, etag azcore.ETag) (io.ReadClo
 	return resp.Body, nil
 }
 
-func (s blobAppendStore) commit(ctx context.Context, ids []string, etag azcore.ETag) error {
+func (s *blobAppendStore) commit(ctx context.Context, ids []string, etag azcore.ETag) error {
 	match := etag
 	_, err := s.blocks.CommitBlockList(ctx, ids, &blockblob.CommitBlockListOptions{
-		AccessConditions: &blob.AccessConditions{
-			ModifiedAccessConditions: &blob.ModifiedAccessConditions{IfMatch: &match},
-		},
+		AccessConditions: s.leaseConditions(&match),
 	})
 	return err
 }
 
-// commitAppend stages the new bytes once, then commits them onto the current
-// block list. The commit is conditional on the etag from that read. A 412
-// means another writer committed in between, so the list is read again and
-// the same staged blocks are committed onto the new list. Near Azure's
-// 50,000-block cap the existing bytes are restaged into fewer blocks first.
+// commitAppend commits the new bytes onto the current block list. The commit
+// is conditional on the etag from that read. A 412 means another writer
+// committed first. Azure drops uncommitted blocks that the winning list omits,
+// so the input is kept and staged again instead of reusing the old block IDs.
+// A list longer than 50,000 blocks is compacted first. Exactly 50,000 is valid.
 func commitAppend(ctx context.Context, store appendStore, fr io.Reader, p string) (int64, error) {
-	var newIDs []string
-	var total int64
-	staged := false
+	payload, err := io.ReadAll(fr)
+	if err != nil {
+		return 0, fmt.Errorf("failed to read input: %w", err)
+	}
+	// The lease is held through the commit and the confirmation read. Another
+	// append cannot consolidate this blob and replace the block IDs before we
+	// know whether a lost response still landed.
+	if err = store.lock(ctx); err != nil {
+		return 0, fmt.Errorf("unable to lock %q for append: %w", p, err)
+	}
+	defer func() {
+		_ = store.unlock(context.Background())
+	}()
 	var lastErr error
-	for attempt := 0; attempt < appendCommitAttempts; attempt++ {
+	for range appendCommitAttempts {
 		existing, etag, contentLength, err := store.blockList(ctx)
 		if err != nil {
 			return 0, fmt.Errorf("unable to find file %q to append data: %w", p, err)
@@ -547,17 +699,14 @@ func commitAppend(ctx context.Context, store appendStore, fr io.Reader, p string
 		if len(existing) == 0 && contentLength > 0 {
 			return 0, fmt.Errorf("refusing to append to %q: blob has content but no committed block list", p)
 		}
-		if !staged {
-			newIDs, total, err = store.stage(ctx, fr, azureBlockSize)
-			if err != nil {
-				return 0, err
-			}
-			staged = true
+		newIDs, total, err := store.stage(ctx, bytes.NewReader(payload), azureBlockSize)
+		if err != nil {
+			return 0, err
 		}
 		ids := make([]string, 0, len(existing)+len(newIDs))
 		ids = append(ids, existing...)
 		ids = append(ids, newIDs...)
-		if len(ids) >= azureMaxCommittedBlocks {
+		if len(ids) > azureMaxCommittedBlocks {
 			ids, err = consolidatedIDs(ctx, store, p, contentLength, etag, newIDs)
 			if err != nil {
 				if isAppendConflict(err) {
@@ -569,6 +718,13 @@ func commitAppend(ctx context.Context, store appendStore, fr io.Reader, p string
 		}
 		if err = store.commit(ctx, ids, etag); err != nil {
 			if isAppendConflict(err) {
+				landed, checkErr := appendAlreadyCommitted(ctx, store, newIDs)
+				if checkErr != nil {
+					return 0, checkErr
+				}
+				if landed {
+					return total, nil
+				}
 				lastErr = err
 				continue
 			}
@@ -577,6 +733,30 @@ func commitAppend(ctx context.Context, store appendStore, fr io.Reader, p string
 		return total, nil
 	}
 	return 0, fmt.Errorf("unable to commit block list for %q after concurrent updates: %w", p, lastErr)
+}
+
+// appendAlreadyCommitted reports whether the block IDs from this attempt are
+// already in the committed list. A 412 after CommitBlockList can mean the
+// commit landed and the response was lost. Those IDs are still committed.
+// A competing writer omits them, so they are absent and the append must be staged again.
+func appendAlreadyCommitted(ctx context.Context, store appendStore, newIDs []string) (bool, error) {
+	if len(newIDs) == 0 {
+		return false, nil
+	}
+	committed, _, _, err := store.blockList(ctx)
+	if err != nil {
+		return false, fmt.Errorf("unable to confirm append commit: %w", err)
+	}
+	have := make(map[string]struct{}, len(committed))
+	for _, id := range committed {
+		have[id] = struct{}{}
+	}
+	for _, id := range newIDs {
+		if _, ok := have[id]; !ok {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 // consolidatedIDs restages the blob's current bytes so the commit that adds
@@ -591,7 +771,7 @@ func consolidatedIDs(ctx context.Context, store appendStore, p string, contentLe
 	if err != nil {
 		return nil, err
 	}
-	defer body.Close()
+	defer func() { _ = body.Close() }()
 	ids, n, err := store.stage(ctx, body, blockSize)
 	if err != nil {
 		return nil, err
@@ -599,22 +779,25 @@ func consolidatedIDs(ctx context.Context, store appendStore, p string, contentLe
 	if n != contentLength {
 		return nil, fmt.Errorf("unable to consolidate %q: read %d bytes, blob length is %d", p, n, contentLength)
 	}
-	combined := append(ids, newIDs...)
-	if len(combined) >= azureMaxCommittedBlocks {
-		return nil, fmt.Errorf("unable to append to %q: consolidating %d bytes still needs %d blocks", p, contentLength, len(combined))
+	ids = append(ids, newIDs...)
+	if len(ids) > azureMaxCommittedBlocks {
+		return nil, fmt.Errorf("unable to append to %q: consolidating %d bytes still needs %d blocks", p, contentLength, len(ids))
 	}
-	return combined, nil
+	return ids, nil
 }
 
 // consolidateBlockSize is the chunk size that keeps the rewritten blob, plus
 // the blocks about to be appended, under the committed-block cap.
 func consolidateBlockSize(contentLength int64, newBlocks int) (int, error) {
-	room := azureMaxCommittedBlocks - newBlocks
-	if room < 1 {
+	if newBlocks > azureMaxCommittedBlocks {
 		return 0, fmt.Errorf("append of %d blocks would exceed the %d block limit", newBlocks, azureMaxCommittedBlocks)
 	}
+	room := azureMaxCommittedBlocks - newBlocks
 	if contentLength <= 0 {
 		return azureBlockSize, nil
+	}
+	if room < 1 {
+		return 0, fmt.Errorf("append of %d blocks leaves no room to keep %d existing bytes under the %d block limit", newBlocks, contentLength, azureMaxCommittedBlocks)
 	}
 	needed := (contentLength + int64(room) - 1) / int64(room)
 	if needed > azureConsolidateBlockBytes {

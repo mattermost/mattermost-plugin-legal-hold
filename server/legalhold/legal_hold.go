@@ -539,7 +539,7 @@ func (ex *Execution) copyAttachment(srcPath, destPath string) error {
 		if err != nil {
 			return fmt.Errorf("read attachment %s for hash: %w", srcPath, err)
 		}
-		defer hashReader.Close()
+		defer func() { _ = hashReader.Close() }()
 		h, err := hashFromReader(ex.LegalHold.Secret, hashReader)
 		if err != nil {
 			return err
@@ -551,7 +551,7 @@ func (ex *Execution) copyAttachment(srcPath, destPath string) error {
 	if err != nil {
 		return fmt.Errorf("read attachment %s from the Mattermost file store: %w", srcPath, err)
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 	data, err := io.ReadAll(reader)
 	if err != nil {
 		return fmt.Errorf("read attachment %s: %w", srcPath, err)

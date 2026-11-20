@@ -55,7 +55,7 @@ func (r *rangeReader) Read(p []byte) (int, error) {
 	if err == nil {
 		return n, nil
 	}
-	r.body.Close()
+	_ = r.body.Close()
 	r.body = nil
 	if err == io.EOF && r.offset < r.size {
 		return n, io.ErrUnexpectedEOF
@@ -82,7 +82,7 @@ func (r *rangeReader) Seek(offset int64, whence int) (int64, error) {
 		return abs, nil
 	}
 	if r.body != nil {
-		r.body.Close()
+		_ = r.body.Close()
 		r.body = nil
 	}
 	r.offset = abs

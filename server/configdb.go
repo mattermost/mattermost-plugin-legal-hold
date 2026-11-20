@@ -24,14 +24,18 @@ func readActiveConfigurationDSN(dsn string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open MM_CONFIG database: %w", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	db.SetMaxOpenConns(1)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	query, err := activeConfigQuery(table)
+	if err != nil {
+		return nil, err
+	}
 	var value sql.NullString
-	err = db.QueryRowContext(ctx, "SELECT value FROM "+table+" WHERE active = true").Scan(&value)
+	err = db.QueryRowContext(ctx, query).Scan(&value)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -42,6 +46,19 @@ func readActiveConfigurationDSN(dsn string) ([]byte, error) {
 		return nil, nil
 	}
 	return []byte(value.String), nil
+}
+
+// activeConfigQuery uses a fixed statement per table. The table name is chosen
+// by the driver, and it is not interpolated from the DSN.
+func activeConfigQuery(table string) (string, error) {
+	switch table {
+	case "configurations":
+		return "SELECT value FROM configurations WHERE active = true", nil
+	case "Configurations":
+		return "SELECT value FROM Configurations WHERE active = true", nil
+	default:
+		return "", fmt.Errorf("unsupported configuration table %q", table)
+	}
 }
 
 func configDSN(dsn string) (driver, dataSource, table string, err error) {

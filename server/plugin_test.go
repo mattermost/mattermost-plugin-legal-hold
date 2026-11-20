@@ -2,6 +2,8 @@ package main
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
@@ -239,16 +241,35 @@ func TestLoadServerConfigJSON(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("empty MM_CONFIG reads the default file and not the database", func(t *testing.T) {
+	t.Run("empty MM_CONFIG prefers config/config.json", func(t *testing.T) {
 		raw, err := loadServerConfigJSON("", func(path string) ([]byte, error) {
-			require.Equal(t, defaultServerConfigFile, path)
-			return []byte(`{"FileSettings":{"AzureStorageAccount":"fromfile"}}`), nil
+			if strings.HasSuffix(filepath.ToSlash(path), "config/config.json") {
+				return []byte(`{"FileSettings":{"AzureStorageAccount":"fromconfigdir"}}`), nil
+			}
+			return nil, os.ErrNotExist
 		}, func() ([]byte, error) {
 			t.Fatal("database reader should not run when MM_CONFIG is empty")
 			return nil, nil
 		})
 		require.NoError(t, err)
-		require.Contains(t, string(raw), "fromfile")
+		require.Contains(t, string(raw), "fromconfigdir")
+	})
+
+	t.Run("empty MM_CONFIG falls through to config.json", func(t *testing.T) {
+		raw, err := loadServerConfigJSON("", func(path string) ([]byte, error) {
+			slash := filepath.ToSlash(path)
+			inConfigDir := strings.HasSuffix(slash, "config/"+defaultServerConfigFile)
+			inWorkingDir := slash == defaultServerConfigFile || (strings.HasSuffix(slash, "/"+defaultServerConfigFile) && !inConfigDir)
+			if inWorkingDir {
+				return []byte(`{"FileSettings":{"AzureStorageAccount":"fromcwd"}}`), nil
+			}
+			return nil, os.ErrNotExist
+		}, func() ([]byte, error) {
+			t.Fatal("database reader should not run when MM_CONFIG is empty")
+			return nil, nil
+		})
+		require.NoError(t, err)
+		require.Contains(t, string(raw), "fromcwd")
 	})
 
 	t.Run("empty MM_CONFIG with no default file is env only", func(t *testing.T) {
