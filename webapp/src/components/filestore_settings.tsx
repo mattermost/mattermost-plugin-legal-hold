@@ -97,6 +97,8 @@ const useFilestoreForm = (initialValue: FilestoreSettingsData | undefined, onCha
         Azure: {
             ...defaultAzure(),
             ...initialValue?.Azure,
+            // An omitted SSL stays HTTPS. Only an explicit false turns it off.
+            SSL: initialValue?.Azure?.SSL ?? true,
         },
         Directory: initialValue?.Directory ?? '',
     });

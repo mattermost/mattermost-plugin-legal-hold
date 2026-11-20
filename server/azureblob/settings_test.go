@@ -1,6 +1,7 @@
 package azureblob
 
 import (
+	"path"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -72,6 +73,13 @@ func TestCheckMandatoryDefaultCredentialSkipsKey(t *testing.T) {
 		AuthMode:       AuthModeSharedKey,
 	}.CheckMandatory()
 	require.Error(t, err)
+}
+
+func TestStripPrefixUsesCleanedPrefix(t *testing.T) {
+	b := &Backend{pathPrefix: path.Clean("./holds")}
+	written := b.prefix("legalhold/index.json")
+	require.Equal(t, "holds/legalhold/index.json", written)
+	require.Equal(t, "legalhold/index.json", b.stripPrefix(written))
 }
 
 func TestSettingsFromConfigJSONEmpty(t *testing.T) {

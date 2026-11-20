@@ -44,14 +44,16 @@ type AmazonS3BucketSettings struct {
 
 // AzureBlobSettings is the dedicated Azure Blob container for legal holds.
 type AzureBlobSettings struct {
-	StorageAccount             string
-	AuthMode                   string
-	AccessKey                  string
-	Container                  string
-	PathPrefix                 string
-	Cloud                      string
-	Endpoint                   string
-	SSL                        bool
+	StorageAccount string
+	AuthMode       string
+	AccessKey      string
+	Container      string
+	PathPrefix     string
+	Cloud          string
+	Endpoint       string
+	// SSL is a pointer so an omitted value stays nil and the backend keeps HTTPS.
+	// An explicit false is the only way to send the access key over HTTP.
+	SSL                        *bool
 	RequestTimeoutMilliseconds int64
 }
 

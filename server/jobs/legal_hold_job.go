@@ -34,26 +34,31 @@ type LegalHoldJob struct {
 	runner   *runInstance
 	settings *LegalHoldJobSettings
 
-	id          string
-	papi        plugin.API
-	client      *pluginapi.Client
-	sqlstore    *sqlstore.SQLStore
-	kvstore     kvstore.KVStore
-	filebackend filestore.FileBackend
+	id                string
+	papi              plugin.API
+	client            *pluginapi.Client
+	sqlstore          *sqlstore.SQLStore
+	kvstore           kvstore.KVStore
+	filebackend       filestore.FileBackend
+	sourceFileBackend filestore.FileBackend
 
 	onceScheduler *cluster.JobOnceScheduler
 }
 
-func NewLegalHoldJob(id string, api plugin.API, client *pluginapi.Client, sqlstore *sqlstore.SQLStore, kvstore kvstore.KVStore, filebackend filestore.FileBackend) (*LegalHoldJob, error) {
+func NewLegalHoldJob(id string, api plugin.API, client *pluginapi.Client, sqlstore *sqlstore.SQLStore, kvstore kvstore.KVStore, filebackend filestore.FileBackend, sourceFileBackend filestore.FileBackend) (*LegalHoldJob, error) {
+	if sourceFileBackend == nil {
+		sourceFileBackend = filebackend
+	}
 	return &LegalHoldJob{
-		settings:      &LegalHoldJobSettings{},
-		id:            id,
-		papi:          api,
-		client:        client,
-		sqlstore:      sqlstore,
-		kvstore:       kvstore,
-		filebackend:   filebackend,
-		onceScheduler: cluster.GetJobOnceScheduler(api),
+		settings:          &LegalHoldJobSettings{},
+		id:                id,
+		papi:              api,
+		client:            client,
+		sqlstore:          sqlstore,
+		kvstore:           kvstore,
+		filebackend:       filebackend,
+		sourceFileBackend: sourceFileBackend,
+		onceScheduler:     cluster.GetJobOnceScheduler(api),
 	}, nil
 }
 
@@ -306,7 +311,7 @@ func (j *LegalHoldJob) runWith(legalHolds []model.LegalHold, forceRun bool) {
 			}
 
 			j.client.Log.Debug(fmt.Sprintf("Creating Legal Hold Execution for legal hold: %s", legalHold.ID))
-			lhe := legalhold.NewExecution(legalHold, j.papi, j.sqlstore, j.kvstore, j.filebackend)
+			lhe := legalhold.NewExecution(legalHold, j.papi, j.sqlstore, j.kvstore, j.filebackend, j.sourceFileBackend)
 
 			if updatedLH, err := lhe.Execute(now); err != nil {
 				j.client.Log.Error("An error occurred executing the legal hold.", err)

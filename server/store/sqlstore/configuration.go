@@ -15,8 +15,10 @@ func (ss *SQLStore) ActiveConfiguration() ([]byte, error) {
 		table = "configurations"
 	}
 
+	// The primary has the row that was just committed. A replica can still be
+	// serving the previous account, container, or key after a config save.
 	var value sql.NullString
-	err := ss.replica.Get(&value, "SELECT value FROM "+table+" WHERE active = true")
+	err := ss.master.Get(&value, "SELECT value FROM "+table+" WHERE active = true")
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}

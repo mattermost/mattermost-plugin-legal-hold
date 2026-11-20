@@ -46,8 +46,12 @@ type Plugin struct {
 	// KVStore provides tailored access to this plugin's KV Store.
 	KVStore kvstore.KVStore
 
-	// FileBackend allows direct access to the Mattermost files backend bypassing the plugin API.
+	// FileBackend is where legal hold data is written.
 	FileBackend filestore.FileBackend
+
+	// SourceFileBackend is the Mattermost file store. Attachments are read from
+	// here. It equals FileBackend when the hold uses the server store.
+	SourceFileBackend filestore.FileBackend
 
 	// jobManager allows managing of scheduled tasks
 	jobManager *jobs.JobManager
@@ -165,34 +169,48 @@ func (p *Plugin) Reconfigure() error {
 	// Reinitialise the filestore backend. A dedicated S3 bucket, Azure Blob
 	// container, or local directory is used when selected. Otherwise the
 	// server file store is used, including its own azureblob driver.
+	// A failure leaves the saved selection unchanged. Switching stores on a
+	// transient error would send later reads and writes to a different place
+	// than the archives already written.
 	filesBackend, err := p.openFileBackend()
 	if err != nil {
-		if fbErr := p.fallbackDedicatedFilestore(); fbErr != nil {
-			return fbErr
-		}
 		p.Client.Log.Error("unable to initialize the files storage", "err", err)
 		return errors.Wrap(err, "unable to initialize the files storage")
+	}
+
+	sourceBackend := filesBackend
+	if p.getConfiguration().AmazonS3BucketSettings.EffectiveDriver() != config.FilestoreDriverServer {
+		if p.Client.Configuration.GetUnsanitizedConfig() == nil {
+			return errors.New("server configuration is not available")
+		}
+		sourceBackend, err = p.newFileBackend(p.Client.Configuration.GetUnsanitizedConfig().FileSettings)
+		if err != nil {
+			p.Client.Log.Error("unable to initialize the Mattermost file store", "err", err)
+			return errors.Wrap(err, "unable to initialize the Mattermost file store")
+		}
 	}
 
 	// Perform a filesystem check if enabled
 	if p.configuration.EnableFilestoreConnectionTest {
 		p.Client.Log.Debug("Performing filestore connection test")
 		if err = filesBackend.TestConnection(); err != nil {
-			// A bad dedicated store must not leave the plugin dead, or the
-			// admin cannot open this page to correct it. Fall back to the
-			// server file store. A failure of that server store is left as-is.
-			if fbErr := p.fallbackDedicatedFilestore(); fbErr != nil {
-				return fbErr
-			}
 			err = errors.Wrap(err, "connection test for filestore failed")
 			p.Client.Log.Error(err.Error())
 			return err
+		}
+		if sourceBackend != filesBackend {
+			if err = sourceBackend.TestConnection(); err != nil {
+				err = errors.Wrap(err, "connection test for the Mattermost file store failed")
+				p.Client.Log.Error(err.Error())
+				return err
+			}
 		}
 	} else {
 		p.Client.Log.Debug("Skipping filestore connection test")
 	}
 
 	p.FileBackend = filesBackend
+	p.SourceFileBackend = sourceBackend
 
 	// Check all legal holds on plugin activation to prevent corrupt states:
 	// - For legal holds that supposedly don't have messages, check if the index exist
@@ -235,7 +253,7 @@ func (p *Plugin) Reconfigure() error {
 	}
 
 	// Create new job
-	p.legalHoldJob, err = jobs.NewLegalHoldJob(LegalHoldJobID, p.API, p.Client, p.SQLStore, p.KVStore, p.FileBackend)
+	p.legalHoldJob, err = jobs.NewLegalHoldJob(LegalHoldJobID, p.API, p.Client, p.SQLStore, p.KVStore, p.FileBackend, p.SourceFileBackend)
 	if err != nil {
 		return fmt.Errorf("cannot create legal hold job: %w", err)
 	}
@@ -279,7 +297,6 @@ func (p *Plugin) openFileBackend() (filestore.FileBackend, error) {
 }
 
 func pluginAzureSettings(in config.AzureBlobSettings) azureblob.Settings {
-	ssl := in.SSL
 	settings := azureblob.Settings{
 		StorageAccount: in.StorageAccount,
 		AuthMode:       in.AuthMode,
@@ -288,35 +305,13 @@ func pluginAzureSettings(in config.AzureBlobSettings) azureblob.Settings {
 		PathPrefix:     in.PathPrefix,
 		Cloud:          in.Cloud,
 		Endpoint:       in.Endpoint,
-		SSL:            &ssl,
+		SSL:            in.SSL,
 	}
 	if in.RequestTimeoutMilliseconds > 0 {
 		timeout := in.RequestTimeoutMilliseconds
 		settings.RequestTimeoutMilliseconds = &timeout
 	}
 	return settings
-}
-
-// fallbackDedicatedFilestore points a failing dedicated store back at the
-// server file store so the plugin can start and the admin can edit the form.
-// The bucket, container, and directory values are left in the saved config.
-func (p *Plugin) fallbackDedicatedFilestore() error {
-	if p.getConfiguration().AmazonS3BucketSettings.EffectiveDriver() == config.FilestoreDriverServer {
-		return nil
-	}
-	pluginConfig := p.Client.Configuration.GetPluginConfig()
-	settings, ok := pluginConfig["amazons3bucketsettings"].(map[string]any)
-	if !ok || settings == nil {
-		p.Client.Log.Warn("Filestore settings not found in plugin config. Could not fall back to the server file store.")
-		return nil
-	}
-	settings["Enable"] = false
-	settings["DriverName"] = config.FilestoreDriverServer
-	if err := p.Client.Configuration.SavePluginConfig(pluginConfig); err != nil {
-		p.Client.Log.Error("Error while saving plugin config.", "Error", err.Error())
-		return err
-	}
-	return nil
 }
 
 // newFileBackend opens the Mattermost server file store.
@@ -338,29 +333,29 @@ func (p *Plugin) newFileBackend(fileSettings mattermostModel.FileSettings) (file
 }
 
 func (p *Plugin) azureBlobSettings() (azureblob.Settings, error) {
-	// MM_CONFIG decides which store is actually live. A file path wins over a
-	// leftover configurations row; a DSN means the table is the store. Env
-	// vars are applied last because the server gives them the same priority.
-	var raw []byte
-	configPath := os.Getenv("MM_CONFIG")
-	switch {
-	case configPath != "" && !strings.Contains(configPath, "://"):
-		raw = readFileIfExists(configPath)
-	case p.SQLStore != nil:
-		stored, err := p.SQLStore.ActiveConfiguration()
-		if err != nil {
-			p.Client.Log.Debug("No active configuration row for Azure file settings", "err", err)
-		} else {
-			raw = stored
+	// MM_CONFIG names the live server config. A file that cannot be read, or a
+	// database query that fails, is returned as an error. A different file is
+	// not substituted. Environment variables still override afterwards, which
+	// is how an env-only deployment supplies Azure settings.
+	mmConfig := os.Getenv("MM_CONFIG")
+	raw, err := loadServerConfigJSON(mmConfig, os.ReadFile, func() ([]byte, error) {
+		if strings.Contains(mmConfig, "://") {
+			return readActiveConfigurationDSN(mmConfig)
 		}
+		if p.SQLStore == nil {
+			return nil, nil
+		}
+		return p.SQLStore.ActiveConfiguration()
+	})
+	// An empty MM_CONFIG is env-only when the app database has no config row.
+	// A named file or DSN that fails is not replaced with some other file.
+	if err != nil && mmConfig == "" {
+		p.Client.Log.Debug("Application database has no active server configuration; using environment", "err", err)
+		raw = nil
+		err = nil
 	}
-	if len(strings.TrimSpace(string(raw))) == 0 {
-		for _, candidate := range []string{"config/config.json", "config.json"} {
-			if b := readFileIfExists(candidate); len(b) > 0 {
-				raw = b
-				break
-			}
-		}
+	if err != nil {
+		return azureblob.Settings{}, err
 	}
 	settings, err := azureblob.SettingsFromConfigJSON(raw)
 	if err != nil {
@@ -369,12 +364,27 @@ func (p *Plugin) azureBlobSettings() (azureblob.Settings, error) {
 	return azureblob.ApplyEnv(settings, os.LookupEnv), nil
 }
 
-func readFileIfExists(path string) []byte {
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return nil
+// loadServerConfigJSON reads the server config document from the source
+// MM_CONFIG selects. An empty MM_CONFIG uses readDB, which is the application
+// database, and ignores a missing row so env-only configuration still works.
+func loadServerConfigJSON(mmConfig string, readFile func(string) ([]byte, error), readDB func() ([]byte, error)) ([]byte, error) {
+	if mmConfig == "" {
+		if readDB == nil {
+			return nil, nil
+		}
+		return readDB()
 	}
-	return b
+	if strings.Contains(mmConfig, "://") {
+		if readDB == nil {
+			return nil, errors.New("MM_CONFIG names a database but no config reader is available")
+		}
+		return readDB()
+	}
+	raw, err := readFile(mmConfig)
+	if err != nil {
+		return nil, fmt.Errorf("read MM_CONFIG file: %w", err)
+	}
+	return raw, nil
 }
 
 // FixedFileSettingsToFileBackendSettings converts FileSettings to FileBackendSettings.

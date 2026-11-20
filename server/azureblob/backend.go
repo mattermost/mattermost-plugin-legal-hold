@@ -41,6 +41,12 @@ var _ filestore.FileBackend = (*Backend)(nil)
 
 func New(settings Settings) (*Backend, error) {
 	settings = settings.withDefaults()
+	// prefix() cleans the joined key, and stripPrefix removes this stored value.
+	// Cleaning once keeps "./holds" from being written as "holds/..." and then
+	// listed back with the "./holds" prefix still attached.
+	if settings.PathPrefix != "" {
+		settings.PathPrefix = path.Clean(settings.PathPrefix)
+	}
 	if err := settings.CheckMandatory(); err != nil {
 		return nil, err
 	}

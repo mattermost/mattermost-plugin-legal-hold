@@ -216,3 +216,50 @@ func TestFixedFileSettingsToFileBackendSettings_NilPointerSafety(t *testing.T) {
 		})
 	})
 }
+
+func TestLoadServerConfigJSON(t *testing.T) {
+	t.Run("file error is returned", func(t *testing.T) {
+		_, err := loadServerConfigJSON("/missing/config.json", func(string) ([]byte, error) {
+			return nil, assert.AnError
+		}, func() ([]byte, error) {
+			t.Fatal("database reader should not run for a file path")
+			return nil, nil
+		})
+		require.Error(t, err)
+	})
+
+	t.Run("dsn does not fall through to a file", func(t *testing.T) {
+		_, err := loadServerConfigJSON("postgres://db/mattermost", func(string) ([]byte, error) {
+			t.Fatal("file reader should not run for a DSN")
+			return []byte(`{"FileSettings":{"AzureStorageAccount":"leftover"}}`), nil
+		}, func() ([]byte, error) {
+			return nil, assert.AnError
+		})
+		require.Error(t, err)
+	})
+
+	t.Run("empty MM_CONFIG can be env only", func(t *testing.T) {
+		raw, err := loadServerConfigJSON("", func(string) ([]byte, error) {
+			t.Fatal("file reader should not run when MM_CONFIG is empty")
+			return nil, nil
+		}, func() ([]byte, error) {
+			return nil, nil
+		})
+		require.NoError(t, err)
+		require.Empty(t, raw)
+	})
+}
+
+func TestConfigDSN(t *testing.T) {
+	driver, dataSource, table, err := configDSN("postgres://user:pass@db:5432/config?sslmode=disable")
+	require.NoError(t, err)
+	require.Equal(t, "postgres", driver)
+	require.Equal(t, "postgres://user:pass@db:5432/config?sslmode=disable", dataSource)
+	require.Equal(t, "configurations", table)
+
+	driver, dataSource, table, err = configDSN("mysql://user:pass@tcp(db:3306)/config")
+	require.NoError(t, err)
+	require.Equal(t, "mysql", driver)
+	require.Equal(t, "user:pass@tcp(db:3306)/config", dataSource)
+	require.Equal(t, "Configurations", table)
+}
