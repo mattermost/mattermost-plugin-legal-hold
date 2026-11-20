@@ -23,7 +23,7 @@ Once the plugin is installed, a new "Legal Hold" section will appear in the Syst
 in the Plugins section. There are two main settings:
 
 * **Enable Plugin**: controls whether the plugin is enabled. It must be enabled to use it.
-* **Amazon S3 Bucket Settings**: optionally use a separate S3 Bucket than the one configured for your Mattermost server.
+* **Filestore**: defaults to the Mattermost file store (local disk, a blobfuse mount, S3, or Azure Blob). Choose Amazon S3, Azure Blob, or a local directory to store holds somewhere else. Only the fields for the selected store are shown.
 * **Time of Day**: this setting controls at what time the delay collection of Legal Hold data
   should occur. We recommend choosing a quiet time of day to minimise impact on your users. Make
   sure to specify the time in the format shown in the example.
