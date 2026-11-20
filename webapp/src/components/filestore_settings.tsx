@@ -97,6 +97,7 @@ const useFilestoreForm = (initialValue: FilestoreSettingsData | undefined, onCha
         Azure: {
             ...defaultAzure(),
             ...initialValue?.Azure,
+
             // An omitted SSL stays HTTPS. Only an explicit false turns it off.
             SSL: initialValue?.Azure?.SSL ?? true,
         },
@@ -169,6 +170,7 @@ const FilestoreSettings = (props: Props) => {
     const [testingConnection, setTestingConnection] = useState(false);
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
+
     // Bumped when the form changes and when a test starts, so a response from
     // an earlier configuration cannot overwrite the message now on screen.
     const connectionAttempt = useRef(0);
