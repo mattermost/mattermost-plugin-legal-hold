@@ -81,6 +81,25 @@ func TestMerge(t *testing.T) {
 	}
 }
 
+func TestMergeSkippedFilesKeepsDistinctIDs(t *testing.T) {
+	index := LegalHoldIndex{
+		SkippedFiles: []LegalHoldSkippedFile{{
+			FileID: "file-1", FileName: "a.txt", PostID: "post-1", ChannelID: "ch-1",
+			Reason: "not found in source store at export time",
+		}},
+	}
+	index.Merge(&LegalHoldIndex{
+		SkippedFiles: []LegalHoldSkippedFile{
+			{FileID: "file-1", FileName: "a.txt", PostID: "post-1", ChannelID: "ch-1", Reason: "again"},
+			{FileID: "file-2", FileName: "b.txt", PostID: "post-2", ChannelID: "ch-1", Reason: "not found in source store at export time"},
+		},
+	})
+	require.Len(t, index.SkippedFiles, 2)
+	require.Equal(t, "file-1", index.SkippedFiles[0].FileID)
+	require.Equal(t, "not found in source store at export time", index.SkippedFiles[0].Reason)
+	require.Equal(t, "file-2", index.SkippedFiles[1].FileID)
+}
+
 func TestGetLegalHoldChannelMembership(t *testing.T) {
 	type args struct {
 		channelMemberships []LegalHoldChannelMembership

@@ -6,19 +6,23 @@ import (
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"maps"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
 	"github.com/gocarina/gocsv"
 	"github.com/mattermost/mattermost-plugin-api/cluster"
 	mm_model "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
+	"github.com/minio/minio-go/v7"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/kvstore"
@@ -41,10 +45,14 @@ type Execution struct {
 	ExecutionStartTime int64
 	ExecutionEndTime   int64
 
-	papi        plugin.API
-	store       *sqlstore.SQLStore
-	kvstore     kvstore.KVStore
+	papi    plugin.API
+	store   *sqlstore.SQLStore
+	kvstore kvstore.KVStore
+	// fileBackend is where the legal hold is written.
 	fileBackend filestore.FileBackend
+	// sourceFileBackend is the Mattermost file store, where attachments already live.
+	// It is the same backend as fileBackend when the hold uses the server store.
+	sourceFileBackend filestore.FileBackend
 
 	channelIDs []string
 
@@ -53,7 +61,10 @@ type Execution struct {
 }
 
 // NewExecution creates a new Execution that is ready to use.
-func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQLStore, kvstore kvstore.KVStore, fileBackend filestore.FileBackend) Execution {
+func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQLStore, kvstore kvstore.KVStore, fileBackend filestore.FileBackend, sourceFileBackend filestore.FileBackend) Execution {
+	if sourceFileBackend == nil {
+		sourceFileBackend = fileBackend
+	}
 	return Execution{
 		LegalHold:          &legalHold,
 		ExecutionStartTime: legalHold.NextExecutionStartTime(),
@@ -61,6 +72,7 @@ func NewExecution(legalHold model.LegalHold, papi plugin.API, store *sqlstore.SQ
 		store:              store,
 		kvstore:            kvstore,
 		fileBackend:        fileBackend,
+		sourceFileBackend:  sourceFileBackend,
 		index:              model.NewLegalHoldIndex(),
 		papi:               papi,
 		hashes:             make(map[string]string),
@@ -308,25 +320,26 @@ func (ex *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPos
 			continue
 		}
 
-		err = ex.fileBackend.CopyFile(fileInfo.Path, destPath)
-		if err != nil {
-			ex.papi.LogError(fmt.Sprintf("Failed to find file attachment to copy %s", fileInfo.Path))
-			// Continue anyway so the job doesn't get completely stuck.
-			return nil
-		}
-
-		hashReader, err := ex.fileBackend.Reader(fileInfo.Path)
-		if err != nil {
-			return err
-		}
-
-		h, err := hashFromReader(ex.LegalHold.Secret, hashReader)
-		if err != nil {
-			return err
-		}
-
-		err = ex.WriteFileHash(destPath, h)
-		if err != nil {
+		if err = ex.copyAttachment(fileInfo.Path, destPath); err != nil {
+			if errors.Is(err, errAttachmentNotFound) {
+				// A missing object will not appear on a later retry. Record it
+				// and keep the rest of this batch. Other errors still fail the
+				// execution so the checkpoint stays put.
+				ex.papi.LogError(
+					"Skipping attachment that was not in the source store at export time",
+					"file_id", fileInfo.ID,
+					"post_id", fileInfo.PostId,
+					"channel_id", channelID,
+				)
+				ex.index.SkippedFiles = append(ex.index.SkippedFiles, model.LegalHoldSkippedFile{
+					FileID:    fileInfo.ID,
+					FileName:  fileInfo.Name,
+					PostID:    fileInfo.PostId,
+					ChannelID: channelID,
+					Reason:    skippedFileReason,
+				})
+				continue
+			}
 			return err
 		}
 	}
@@ -533,6 +546,105 @@ func (ex *Execution) filePath(channelID string, batchCreateAt int64, batchPostID
 	}
 
 	return p, nil
+}
+
+const skippedFileReason = "not found in source store at export time"
+
+// errAttachmentNotFound is returned when the Mattermost file store does not
+// have the attachment. The export records the gap and continues. A read,
+// write, or timeout error is not this error, so the job can retry those.
+var errAttachmentNotFound = errors.New("attachment not found in source store")
+
+// copyAttachment reads an attachment from the Mattermost file store and writes
+// it to the legal hold store. CopyFile only works when both paths are on the
+// same backend. A dedicated S3, Azure Blob, or local hold store does not
+// contain the original attachment.
+func (ex *Execution) copyAttachment(srcPath, destPath string) error {
+	exists, err := ex.sourceFileBackend.FileExists(srcPath)
+	if err != nil {
+		return fmt.Errorf("check attachment %s in the Mattermost file store: %w", srcPath, err)
+	}
+	if !exists {
+		return errAttachmentNotFound
+	}
+
+	var size int64
+	size, err = ex.sourceFileBackend.FileSize(srcPath)
+	if err != nil {
+		if isSourceMissing(err) {
+			return errAttachmentNotFound
+		}
+		return fmt.Errorf("size attachment %s in the Mattermost file store: %w", srcPath, err)
+	}
+
+	sameStore := ex.sourceFileBackend == nil || ex.sourceFileBackend == ex.fileBackend
+	if sameStore {
+		// A not-exist from CopyFile can be the destination directory. That is
+		// not a missing source file, so it stays a retryable error.
+		if err = ex.fileBackend.CopyFile(srcPath, destPath); err != nil {
+			return fmt.Errorf("copy attachment %s: %w", srcPath, err)
+		}
+		var hashReader filestore.ReadCloseSeeker
+		hashReader, err = ex.fileBackend.Reader(srcPath)
+		if err != nil {
+			if isSourceMissing(err) {
+				return errAttachmentNotFound
+			}
+			return fmt.Errorf("read attachment %s for hash: %w", srcPath, err)
+		}
+		defer func() { _ = hashReader.Close() }()
+		var h string
+		h, err = hashFromReader(ex.LegalHold.Secret, hashReader)
+		if err != nil {
+			return err
+		}
+		return ex.WriteFileHash(destPath, h)
+	}
+
+	var reader filestore.ReadCloseSeeker
+	reader, err = ex.sourceFileBackend.Reader(srcPath)
+	if err != nil {
+		if isSourceMissing(err) {
+			return errAttachmentNotFound
+		}
+		return fmt.Errorf("read attachment %s from the Mattermost file store: %w", srcPath, err)
+	}
+	defer func() { _ = reader.Close() }()
+
+	// Hash the bytes as they are written. The Azure writer treats a short
+	// final block and a body that ends early as the same ReadFull result, so
+	// a nil error is not proof the source was fully copied. The hash is
+	// recorded only when the written count matches the source size.
+	hasher := hmac.New(sha512.New, []byte(ex.LegalHold.Secret))
+	var written int64
+	written, err = ex.fileBackend.WriteFile(io.TeeReader(reader, hasher), destPath)
+	if err != nil {
+		return fmt.Errorf("write attachment %s to the legal hold store: %w", destPath, err)
+	}
+	if written != size {
+		return fmt.Errorf("attachment %s copied %d of %d bytes", srcPath, written, size)
+	}
+	return ex.WriteFileHash(destPath, fmt.Sprintf("%x", hasher.Sum(nil)))
+}
+
+// isSourceMissing reports a not-found from the source store. Call it on
+// source reads only. A destination open can also be os.ErrNotExist, and that
+// must stay retryable. Timeouts and permission errors are not missing.
+func isSourceMissing(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return true
+	}
+	if bloberror.HasCode(err, bloberror.BlobNotFound) {
+		return true
+	}
+	var s3Err minio.ErrorResponse
+	if errors.As(err, &s3Err) {
+		return s3Err.Code == "NoSuchKey" || s3Err.Code == "NotFound"
+	}
+	return false
 }
 
 // hashFromReader returns the HMAC-SHA512 hash of the reader's contents.

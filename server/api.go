@@ -14,9 +14,9 @@ import (
 	"github.com/gorilla/mux"
 	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
-	"github.com/mattermost/mattermost-server/v6/shared/filestore"
 	"github.com/pkg/errors"
 
+	"github.com/mattermost/mattermost-plugin-legal-hold/server/config"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 )
 
@@ -374,38 +374,50 @@ func (p *Plugin) runSingleLegalHold(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// testSelectedAndSourceFilestores checks the hold destination. When that
+// destination is not the Mattermost file store, it also checks the source
+// store the attachments are copied from. A green test of only the destination
+// can still be followed by a hold that cannot read the originals.
+func (p *Plugin) testSelectedAndSourceFilestores() (string, error) {
+	filesBackend, err := p.openFileBackend()
+	if err != nil {
+		return "", errors.Wrap(err, "unable to initialize the file store")
+	}
+	if err = filesBackend.TestConnection(); err != nil {
+		return "", errors.Wrap(err, "failed to connect to the selected filestore")
+	}
+
+	if p.getConfiguration().AmazonS3BucketSettings.EffectiveDriver() == config.FilestoreDriverServer {
+		return "Successfully connected to the selected filestore", nil
+	}
+	if p.Client.Configuration.GetUnsanitizedConfig() == nil {
+		return "", errors.New("server configuration is not available")
+	}
+	sourceBackend, err := p.newFileBackend(p.Client.Configuration.GetUnsanitizedConfig().FileSettings)
+	if err != nil {
+		return "", errors.Wrap(err, "unable to initialize the Mattermost file store")
+	}
+	if err = sourceBackend.TestConnection(); err != nil {
+		return "", errors.Wrap(err, "failed to connect to the Mattermost file store")
+	}
+	return "Successfully connected to the legal hold filestore and the Mattermost file store", nil
+}
+
 // testAmazonS3Connection tests the plugin's custom Amazon S3 connection
 func (p *Plugin) testAmazonS3Connection(w http.ResponseWriter, _ *http.Request) {
 	type messageResponse struct {
 		Message string `json:"message"`
 	}
 
-	var err error
-
-	conf := p.getConfiguration()
-	if !conf.AmazonS3BucketSettings.Enable {
-		http.Error(w, "Amazon S3 bucket settings are not enabled", http.StatusBadRequest)
-		return
-	}
-
-	filesBackendSettings := FixedFileSettingsToFileBackendSettings(conf.AmazonS3BucketSettings.Settings)
-	filesBackend, err := filestore.NewFileBackend(filesBackendSettings)
+	message, err := p.testSelectedAndSourceFilestores()
 	if err != nil {
-		err = errors.Wrap(err, "unable to initialize the file store")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		p.Client.Log.Error(err.Error())
-		return
-	}
-
-	if err = filesBackend.TestConnection(); err != nil {
-		err = errors.Wrap(err, "failed to connect to Amazon S3 bucket")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		p.Client.Log.Error(err.Error())
 		return
 	}
 
 	response := messageResponse{
-		Message: "Successfully connected to Amazon S3 bucket",
+		Message: message,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

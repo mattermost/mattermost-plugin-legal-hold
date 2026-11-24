@@ -30,10 +30,22 @@ type LegalHoldIndexDetails struct {
 	LastExecutionEndedAt int64  `json:"last_execution_ended_at"`
 }
 
+// LegalHoldSkippedFile is an attachment the export did not copy because it
+// was not in the Mattermost file store. The hold still finishes. The entry
+// is how an auditor sees the gap.
+type LegalHoldSkippedFile struct {
+	FileID    string `json:"file_id"`
+	FileName  string `json:"file_name"`
+	PostID    string `json:"post_id"`
+	ChannelID string `json:"channel_id"`
+	Reason    string `json:"reason"`
+}
+
 type LegalHoldIndex struct {
-	Users     LegalHoldIndexUsers   `json:"users"`
-	LegalHold LegalHoldIndexDetails `json:"legal_hold"`
-	Teams     []*LegalHoldTeam      `json:"teams"`
+	Users        LegalHoldIndexUsers    `json:"users"`
+	LegalHold    LegalHoldIndexDetails  `json:"legal_hold"`
+	Teams        []*LegalHoldTeam       `json:"teams"`
+	SkippedFiles []LegalHoldSkippedFile `json:"skipped_files,omitempty"`
 }
 
 type LegalHoldTeam struct {
@@ -82,6 +94,37 @@ func (lhi *LegalHoldIndex) Merge(newHold *LegalHoldIndex) {
 	}
 
 	lhi.Users.Merge(&newHold.Users)
+	lhi.SkippedFiles = mergeSkippedFiles(lhi.SkippedFiles, newHold.SkippedFiles)
+}
+
+// mergeSkippedFiles keeps every distinct file. A later run can add entries.
+// The same file ID is not recorded twice when that run is retried.
+func mergeSkippedFiles(existing, added []LegalHoldSkippedFile) []LegalHoldSkippedFile {
+	if len(added) == 0 {
+		return existing
+	}
+	seen := make(map[string]struct{}, len(existing)+len(added))
+	merged := make([]LegalHoldSkippedFile, 0, len(existing)+len(added))
+	for _, file := range existing {
+		seen[skippedFileKey(file)] = struct{}{}
+		merged = append(merged, file)
+	}
+	for _, file := range added {
+		key := skippedFileKey(file)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		merged = append(merged, file)
+	}
+	return merged
+}
+
+func skippedFileKey(file LegalHoldSkippedFile) string {
+	if file.FileID != "" {
+		return file.FileID
+	}
+	return file.ChannelID + "\x00" + file.PostID + "\x00" + file.FileName
 }
 
 // Merge merges the new LegalHoldTeam into this LegalHoldTeam.

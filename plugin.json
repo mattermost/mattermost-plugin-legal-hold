@@ -45,7 +45,7 @@
       },
       {
         "key": "AmazonS3BucketSettings",
-        "display_name": "S3 Bucket:",
+        "display_name": "Filestore:",
         "type": "custom"
       }
     ]
