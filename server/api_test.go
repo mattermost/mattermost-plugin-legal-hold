@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -173,6 +174,13 @@ func TestTestAmazonS3Connection(t *testing.T) {
 
 	api.On("HasPermissionTo", "test_user_id", model.PermissionManageSystem).Return(true)
 	api.On("LogInfo", mock.Anything).Maybe()
+	api.On("LogError", mock.Anything, mock.Anything).Maybe()
+	api.On("GetUnsanitizedConfig").Return(&model.Config{
+		FileSettings: model.FileSettings{
+			DriverName: model.NewString(model.ImageDriverLocal),
+			Directory:  model.NewString(filepath.Join(t.TempDir(), "files")),
+		},
+	})
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/bucket/" {

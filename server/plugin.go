@@ -279,7 +279,7 @@ func (p *Plugin) openFileBackend() (filestore.FileBackend, error) {
 		return filestore.NewFileBackend(FixedFileSettingsToFileBackendSettings(settings))
 	case config.FilestoreDriverAzure:
 		settings := pluginAzureSettings(conf.AmazonS3BucketSettings.Azure)
-		p.Client.Log.Info("Legal hold filestore is a dedicated Azure Blob container", "account", settings.StorageAccount, "container", settings.Container, "auth_mode", settings.AuthMode)
+		p.Client.Log.Debug("Legal hold filestore is a dedicated Azure Blob container", "account", settings.StorageAccount, "container", settings.Container, "auth_mode", settings.AuthMode)
 		return azureblob.New(settings)
 	case config.FilestoreDriverLocal:
 		if conf.AmazonS3BucketSettings.Directory == "" {
@@ -327,7 +327,7 @@ func (p *Plugin) newFileBackend(fileSettings mattermostModel.FileSettings) (file
 		if err != nil {
 			return nil, err
 		}
-		p.Client.Log.Info("Legal hold filestore is Azure Blob", "account", settings.StorageAccount, "container", settings.Container, "auth_mode", settings.AuthMode)
+		p.Client.Log.Debug("Legal hold filestore is Azure Blob", "account", settings.StorageAccount, "container", settings.Container, "auth_mode", settings.AuthMode)
 		return azureblob.New(settings)
 	}
 	return filestore.NewFileBackend(FixedFileSettingsToFileBackendSettings(fileSettings))

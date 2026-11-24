@@ -6,14 +6,17 @@ import (
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"maps"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
 	"github.com/gocarina/gocsv"
 	"github.com/mattermost/mattermost-plugin-api/cluster"
 	mm_model "github.com/mattermost/mattermost-server/v6/model"
@@ -317,6 +320,25 @@ func (ex *Execution) ExportFiles(channelID string, batchCreateAt int64, batchPos
 		}
 
 		if err = ex.copyAttachment(fileInfo.Path, destPath); err != nil {
+			if errors.Is(err, errAttachmentNotFound) {
+				// A missing object will not appear on a later retry. Record it
+				// and keep the rest of this batch. Other errors still fail the
+				// execution so the checkpoint stays put.
+				ex.papi.LogError(
+					"Skipping attachment that was not in the source store at export time",
+					"file_id", fileInfo.ID,
+					"post_id", fileInfo.PostId,
+					"channel_id", channelID,
+				)
+				ex.index.SkippedFiles = append(ex.index.SkippedFiles, model.LegalHoldSkippedFile{
+					FileID:    fileInfo.ID,
+					FileName:  fileInfo.Name,
+					PostID:    fileInfo.PostId,
+					ChannelID: channelID,
+					Reason:    skippedFileReason,
+				})
+				continue
+			}
 			return err
 		}
 	}
@@ -525,45 +547,91 @@ func (ex *Execution) filePath(channelID string, batchCreateAt int64, batchPostID
 	return p, nil
 }
 
+const skippedFileReason = "not found in source store at export time"
+
+// errAttachmentNotFound is returned when the Mattermost file store does not
+// have the attachment. The export records the gap and continues. A read,
+// write, or timeout error is not this error, so the job can retry those.
+var errAttachmentNotFound = errors.New("attachment not found in source store")
+
 // copyAttachment reads an attachment from the Mattermost file store and writes
 // it to the legal hold store. CopyFile only works when both paths are on the
 // same backend. A dedicated S3, Azure Blob, or local hold store does not
 // contain the original attachment.
 func (ex *Execution) copyAttachment(srcPath, destPath string) error {
+	exists, err := ex.sourceFileBackend.FileExists(srcPath)
+	if err != nil {
+		return fmt.Errorf("check attachment %s in the Mattermost file store: %w", srcPath, err)
+	}
+	if !exists {
+		return errAttachmentNotFound
+	}
+
 	sameStore := ex.sourceFileBackend == nil || ex.sourceFileBackend == ex.fileBackend
 	if sameStore {
-		if err := ex.fileBackend.CopyFile(srcPath, destPath); err != nil {
+		if err = ex.fileBackend.CopyFile(srcPath, destPath); err != nil {
+			if isSourceMissing(err) {
+				return errAttachmentNotFound
+			}
 			return fmt.Errorf("copy attachment %s: %w", srcPath, err)
 		}
-		hashReader, err := ex.fileBackend.Reader(srcPath)
+		var hashReader filestore.ReadCloseSeeker
+		hashReader, err = ex.fileBackend.Reader(srcPath)
 		if err != nil {
+			if isSourceMissing(err) {
+				return errAttachmentNotFound
+			}
 			return fmt.Errorf("read attachment %s for hash: %w", srcPath, err)
 		}
 		defer func() { _ = hashReader.Close() }()
-		h, err := hashFromReader(ex.LegalHold.Secret, hashReader)
+		var h string
+		h, err = hashFromReader(ex.LegalHold.Secret, hashReader)
 		if err != nil {
 			return err
 		}
 		return ex.WriteFileHash(destPath, h)
 	}
 
-	reader, err := ex.sourceFileBackend.Reader(srcPath)
+	var reader filestore.ReadCloseSeeker
+	reader, err = ex.sourceFileBackend.Reader(srcPath)
 	if err != nil {
+		if isSourceMissing(err) {
+			return errAttachmentNotFound
+		}
 		return fmt.Errorf("read attachment %s from the Mattermost file store: %w", srcPath, err)
 	}
 	defer func() { _ = reader.Close() }()
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		return fmt.Errorf("read attachment %s: %w", srcPath, err)
-	}
-	if _, err = ex.fileBackend.WriteFile(bytes.NewReader(data), destPath); err != nil {
+
+	// Hash the bytes as they are written. WriteFile reads the reader to EOF
+	// or returns an error, so a successful write means the hash saw the same
+	// bytes that landed in the hold store.
+	hasher := hmac.New(sha512.New, []byte(ex.LegalHold.Secret))
+	if _, err = ex.fileBackend.WriteFile(io.TeeReader(reader, hasher), destPath); err != nil {
+		if isSourceMissing(err) {
+			return errAttachmentNotFound
+		}
 		return fmt.Errorf("write attachment %s to the legal hold store: %w", destPath, err)
 	}
-	h, err := hashFromReader(ex.LegalHold.Secret, bytes.NewReader(data))
-	if err != nil {
-		return err
+	return ex.WriteFileHash(destPath, fmt.Sprintf("%x", hasher.Sum(nil)))
+}
+
+// isSourceMissing reports a not-found from the local, S3, or Azure backends.
+// Timeouts and permission errors are not missing: those still fail the hold
+// so the next run can retry.
+func isSourceMissing(err error) bool {
+	if err == nil {
+		return false
 	}
-	return ex.WriteFileHash(destPath, h)
+	if errors.Is(err, os.ErrNotExist) {
+		return true
+	}
+	if bloberror.HasCode(err, bloberror.BlobNotFound) {
+		return true
+	}
+	// The v6 S3 client wraps minio's NoSuchKey. FileExists handles the common
+	// case; this covers a delete between the existence check and the read.
+	msg := err.Error()
+	return strings.Contains(msg, "NoSuchKey") || strings.Contains(msg, "The specified key does not exist")
 }
 
 // hashFromReader returns the HMAC-SHA512 hash of the reader's contents.

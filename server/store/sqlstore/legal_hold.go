@@ -157,6 +157,7 @@ func (ss SQLStore) GetFileInfosByIDs(ids []string) ([]model.FileInfo, error) {
 			"FileInfo.Name",
 			"FileInfo.Size",
 			"FileInfo.MimeType",
+			"COALESCE(FileInfo.PostId, '') AS PostId",
 		).
 		From("FileInfo").
 		Where(sq.Eq{"FileInfo.ID": ids}).
