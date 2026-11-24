@@ -22,6 +22,7 @@ import (
 	mm_model "github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
+	"github.com/minio/minio-go/v7"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/store/kvstore"
@@ -567,12 +568,20 @@ func (ex *Execution) copyAttachment(srcPath, destPath string) error {
 		return errAttachmentNotFound
 	}
 
+	var size int64
+	size, err = ex.sourceFileBackend.FileSize(srcPath)
+	if err != nil {
+		if isSourceMissing(err) {
+			return errAttachmentNotFound
+		}
+		return fmt.Errorf("size attachment %s in the Mattermost file store: %w", srcPath, err)
+	}
+
 	sameStore := ex.sourceFileBackend == nil || ex.sourceFileBackend == ex.fileBackend
 	if sameStore {
+		// A not-exist from CopyFile can be the destination directory. That is
+		// not a missing source file, so it stays a retryable error.
 		if err = ex.fileBackend.CopyFile(srcPath, destPath); err != nil {
-			if isSourceMissing(err) {
-				return errAttachmentNotFound
-			}
 			return fmt.Errorf("copy attachment %s: %w", srcPath, err)
 		}
 		var hashReader filestore.ReadCloseSeeker
@@ -602,22 +611,25 @@ func (ex *Execution) copyAttachment(srcPath, destPath string) error {
 	}
 	defer func() { _ = reader.Close() }()
 
-	// Hash the bytes as they are written. WriteFile reads the reader to EOF
-	// or returns an error, so a successful write means the hash saw the same
-	// bytes that landed in the hold store.
+	// Hash the bytes as they are written. The Azure writer treats a short
+	// final block and a body that ends early as the same ReadFull result, so
+	// a nil error is not proof the source was fully copied. The hash is
+	// recorded only when the written count matches the source size.
 	hasher := hmac.New(sha512.New, []byte(ex.LegalHold.Secret))
-	if _, err = ex.fileBackend.WriteFile(io.TeeReader(reader, hasher), destPath); err != nil {
-		if isSourceMissing(err) {
-			return errAttachmentNotFound
-		}
+	var written int64
+	written, err = ex.fileBackend.WriteFile(io.TeeReader(reader, hasher), destPath)
+	if err != nil {
 		return fmt.Errorf("write attachment %s to the legal hold store: %w", destPath, err)
+	}
+	if written != size {
+		return fmt.Errorf("attachment %s copied %d of %d bytes", srcPath, written, size)
 	}
 	return ex.WriteFileHash(destPath, fmt.Sprintf("%x", hasher.Sum(nil)))
 }
 
-// isSourceMissing reports a not-found from the local, S3, or Azure backends.
-// Timeouts and permission errors are not missing: those still fail the hold
-// so the next run can retry.
+// isSourceMissing reports a not-found from the source store. Call it on
+// source reads only. A destination open can also be os.ErrNotExist, and that
+// must stay retryable. Timeouts and permission errors are not missing.
 func isSourceMissing(err error) bool {
 	if err == nil {
 		return false
@@ -628,10 +640,11 @@ func isSourceMissing(err error) bool {
 	if bloberror.HasCode(err, bloberror.BlobNotFound) {
 		return true
 	}
-	// The v6 S3 client wraps minio's NoSuchKey. FileExists handles the common
-	// case; this covers a delete between the existence check and the read.
-	msg := err.Error()
-	return strings.Contains(msg, "NoSuchKey") || strings.Contains(msg, "The specified key does not exist")
+	var s3Err minio.ErrorResponse
+	if errors.As(err, &s3Err) {
+		return s3Err.Code == "NoSuchKey" || s3Err.Code == "NotFound"
+	}
+	return false
 }
 
 // hashFromReader returns the HMAC-SHA512 hash of the reader's contents.

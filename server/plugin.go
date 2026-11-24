@@ -432,9 +432,15 @@ func readNamedServerConfig(name string, readFile func(string) ([]byte, error)) (
 	return nil, fmt.Errorf("read MM_CONFIG file %s: %w", name, os.ErrNotExist)
 }
 
+// configSearchDepth matches v6 fileutils.CommonBaseSearchPaths: the starting
+// directory plus four parents. A config/config.json further up the tree is
+// outside the server's search, and preferring it would read a different file
+// than the server.
+const configSearchDepth = 5
+
 // configCandidates matches mattermost-server config.resolveConfigFilePath for a
-// relative file name: config/<name> walked up from the working directory and
-// the executable, then the name in the working directory.
+// relative file name: config/<name> within configSearchDepth of the working
+// directory and the executable, then the name in the working directory.
 func configCandidates(name string) []string {
 	var candidates []string
 	seen := map[string]struct{}{}
@@ -457,7 +463,7 @@ func configCandidates(name string) []string {
 	}
 	for _, root := range roots {
 		dir := root
-		for range 8 {
+		for range configSearchDepth {
 			add(filepath.Join(dir, "config", name))
 			parent := filepath.Dir(dir)
 			if parent == dir {

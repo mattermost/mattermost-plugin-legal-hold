@@ -235,6 +235,33 @@ func TestLoadServerConfigJSON(t *testing.T) {
 		require.Contains(t, string(raw), "resolved")
 	})
 
+	t.Run("relative MM_CONFIG ignores a config file beyond the server search", func(t *testing.T) {
+		wd, err := os.Getwd()
+		require.NoError(t, err)
+		tooFar := wd
+		for range configSearchDepth {
+			tooFar = filepath.Dir(tooFar)
+		}
+		stale := filepath.Join(tooFar, "config", "config.json")
+		live := filepath.Join(wd, "config.json")
+
+		raw, err := loadServerConfigJSON("config.json", func(path string) ([]byte, error) {
+			if path == stale {
+				return []byte(`{"FileSettings":{"AzureStorageAccount":"stale"}}`), nil
+			}
+			if path == live || path == "config.json" {
+				return []byte(`{"FileSettings":{"AzureStorageAccount":"live"}}`), nil
+			}
+			return nil, os.ErrNotExist
+		}, func() ([]byte, error) {
+			t.Fatal("database reader should not run for a relative file")
+			return nil, nil
+		})
+		require.NoError(t, err)
+		require.Contains(t, string(raw), "live")
+		require.NotContains(t, string(raw), "stale")
+	})
+
 	t.Run("relative MM_CONFIG that cannot be found is an error", func(t *testing.T) {
 		_, err := loadServerConfigJSON("config.json", func(string) ([]byte, error) {
 			return nil, os.ErrNotExist

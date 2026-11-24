@@ -489,6 +489,11 @@ func stageBlocks(ctx context.Context, bb *blockblob.Client, fr io.Reader, p stri
 			ids = append(ids, id)
 			total += int64(n)
 		}
+		// ReadFull returns ErrUnexpectedEOF for a short final block and for a
+		// body that ends before its advertised length. Those two are not
+		// distinguishable here. Callers that know the source size must
+		// compare it with the returned count before treating the write as
+		// complete.
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			break
 		}

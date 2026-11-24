@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/mattermost/mattermost-server/v6/shared/filestore"
+	"github.com/minio/minio-go/v7"
 	"github.com/stretchr/testify/require"
 
 	"github.com/mattermost/mattermost-plugin-legal-hold/server/model"
@@ -48,11 +49,69 @@ func TestCopyAttachmentMissingFileIsNotARetryableError(t *testing.T) {
 	require.ErrorIs(t, err, errAttachmentNotFound)
 }
 
+func TestCopyAttachmentRejectsAShortWrite(t *testing.T) {
+	payload := []byte("hold-bytes")
+	source := newMemBackend(map[string][]byte{"src/a.txt": payload})
+	dest := shortWriteBackend{memBackend: newMemBackend(nil)}
+	ex := Execution{
+		LegalHold:         &model.LegalHold{Secret: "hold-secret"},
+		fileBackend:       dest,
+		sourceFileBackend: source,
+		hashes:            model.HashList{},
+	}
+
+	err := ex.copyAttachment("src/a.txt", "dest/a.txt")
+	require.Error(t, err)
+	require.NotErrorIs(t, err, errAttachmentNotFound)
+	require.Empty(t, ex.hashes)
+}
+
+func TestCopyAttachmentDoesNotSkipAMissingDestination(t *testing.T) {
+	source := newMemBackend(map[string][]byte{"src/a.txt": []byte("hold-bytes")})
+	dest := missingDestBackend{memBackend: newMemBackend(nil)}
+	ex := Execution{
+		LegalHold:         &model.LegalHold{Secret: "hold-secret"},
+		fileBackend:       dest,
+		sourceFileBackend: source,
+		hashes:            model.HashList{},
+	}
+
+	err := ex.copyAttachment("src/a.txt", "dest/a.txt")
+	require.Error(t, err)
+	require.NotErrorIs(t, err, errAttachmentNotFound)
+	require.Empty(t, ex.hashes)
+}
+
 func TestIsSourceMissingIgnoresOtherFailures(t *testing.T) {
 	require.True(t, isSourceMissing(fmt.Errorf("open: %w", os.ErrNotExist)))
 	require.False(t, isSourceMissing(errors.New("open: no such file or directory")))
-	require.True(t, isSourceMissing(errors.New("The specified key does not exist.")))
+	require.False(t, isSourceMissing(fmt.Errorf("unable to open file NoSuchKey.txt: %w", os.ErrPermission)))
+	require.False(t, isSourceMissing(errors.New("The specified key does not exist.")))
+	require.True(t, isSourceMissing(fmt.Errorf("get object: %w", minio.ErrorResponse{Code: "NoSuchKey"})))
+	require.False(t, isSourceMissing(fmt.Errorf("get object: %w", minio.ErrorResponse{Code: "AccessDenied"})))
 	require.False(t, isSourceMissing(errors.New("connection reset")))
+}
+
+// shortWriteBackend reports success after reading the body, but returns a
+// count shorter than the source. That is the Azure stageBlocks result when a
+// download ends early.
+type shortWriteBackend struct {
+	*memBackend
+}
+
+func (s shortWriteBackend) WriteFile(r io.Reader, path string) (int64, error) {
+	if _, err := io.Copy(io.Discard, r); err != nil {
+		return 0, err
+	}
+	return 1, nil
+}
+
+type missingDestBackend struct {
+	*memBackend
+}
+
+func (m missingDestBackend) WriteFile(io.Reader, string) (int64, error) {
+	return 0, fmt.Errorf("open dest: %w", os.ErrNotExist)
 }
 
 type memBackend struct {
