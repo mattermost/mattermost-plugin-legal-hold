@@ -18,14 +18,16 @@ export interface CreateLegalHold {
     display_name: string;
     starts_at: number;
     ends_at: number;
-    user_ids: Array<string>;
-    group_ids?: Array<string>;
+    user_ids: string[];
+    group_ids?: string[];
+    include_public_channels: boolean;
 }
 
 export interface UpdateLegalHold {
     id: string;
     display_name: string;
     ends_at: number;
-    user_ids: Array<string>;
-    group_ids?: Array<string>;
+    user_ids: string[];
+    group_ids?: string[];
+    include_public_channels: boolean;
 }

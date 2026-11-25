@@ -1,31 +1,30 @@
-import React, {useState} from 'react';
-import {UserProfile} from 'mattermost-redux/types/users';
-import {Group} from 'mattermost-redux/types/groups';
+import {useState} from 'react';
 
-import Client from '@/client';
-import {LegalHold} from '@/types';
+import DownloadOutlineIcon from '@mattermost/compass-icons/components/download-outline';
+import EyeOutlineIcon from '@mattermost/compass-icons/components/eye-outline';
+import PencilOutlineIcon from '@mattermost/compass-icons/components/pencil-outline';
+import PlayOutlineIcon from '@mattermost/compass-icons/components/play-outline';
+import {Button} from '@mattermost/compass-ui/components/button';
+import {Icon} from '@mattermost/compass-ui/components/icon';
+import {IconButton} from '@mattermost/compass-ui/components/icon-button';
 
-import Tooltip from '@/components/mattermost-webapp/tooltip';
-
-import OverlayTrigger from '@/components/mattermost-webapp/overlay_trigger';
-
-import DownloadIcon from './download-outline_F0B8F.svg';
-import EditIcon from './pencil-outline_F0CB6.svg';
-import EyeLockIcon from './eye-outline_F06D0.svg';
-import RunIcon from './play-outline.svg';
 import RunConfirmationModal from './run_confirmation_modal';
 import RunErrorModal from './run_error_modal';
 
+import Client from '@/client';
+import type {LegalHold} from '@/types';
+
 interface LegalHoldRowProps {
     legalHold: LegalHold;
-    users: UserProfile[];
-    groups: Group[];
-    releaseLegalHold: Function;
-    showUpdateModal: Function;
-    showSecretModal: Function;
-    runLegalHold: (id: string) => Promise<void>;
+    releaseLegalHold: (legalHold: LegalHold) => void;
+    showUpdateModal: (legalHold: LegalHold) => void;
+    showSecretModal: (legalHold: LegalHold) => void;
+    runLegalHold: (id: string) => Promise<unknown>;
     refresh: () => void;
 }
+
+// The forms store a date as midnight UTC, so the table shows the date in UTC as well.
+const formatDate = (timestamp: number) => new Date(timestamp).toLocaleDateString(undefined, {timeZone: 'UTC'});
 
 const getLastRunDisplay = (lh: LegalHold) => {
     if (lh.status === 'executing') {
@@ -35,7 +34,6 @@ const getLastRunDisplay = (lh: LegalHold) => {
         return 'Never';
     }
 
-    // Convert seconds to milliseconds for JavaScript Date
     return new Date(lh.last_execution_ended_at).toLocaleString();
 };
 
@@ -43,206 +41,104 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
     const [showRunConfirmModal, setShowRunConfirmModal] = useState(false);
     const [showRunErrorModal, setShowRunErrorModal] = useState(false);
     const lh = props.legalHold;
-    const startsAt = (new Date(lh.starts_at)).toLocaleDateString();
-    const endsAt = lh.ends_at === 0 ? 'Never' : (new Date(lh.ends_at)).toLocaleDateString();
+    const startsAt = formatDate(lh.starts_at);
+    const endsAt = lh.ends_at === 0 ? 'Never' : formatDate(lh.ends_at);
     const isExecuting = lh.status === 'executing';
+    const canDownload = !isExecuting && lh.has_messages;
 
-    const release = () => {
-        props.releaseLegalHold(lh);
-    };
+    const userCount = lh.user_ids?.length ?? 0;
+    const groupCount = lh.group_ids?.length ?? 0;
 
-    const downloadUrl = Client.downloadUrl(lh.id);
+    const label = (action: string) => `${lh.display_name} ${action} button`;
 
+    // compass-gap: Compass Tooltip has no hover wiring (compass-design#82), so the icon buttons use a
+    // native title until it does.
     return (
-        <React.Fragment>
+        <div
+            role='row'
+            className='legal-hold-table__row'
+        >
             <div
+                role='cell'
                 data-testid={`name-${lh.id}`}
                 data-legalholdid={lh.id}
             >{lh.display_name}</div>
-            <div data-testid={`start-date-${lh.id}`}>{startsAt}</div>
-            <div data-testid={`end-date-${lh.id}`}>{endsAt}</div>
-            <div data-testid={`users-${lh.id}`}>{props.users.length} {'users'}</div>
-            <div data-testid={`groups-${lh.id}`}>{props.groups.length} {'groups'}</div>
             <div
+                role='cell'
+                data-testid={`start-date-${lh.id}`}
+            >{startsAt}</div>
+            <div
+                role='cell'
+                data-testid={`end-date-${lh.id}`}
+            >{endsAt}</div>
+            <div
+                role='cell'
+                data-testid={`users-${lh.id}`}
+            >{userCount} {'users'}</div>
+            <div
+                role='cell'
+                data-testid={`groups-${lh.id}`}
+            >{groupCount} {'groups'}</div>
+            <div
+                role='cell'
                 data-testid={`last-run-${lh.id}`}
             >
                 {getLastRunDisplay(lh)}
             </div>
             <div
-                style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                }}
+                role='cell'
+                className='legal-hold-table__actions'
             >
-                {/*
-                    TODO: Replace when updating the webapp dependency:
-                    https://github.com/mattermost/mattermost-plugin-legal-hold/pull/129#discussion_r1914917354
-                */}
-                <OverlayTrigger
-
-                    // @ts-ignore
-                    delayShow={300}
-                    placement='top'
-                    overlay={(
-                        <Tooltip id={'UpdateLegalHoldTooltip'}>
-                            {'Update legal hold'}
-                        </Tooltip>
-                    )}
-                >
-                    <a
-                        data-testid={`update-${lh.id}`}
-                        aria-label={`${lh.display_name} update button`}
-                        href='#'
-                        onClick={() => props.showUpdateModal(lh)}
-                        style={{
-                            marginRight: '10px',
-                            height: '24px',
-                        }}
-                    >
-                        <span
-                            style={{
-                                fill: 'rgba(0, 0, 0, 0.5)',
-                            }}
-                        >
-                            <EditIcon/>
-                        </span>
-                    </a>
-                </OverlayTrigger>
-                {/*
-                    TODO: Replace when updating the webapp dependency:
-                    https://github.com/mattermost/mattermost-plugin-legal-hold/pull/129#discussion_r1914917354
-                */}
-                <OverlayTrigger
-
-                    // @ts-ignore
-                    delayShow={300}
-                    placement='top'
-                    overlay={(
-                        <Tooltip id={'ShowLegalHoldSecret'}>
-                            {'Show Legal Hold Secret'}
-                        </Tooltip>
-                    )}
-                >
-                    <a
-                        data-testid={`show-${lh.id}`}
-                        aria-label={`${lh.display_name} show secret button`}
-                        href='#'
-                        onClick={() => props.showSecretModal(lh)}
-                        style={{
-                            marginRight: '10px',
-                            height: '24px',
-                        }}
-                    >
-                        <span
-                            style={{
-                                fill: 'rgba(0, 0, 0, 0.5)',
-                            }}
-                        >
-                            <EyeLockIcon/>
-                        </span>
-                    </a>
-                </OverlayTrigger>
-                {/*
-                    TODO: Replace when updating the webapp dependency:
-                    https://github.com/mattermost/mattermost-plugin-legal-hold/pull/129#discussion_r1914917354
-                */}
-                <OverlayTrigger
-
-                    // @ts-ignore
-                    delayShow={300}
-                    placement='top'
-                    overlay={(
-                        <Tooltip id={'DownloadLegalHoldTooltip'}>
-                            {'Download Legal Hold'}
-                        </Tooltip>
-                    )}
+                <IconButton
+                    data-testid={`update-${lh.id}`}
+                    aria-label={label('update')}
+                    title='Update legal hold'
+                    size='small'
+                    icon={<Icon glyph={<PencilOutlineIcon/>}/>}
+                    onClick={() => props.showUpdateModal(lh)}
+                />
+                <IconButton
+                    data-testid={`show-${lh.id}`}
+                    aria-label={label('show secret')}
+                    title='Show legal hold secret'
+                    size='small'
+                    icon={<Icon glyph={<EyeOutlineIcon/>}/>}
+                    onClick={() => props.showSecretModal(lh)}
+                />
+                <IconButton
+                    asChild={true}
+                    aria-label={label('download')}
+                    size='small'
+                    disabled={!canDownload}
+                    icon={<Icon glyph={<DownloadOutlineIcon/>}/>}
                 >
                     <a
                         data-testid={`download-${lh.id}`}
-                        aria-label={`${lh.display_name} download button`}
-                        href={isExecuting || !lh.has_messages ? '#' : downloadUrl}
-                        download={!isExecuting && lh.has_messages}
-                        onClick={(e) => {
-                            if (!lh.has_messages) {
-                                e.preventDefault();
-                            }
-                        }}
-                        style={{
-                            marginRight: '10px',
-                            height: '24px',
-                            opacity: isExecuting || !lh.has_messages ? '0.5' : '1',
-                            cursor: isExecuting || !lh.has_messages ? 'not-allowed' : 'pointer',
-                        }}
-                    >
-                        <span
-                            style={{
-                                fill: 'rgba(0, 0, 0, 0.5)',
-                            }}
-                        >
-                            <DownloadIcon/>
-                        </span>
-                    </a>
-                </OverlayTrigger>
-                {/*
-                    TODO: Replace when updating the webapp dependency:
-                    https://github.com/mattermost/mattermost-plugin-legal-hold/pull/129#discussion_r1914917354
-                */}
-                <OverlayTrigger
-
-                    // @ts-ignore
-                    delayShow={300}
-                    placement='top'
-                    overlay={(
-                        <Tooltip id={'RunLegalHoldTooltip'}>
-                            {'Run Legal Hold Now'}
-                        </Tooltip>
-                    )}
-                >
-                    <a
-                        data-testid={`run-${lh.id}`}
-                        aria-label={`${lh.display_name} run button`}
-                        href='#'
-                        onClick={(e) => {
-                            e.preventDefault();
-                            if (isExecuting) {
-                                return;
-                            }
-                            setShowRunConfirmModal(true);
-                        }}
-                        style={{
-                            marginRight: '20px',
-                            height: '24px',
-                            opacity: isExecuting ? '0.5' : '1',
-                            cursor: isExecuting ? 'not-allowed' : 'pointer',
-                        }}
-                    >
-                        <span
-                            style={{
-                                fill: 'rgba(0, 0, 0, 0.5)',
-                            }}
-                        >
-                            <RunIcon/>
-                        </span>
-                    </a>
-                </OverlayTrigger>
-                <a
+                        title='Download legal hold'
+                        href={canDownload ? Client.downloadUrl(lh.id) : undefined}
+                        download={canDownload}
+                    />
+                </IconButton>
+                <IconButton
+                    data-testid={`run-${lh.id}`}
+                    aria-label={label('run')}
+                    title='Run legal hold now'
+                    size='small'
+                    disabled={isExecuting}
+                    icon={<Icon glyph={<PlayOutlineIcon/>}/>}
+                    onClick={() => setShowRunConfirmModal(true)}
+                />
+                <Button
                     data-testid={`release-${lh.id}`}
-                    role='button'
-                    aria-label={`${lh.display_name} release button`}
-                    href='#'
-                    onClick={(e) => {
-                        if (isExecuting) {
-                            e.preventDefault();
-                            return;
-                        }
-                        release();
-                    }}
-                    className={'btn btn-danger'}
-                    style={{
-                        opacity: isExecuting ? '0.5' : '1',
-                        cursor: isExecuting ? 'not-allowed' : 'pointer',
-                    }}
-                >{'Release'}</a>
+                    aria-label={label('release')}
+                    destructive={true}
+                    emphasis='secondary'
+                    size='small'
+                    disabled={isExecuting}
+                    onClick={() => props.releaseLegalHold(lh)}
+                >
+                    {'Release'}
+                </Button>
             </div>
             <RunConfirmationModal
                 show={showRunConfirmModal}
@@ -251,15 +147,14 @@ const LegalHoldRow = (props: LegalHoldRowProps) => {
                     setShowRunConfirmModal(false);
                     props.runLegalHold(lh.id).catch(() => {
                         setShowRunErrorModal(true);
-                    });
-                    props.refresh();
+                    }).finally(props.refresh);
                 }}
             />
             <RunErrorModal
                 show={showRunErrorModal}
                 onHide={() => setShowRunErrorModal(false)}
             />
-        </React.Fragment>
+        </div>
     );
 };
 

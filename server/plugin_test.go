@@ -3,8 +3,8 @@ package main
 import (
 	"testing"
 
-	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
-	"github.com/mattermost/mattermost-server/v6/plugin/plugintest"
+	mattermostModel "github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -20,8 +20,8 @@ func TestPlugin_getConfiguration(t *testing.T) {
 
 func TestFixedFileSettingsToFileBackendSettings_LocalDriver(t *testing.T) {
 	fileSettings := mattermostModel.FileSettings{
-		DriverName: mattermostModel.NewString(mattermostModel.ImageDriverLocal),
-		Directory:  mattermostModel.NewString("/data/files"),
+		DriverName: new(mattermostModel.ImageDriverLocal),
+		Directory:  new("/data/files"),
 	}
 
 	result := FixedFileSettingsToFileBackendSettings(fileSettings)
@@ -34,18 +34,20 @@ func TestFixedFileSettingsToFileBackendSettings_LocalDriver(t *testing.T) {
 
 func TestFixedFileSettingsToFileBackendSettings_S3WithAllFieldsSet(t *testing.T) {
 	fileSettings := mattermostModel.FileSettings{
-		DriverName:                         mattermostModel.NewString(mattermostModel.ImageDriverS3),
-		AmazonS3AccessKeyId:                mattermostModel.NewString("access-key"),
-		AmazonS3SecretAccessKey:            mattermostModel.NewString("secret-key"),
-		AmazonS3Bucket:                     mattermostModel.NewString("my-bucket"),
-		AmazonS3PathPrefix:                 mattermostModel.NewString("legal-hold"),
-		AmazonS3Region:                     mattermostModel.NewString("us-east-1"),
-		AmazonS3Endpoint:                   mattermostModel.NewString("s3.amazonaws.com"),
-		AmazonS3SSL:                        mattermostModel.NewBool(true),
-		AmazonS3SignV2:                     mattermostModel.NewBool(false),
-		AmazonS3SSE:                        mattermostModel.NewBool(true),
-		AmazonS3Trace:                      mattermostModel.NewBool(false),
-		AmazonS3RequestTimeoutMilliseconds: mattermostModel.NewInt64(30000),
+		DriverName:                         new(mattermostModel.ImageDriverS3),
+		AmazonS3AccessKeyId:                new("access-key"),
+		AmazonS3SecretAccessKey:            new("secret-key"),
+		AmazonS3Bucket:                     new("my-bucket"),
+		AmazonS3PathPrefix:                 new("legal-hold"),
+		AmazonS3Region:                     new("us-east-1"),
+		AmazonS3Endpoint:                   new("s3.amazonaws.com"),
+		AmazonS3SSL:                        new(true),
+		AmazonS3SignV2:                     new(false),
+		AmazonS3SSE:                        new(true),
+		AmazonS3Trace:                      new(false),
+		AmazonS3RequestTimeoutMilliseconds: new(int64(30000)),
+		AmazonS3UploadPartSizeBytes:        new(int64(10485760)),
+		AmazonS3StorageClass:               new("STANDARD_IA"),
 	}
 
 	result := FixedFileSettingsToFileBackendSettings(fileSettings)
@@ -62,6 +64,8 @@ func TestFixedFileSettingsToFileBackendSettings_S3WithAllFieldsSet(t *testing.T)
 	assert.True(t, result.AmazonS3SSE)
 	assert.False(t, result.AmazonS3Trace)
 	assert.Equal(t, int64(30000), result.AmazonS3RequestTimeoutMilliseconds)
+	assert.Equal(t, int64(10485760), result.AmazonS3UploadPartSizeBytes)
+	assert.Equal(t, "STANDARD_IA", result.AmazonS3StorageClass)
 	assert.False(t, result.SkipVerify)
 }
 
@@ -74,18 +78,18 @@ func TestFixedFileSettingsToFileBackendSettings_S3WithNilBooleanFields(t *testin
 	// - AmazonS3Trace: false
 
 	fileSettings := mattermostModel.FileSettings{
-		DriverName:                         mattermostModel.NewString(mattermostModel.ImageDriverS3),
-		AmazonS3AccessKeyId:                mattermostModel.NewString("access-key"),
-		AmazonS3SecretAccessKey:            mattermostModel.NewString("secret-key"),
-		AmazonS3Bucket:                     mattermostModel.NewString("my-bucket"),
-		AmazonS3PathPrefix:                 mattermostModel.NewString(""),
-		AmazonS3Region:                     mattermostModel.NewString("us-east-1"),
-		AmazonS3Endpoint:                   mattermostModel.NewString(""),
+		DriverName:                         new(mattermostModel.ImageDriverS3),
+		AmazonS3AccessKeyId:                new("access-key"),
+		AmazonS3SecretAccessKey:            new("secret-key"),
+		AmazonS3Bucket:                     new("my-bucket"),
+		AmazonS3PathPrefix:                 new(""),
+		AmazonS3Region:                     new("us-east-1"),
+		AmazonS3Endpoint:                   new(""),
 		AmazonS3SSL:                        nil, // Should default to true
 		AmazonS3SignV2:                     nil, // Should default to false
 		AmazonS3SSE:                        nil, // Should default to false
 		AmazonS3Trace:                      nil, // Should default to false
-		AmazonS3RequestTimeoutMilliseconds: mattermostModel.NewInt64(30000),
+		AmazonS3RequestTimeoutMilliseconds: new(int64(30000)),
 	}
 
 	result := FixedFileSettingsToFileBackendSettings(fileSettings)
@@ -102,18 +106,18 @@ func TestFixedFileSettingsToFileBackendSettings_S3WithNonDefaultBooleanValues(t 
 	// they are respected.
 
 	fileSettings := mattermostModel.FileSettings{
-		DriverName:                         mattermostModel.NewString(mattermostModel.ImageDriverS3),
-		AmazonS3AccessKeyId:                mattermostModel.NewString("access-key"),
-		AmazonS3SecretAccessKey:            mattermostModel.NewString("secret-key"),
-		AmazonS3Bucket:                     mattermostModel.NewString("my-bucket"),
-		AmazonS3PathPrefix:                 mattermostModel.NewString(""),
-		AmazonS3Region:                     mattermostModel.NewString("us-east-1"),
-		AmazonS3Endpoint:                   mattermostModel.NewString(""),
-		AmazonS3SSL:                        mattermostModel.NewBool(false), // Explicitly set to non-default
-		AmazonS3SignV2:                     mattermostModel.NewBool(true),  // Explicitly set to non-default
-		AmazonS3SSE:                        mattermostModel.NewBool(true),  // Explicitly set to non-default
-		AmazonS3Trace:                      mattermostModel.NewBool(true),  // Explicitly set to non-default
-		AmazonS3RequestTimeoutMilliseconds: mattermostModel.NewInt64(30000),
+		DriverName:                         new(mattermostModel.ImageDriverS3),
+		AmazonS3AccessKeyId:                new("access-key"),
+		AmazonS3SecretAccessKey:            new("secret-key"),
+		AmazonS3Bucket:                     new("my-bucket"),
+		AmazonS3PathPrefix:                 new(""),
+		AmazonS3Region:                     new("us-east-1"),
+		AmazonS3Endpoint:                   new(""),
+		AmazonS3SSL:                        new(false), // Explicitly set to non-default
+		AmazonS3SignV2:                     new(true),  // Explicitly set to non-default
+		AmazonS3SSE:                        new(true),  // Explicitly set to non-default
+		AmazonS3Trace:                      new(true),  // Explicitly set to non-default
+		AmazonS3RequestTimeoutMilliseconds: new(int64(30000)),
 	}
 
 	result := FixedFileSettingsToFileBackendSettings(fileSettings)
@@ -133,8 +137,8 @@ func TestFixedFileSettingsToFileBackendSettings_NilPointerSafety(t *testing.T) {
 
 	t.Run("S3WithNilStringFields", func(t *testing.T) {
 		fileSettings := mattermostModel.FileSettings{
-			DriverName:          mattermostModel.NewString(mattermostModel.ImageDriverS3),
-			AmazonS3AccessKeyId: mattermostModel.NewString("access-key"),
+			DriverName:          new(mattermostModel.ImageDriverS3),
+			AmazonS3AccessKeyId: new("access-key"),
 			// All other string fields intentionally left as nil
 			AmazonS3SecretAccessKey:            nil,
 			AmazonS3Bucket:                     nil,
@@ -172,7 +176,7 @@ func TestFixedFileSettingsToFileBackendSettings_NilPointerSafety(t *testing.T) {
 
 	t.Run("LocalDriverWithNilDirectory", func(t *testing.T) {
 		fileSettings := mattermostModel.FileSettings{
-			DriverName: mattermostModel.NewString(mattermostModel.ImageDriverLocal),
+			DriverName: new(mattermostModel.ImageDriverLocal),
 			Directory:  nil, // Intentionally nil
 		}
 
@@ -188,8 +192,8 @@ func TestFixedFileSettingsToFileBackendSettings_NilPointerSafety(t *testing.T) {
 	t.Run("S3WithNilDriverName", func(t *testing.T) {
 		fileSettings := mattermostModel.FileSettings{
 			DriverName:          nil, // Intentionally nil
-			AmazonS3Bucket:      mattermostModel.NewString("my-bucket"),
-			AmazonS3AccessKeyId: mattermostModel.NewString("access-key"),
+			AmazonS3Bucket:      new("my-bucket"),
+			AmazonS3AccessKeyId: new("access-key"),
 		}
 
 		// Should not panic even with nil DriverName
@@ -202,8 +206,8 @@ func TestFixedFileSettingsToFileBackendSettings_NilPointerSafety(t *testing.T) {
 
 	t.Run("S3WithNilTimeout", func(t *testing.T) {
 		fileSettings := mattermostModel.FileSettings{
-			DriverName:                         mattermostModel.NewString(mattermostModel.ImageDriverS3),
-			AmazonS3Bucket:                     mattermostModel.NewString("my-bucket"),
+			DriverName:                         new(mattermostModel.ImageDriverS3),
+			AmazonS3Bucket:                     new("my-bucket"),
 			AmazonS3RequestTimeoutMilliseconds: nil, // Intentionally nil
 		}
 

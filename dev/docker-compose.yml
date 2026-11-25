@@ -1,0 +1,71 @@
+# Development stack: a Mattermost server with PostgreSQL, for testing this plugin.
+#
+# Run it through ./dev.sh. The script writes .env, which names the stack after the git worktree
+# and picks a port for that worktree, so several worktrees can run side by side.
+name: ${COMPOSE_PROJECT_NAME:?run this stack through dev/dev.sh}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mmuser
+      POSTGRES_PASSWORD: mostest
+      POSTGRES_DB: mattermost
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mmuser -d mattermost"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  mattermost:
+    # The image is published for linux/amd64 only. It runs emulated on an arm64 host.
+    image: ${MM_IMAGE:-mattermost/mattermost-enterprise-edition:11.7}
+    platform: linux/amd64
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${MM_PORT:?}:8065"
+    environment:
+      MM_SQLSETTINGS_DRIVERNAME: postgres
+      MM_SQLSETTINGS_DATASOURCE: postgres://mmuser:mostest@postgres:5432/mattermost?sslmode=disable&connect_timeout=10
+      MM_SERVICESETTINGS_SITEURL: http://localhost:${MM_PORT}
+      MM_SERVICESETTINGS_LISTENADDRESS: :8065
+
+      # Developer mode and testing mode together let the plugin run without an Enterprise license.
+      MM_SERVICESETTINGS_ENABLEDEVELOPER: "true"
+      MM_SERVICESETTINGS_ENABLETESTING: "true"
+      MM_PLUGINSETTINGS_ENABLEUPLOADS: "true"
+
+      # mmctl --local talks to the server through a socket inside the container.
+      MM_SERVICESETTINGS_ENABLELOCALMODE: "true"
+
+      MM_TEAMSETTINGS_ENABLEOPENSERVER: "true"
+      MM_SERVICESETTINGS_ENABLEONBOARDINGFLOW: "false"
+      MM_SERVICESETTINGS_ENABLETUTORIAL: "false"
+      MM_EMAILSETTINGS_SENDEMAILNOTIFICATIONS: "false"
+      MM_EMAILSETTINGS_REQUIREEMAILVERIFICATION: "false"
+      MM_LOGSETTINGS_ENABLEFILE: "false"
+      MM_LOGSETTINGS_CONSOLELEVEL: DEBUG
+      MM_FILESETTINGS_DRIVERNAME: local
+    volumes:
+      - mattermost-data:/mattermost/data
+      - mattermost-plugins:/mattermost/plugins
+      - mattermost-client-plugins:/mattermost/client/plugins
+    healthcheck:
+      # The image has no shell and no curl, so ask the server through mmctl and its local socket.
+      test: ["CMD", "mmctl", "--local", "system", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+volumes:
+  postgres-data:
+  mattermost-data:
+  mattermost-plugins:
+  mattermost-client-plugins:

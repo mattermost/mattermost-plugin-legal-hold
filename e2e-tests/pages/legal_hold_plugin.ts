@@ -21,12 +21,34 @@ export class LegalHoldPluginPage {
         this.createModal = new CreateModal(page.getByRole('dialog', {name: 'Create a new legal hold'}));
 
         // release modal
-        this.releaseModal = new ReleaseModal(page.getByRole('dialog', {name: 'Release Legal Hold'}));
+        this.releaseModal = new ReleaseModal(page.getByRole('dialog', {name: 'Release legal hold'}));
     }
 
+    // The options list is portaled to the body, so it is found from the page and not from the modal.
     async selectUsername(username: string) {
         await this.createModal.usernameInput.fill(username);
         await this.page.getByRole('option', {name: username}).click();
+    }
+
+    // Opens the calendar of a date field and clicks the day. The calendar opens on the current
+    // month and labels each day with its ISO date (yyyy-mm-dd), so move to the right month first.
+    async selectDate(field: Locator, isoDate: string) {
+        await field.click();
+        const calendar = this.page.getByRole('dialog', {name: 'Date picker'});
+
+        const [year, month] = isoDate.split('-').map(Number);
+        const today = new Date();
+        const monthsAhead = (year - today.getFullYear()) * 12 + (month - 1 - today.getMonth());
+        const step = calendar.getByRole('button', {name: monthsAhead > 0 ? 'Next month' : 'Previous month'});
+        for (let i = 1; i <= Math.abs(monthsAhead); i++) {
+            // Both months are in the DOM while the calendar animates, so wait for the new month label before the next click.
+            const shown = new Date(today.getFullYear(), today.getMonth() + Math.sign(monthsAhead) * i, 1);
+            const label = shown.toLocaleString('en-US', {month: 'short', year: 'numeric'});
+            await step.last().click();
+            await expect(calendar.getByText(label).first()).toBeVisible();
+        }
+
+        await calendar.getByRole('button', {name: isoDate, exact: true}).click();
     }
 
     getLegalHold(name: string): Locator {
@@ -74,25 +96,25 @@ class CreateModal {
     readonly container: Locator;
 
     readonly nameInput: Locator;
-    readonly usernamePlaceholder: Locator;
     readonly usernameInput: Locator;
     readonly includePublicChannelsCheckbox: Locator;
-    readonly startingFromInput: Locator;
-    readonly endingAtInput: Locator;
+    readonly startingFromField: Locator;
+    readonly endingAtField: Locator;
+    readonly clearEndDateButton: Locator;
     readonly cancelButton: Locator;
     readonly createButton: Locator;
 
     constructor(container: Locator) {
         this.container = container;
 
-        this.nameInput = container.getByPlaceholder('Name');
-        this.usernamePlaceholder = container.locator('.css-19bb58m input:first-of-type');
-        this.usernameInput = container.locator('#react-select-2-input');
+        this.nameInput = container.getByRole('textbox', {name: 'Name'});
+        this.usernameInput = container.getByRole('combobox', {name: 'Users'});
         this.includePublicChannelsCheckbox = container.getByRole('checkbox', {name: 'Include public channels'});
-        this.startingFromInput = container.getByPlaceholder('Starting from');
-        this.endingAtInput = container.getByPlaceholder('Ending at');
-        this.cancelButton = container.getByRole('button', {name: 'Cancel'});
-        this.createButton = container.getByRole('button', {name: 'Create legal hold'});
+        this.startingFromField = container.getByRole('combobox', {name: /Starting from/});
+        this.endingAtField = container.getByRole('combobox', {name: /Ending at/});
+        this.clearEndDateButton = container.getByRole('button', {name: 'Clear end date'});
+        this.cancelButton = container.getByRole('button', {name: 'Cancel', exact: true});
+        this.createButton = container.getByRole('button', {name: 'Create legal hold', exact: true});
     }
 
     async toBeVisible() {
@@ -103,16 +125,14 @@ class CreateModal {
 class ReleaseModal {
     readonly container: Locator;
 
-    readonly body: Locator;
     readonly cancelButton: Locator;
     readonly releaseButton: Locator;
 
     constructor(container: Locator) {
         this.container = container;
 
-        this.body = container.locator('.modal-body');
         this.cancelButton = container.getByRole('button', {name: 'Cancel'});
-        this.releaseButton = container.getByRole('button', {name: 'Release'});
+        this.releaseButton = container.getByRole('button', {name: 'Release', exact: true});
     }
 
     async toBeVisible() {

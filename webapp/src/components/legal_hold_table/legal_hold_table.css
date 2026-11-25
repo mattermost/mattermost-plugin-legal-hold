@@ -1,0 +1,22 @@
+/* compass-gap: Compass has no data table component (compass-design#236), so the table stays a local grid. */
+.legal-hold-table {
+    display: grid;
+    grid-template-columns: minmax(8rem, 2fr) repeat(5, minmax(0, 1fr)) auto;
+    column-gap: var(--spacing-m);
+    row-gap: var(--spacing-l);
+    align-items: center;
+}
+
+.legal-hold-table__row {
+    display: contents;
+}
+
+.legal-hold-table__header {
+    font-weight: 600;
+}
+
+.legal-hold-table__actions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}

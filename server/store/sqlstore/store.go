@@ -6,7 +6,7 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
 
-	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost/server/public/model"
 )
 
 type Source interface {
@@ -52,19 +52,11 @@ func New(src Source, logger Logger) (*SQLStore, error) {
 		masterBuilder = masterBuilder.PlaceholderFormat(sq.Dollar)
 	}
 
-	if src.DriverName() == model.DatabaseDriverMysql {
-		master.MapperFunc(func(s string) string { return s })
-	}
-
 	masterBuilder = masterBuilder.RunWith(master)
 
 	replicaBuilder := sq.StatementBuilder.PlaceholderFormat(sq.Question)
 	if src.DriverName() == model.DatabaseDriverPostgres {
 		replicaBuilder = replicaBuilder.PlaceholderFormat(sq.Dollar)
-	}
-
-	if src.DriverName() == model.DatabaseDriverMysql {
-		replica.MapperFunc(func(s string) string { return s })
 	}
 
 	replicaBuilder = replicaBuilder.RunWith(replica)

@@ -1,0 +1,51 @@
+.legal-hold-setting {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    column-gap: var(--spacing-xxl);
+    margin-bottom: var(--spacing-xxl);
+}
+
+.legal-hold-setting__label {
+    display: flex;
+    align-items: center;
+    align-self: start;
+    min-height: 40px;
+    color: var(--center-channel-color);
+    font-size: var(--font-size-100);
+    font-weight: 600;
+    line-height: var(--line-height-100);
+}
+
+/* A radio row is 20px tall, so its label is not centered on a 40px input. */
+.legal-hold-setting--radios .legal-hold-setting__label {
+    min-height: 20px;
+}
+
+.legal-hold-setting__field {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+    max-width: 400px;
+}
+
+.legal-hold-setting__field > :not(button) {
+    align-self: stretch;
+}
+
+.legal-hold-setting__radios {
+    display: flex;
+    gap: var(--spacing-xxl);
+}
+
+.legal-hold-setting .legal-hold-setting__radios > * {
+    width: auto;
+    flex: 0 0 auto;
+}
+
+@media (max-width: 720px) {
+    .legal-hold-setting {
+        grid-template-columns: minmax(0, 1fr);
+        row-gap: var(--spacing-xs);
+    }
+}

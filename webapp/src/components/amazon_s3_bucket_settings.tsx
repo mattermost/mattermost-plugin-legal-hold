@@ -1,15 +1,15 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import {useMemo, useState} from 'react';
+import type {ReactNode} from 'react';
 
-import {IntlProvider} from 'react-intl';
+import {Button} from '@mattermost/compass-ui/components/button';
+import {SectionNotice} from '@mattermost/compass-ui/components/section-notice';
+
+import BaseSetting from './admin_console_settings/base_setting';
+import BooleanSetting from './admin_console_settings/boolean_setting';
+import SecretTextSetting from './admin_console_settings/secret_text_setting';
+import TextSetting from './admin_console_settings/text_setting';
 
 import Client from '@/client';
-
-import BooleanSetting from './admin_console_settings/boolean_setting';
-import TextSetting from './admin_console_settings/text_setting';
-import SaveButton from './mattermost-webapp/save_button';
-import BaseSetting from './admin_console_settings/base_setting';
-import StatusMessage from './admin_console_settings/status_message';
-import SecretTextSetting from './admin_console_settings/secret_text_setting';
 
 type FileSettings = {
     DriverName: string;
@@ -97,7 +97,7 @@ const AmazonS3BucketSettings = (props: Props) => {
 
     const testConnection = async () => {
         if (isSettingFormDirty()) {
-            setError('Please save the settings before testing the connection.');
+            setError('Save the settings before you test the connection.');
             return;
         }
 
@@ -120,28 +120,30 @@ const AmazonS3BucketSettings = (props: Props) => {
         setTestingConnection(false);
     };
 
-    let statusMessage: React.ReactNode | undefined;
+    let statusMessage: ReactNode;
     if (error) {
         statusMessage = (
-            <StatusMessage
-                state='warn'
-                message={error}
+            <SectionNotice
+                role='alert'
+                type='warning'
+                title={error}
             />
         );
     } else if (message) {
         statusMessage = (
-            <StatusMessage
-                state='success'
-                message={message}
+            <SectionNotice
+                role='status'
+                type='success'
+                title={message}
             />
         );
     }
 
     return (
-        <IntlProvider locale='en-US'>
+        <>
             <BooleanSetting
                 id='com.mattermost.plugin-legal-hold.EnableCustomS3Bucket'
-                name='Enable Custom S3 Bucket'
+                name='Enable custom S3 bucket'
                 helpText='When enabled, the plugin will use the custom S3 bucket settings.'
                 value={formState.Enable}
                 onChange={(value) => setEnable(value)}
@@ -212,21 +214,21 @@ const AmazonS3BucketSettings = (props: Props) => {
             />
             <BaseSetting
                 helpText=''
-                id=''
+                id='com.mattermost.plugin-legal-hold.TestAmazonS3Connection'
                 name=''
             >
-                <SaveButton
+                <Button
                     type='button'
-                    btnClass='btn-tertiary'
-                    saving={testingConnection}
-                    savingMessage={''}
-                    defaultMessage={'Test Connection'}
+                    emphasis='tertiary'
+                    loading={testingConnection}
                     onClick={testConnection}
                     disabled={!formState.Enable}
-                />
+                >
+                    {'Test connection'}
+                </Button>
                 {statusMessage}
             </BaseSetting>
-        </IntlProvider>
+        </>
     );
 };
 

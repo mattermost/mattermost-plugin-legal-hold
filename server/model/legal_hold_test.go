@@ -4,8 +4,7 @@ import (
 	"testing"
 	"time"
 
-	mattermostModel "github.com/mattermost/mattermost-server/v6/model"
-	"github.com/mattermost/mattermost/server/public/model"
+	mattermostModel "github.com/mattermost/mattermost/server/public/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -439,9 +438,9 @@ func TestModel_UpdateLegalHold_IsValid(t *testing.T) {
 		{
 			name: "Valid",
 			ulh: UpdateLegalHold{
-				ID:                    model.NewId(),
+				ID:                    mattermostModel.NewId(),
 				DisplayName:           "TestName",
-				UserIDs:               []string{model.NewId()},
+				UserIDs:               []string{mattermostModel.NewId()},
 				EndsAt:                0,
 				IncludePublicChannels: false,
 			},
@@ -452,7 +451,7 @@ func TestModel_UpdateLegalHold_IsValid(t *testing.T) {
 			ulh: UpdateLegalHold{
 				ID:          "abc",
 				DisplayName: "TestName",
-				UserIDs:     []string{model.NewId()},
+				UserIDs:     []string{mattermostModel.NewId()},
 				EndsAt:      0,
 			},
 			expected: "LegalHold ID is not valid: abc",
@@ -460,9 +459,9 @@ func TestModel_UpdateLegalHold_IsValid(t *testing.T) {
 		{
 			name: "InvalidDisplayName",
 			ulh: UpdateLegalHold{
-				ID:          model.NewId(),
+				ID:          mattermostModel.NewId(),
 				DisplayName: "T",
-				UserIDs:     []string{model.NewId()},
+				UserIDs:     []string{mattermostModel.NewId()},
 				EndsAt:      0,
 			},
 			expected: "LegalHold display name must be between 2 and 64 characters in length",
@@ -470,7 +469,7 @@ func TestModel_UpdateLegalHold_IsValid(t *testing.T) {
 		{
 			name: "EmptyUserIDs",
 			ulh: UpdateLegalHold{
-				ID:          model.NewId(),
+				ID:          mattermostModel.NewId(),
 				DisplayName: "TestName",
 				UserIDs:     []string{},
 				EndsAt:      0,
@@ -480,7 +479,7 @@ func TestModel_UpdateLegalHold_IsValid(t *testing.T) {
 		{
 			name: "InvalidUserIDs",
 			ulh: UpdateLegalHold{
-				ID:          model.NewId(),
+				ID:          mattermostModel.NewId(),
 				DisplayName: "TestName",
 				UserIDs:     []string{"abc"},
 				EndsAt:      0,
@@ -490,9 +489,9 @@ func TestModel_UpdateLegalHold_IsValid(t *testing.T) {
 		{
 			name: "NegativeEndsAt",
 			ulh: UpdateLegalHold{
-				ID:                    model.NewId(),
+				ID:                    mattermostModel.NewId(),
 				DisplayName:           "TestName",
-				UserIDs:               []string{model.NewId()},
+				UserIDs:               []string{mattermostModel.NewId()},
 				IncludePublicChannels: false,
 				EndsAt:                -1,
 			},

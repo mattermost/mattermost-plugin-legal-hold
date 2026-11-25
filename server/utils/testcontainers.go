@@ -9,11 +9,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/minio"
-	"github.com/testcontainers/testcontainers-go/modules/mysql"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 
-	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost/server/public/model"
 )
 
 var (
@@ -24,7 +23,7 @@ var (
 
 type TearDownFunc func(ctx context.Context) error
 
-// CreateTestDB instantiates a database container (postres or mysql) and returns the connection
+// CreateTestDB instantiates a database container (postgres) and returns the connection
 // string needed to connect to that database. A teardown function is also returned to close the
 // container and free resources.
 func CreateTestDB(ctx context.Context, driverName string, databaseName string) (string, TearDownFunc, error) {
@@ -35,8 +34,6 @@ func CreateTestDB(ctx context.Context, driverName string, databaseName string) (
 	switch driverName {
 	case model.DatabaseDriverPostgres:
 		connStr, tearDown, err = createTestDBPostgres(ctx, databaseName)
-	case model.DatabaseDriverMysql:
-		connStr, tearDown, err = createTestDBMySQL(ctx, databaseName)
 	default:
 		return "", nil, ErrUnsupportedDatabaseType
 	}
@@ -48,32 +45,8 @@ func CreateTestDB(ctx context.Context, driverName string, databaseName string) (
 	return connStr, tearDown, err
 }
 
-func createTestDBMySQL(ctx context.Context, databaseName string) (string, TearDownFunc, error) {
-	mysqlContainer, err := mysql.RunContainer(ctx,
-		testcontainers.WithImage("mysql:8.0.32"),
-		mysql.WithDatabase(databaseName),
-		mysql.WithUsername(dbUser),
-		mysql.WithPassword(dbPassword),
-	)
-	if err != nil {
-		return "", nil, errors.Wrap(err, "failed to start mysql container")
-	}
-
-	tearDown := func(ctx context.Context) error {
-		return mysqlContainer.Terminate(ctx)
-	}
-
-	connStr, err := mysqlContainer.ConnectionString(ctx, "readTimeout=30s", "writeTimeout=30s", "charset=utf8mb4,utf8")
-	if err != nil {
-		return "", nil, errors.Wrap(err, "cannot generate connection string for mysql")
-	}
-
-	return connStr, tearDown, nil
-}
-
 func createTestDBPostgres(ctx context.Context, databaseName string) (string, TearDownFunc, error) {
-	postgresContainer, err := postgres.RunContainer(ctx,
-		testcontainers.WithImage("docker.io/library/postgres:15.2-alpine"),
+	postgresContainer, err := postgres.Run(ctx, "docker.io/library/postgres:15.2-alpine",
 		postgres.WithDatabase(databaseName),
 		postgres.WithUsername(dbUser),
 		postgres.WithPassword(dbPassword),
@@ -108,9 +81,9 @@ func createTestDBPostgres(ctx context.Context, databaseName string) (string, Tea
 // CreateMinio instantiates a minio container and returns the connection string needed to connect to it.
 // A teardown function is also returned to close the container and free resources.
 func CreateMinio(ctx context.Context) (string, TearDownFunc, error) {
-	minioContainer, err := minio.RunContainer(
+	minioContainer, err := minio.Run(
 		ctx,
-		testcontainers.WithImage("cgr.dev/chainguard/minio:latest"),
+		"cgr.dev/chainguard/minio:latest",
 		testcontainers.WithWaitStrategy(
 			wait.ForHTTP("/minio/health/live").WithPort("9000"),
 			wait.ForExec([]string{"mc", "ready", "local"}),

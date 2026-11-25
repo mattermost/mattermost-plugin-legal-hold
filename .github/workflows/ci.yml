@@ -9,14 +9,15 @@ on:
       - "v*"
   pull_request:
 
-permissions:
-  contents: read
-  id-token: write
+permissions: {}
 
 env:
   IS_CI: true
 
 jobs:
   plugin-ci:
+    permissions:
+      contents: read
+      id-token: write
     uses: mattermost/actions-workflows/.github/workflows/plugin-ci.yml@main
     secrets: inherit

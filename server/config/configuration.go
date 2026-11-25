@@ -1,6 +1,6 @@
 package config
 
-import "github.com/mattermost/mattermost-server/v6/model"
+import "github.com/mattermost/mattermost/server/public/model"
 
 // Configuration captures the plugin's external Configuration as exposed in the Mattermost server
 // Configuration, as well as values computed from the Configuration. Any public fields will be

@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	pluginapi "github.com/mattermost/mattermost-plugin-api"
-	"github.com/mattermost/mattermost-server/v6/model"
-	"github.com/mattermost/mattermost-server/v6/plugin/plugintest"
+	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
+	"github.com/mattermost/mattermost/server/public/pluginapi"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -189,15 +189,15 @@ func TestTestAmazonS3Connection(t *testing.T) {
 		AmazonS3BucketSettings: config.AmazonS3BucketSettings{
 			Enable: true,
 			Settings: model.FileSettings{
-				DriverName:                         model.NewString("amazons3"),
-				AmazonS3Bucket:                     model.NewString("bucket"),
-				AmazonS3AccessKeyId:                model.NewString("access_key_id"),
-				AmazonS3SecretAccessKey:            model.NewString("secret_access_key"),
-				AmazonS3RequestTimeoutMilliseconds: model.NewInt64(5000),
-				AmazonS3Endpoint:                   model.NewString(server.Listener.Addr().String()),
-				AmazonS3Region:                     model.NewString("us-east-1"),
-				AmazonS3SSL:                        model.NewBool(false),
-				AmazonS3SSE:                        model.NewBool(false),
+				DriverName:                         new("amazons3"),
+				AmazonS3Bucket:                     new("bucket"),
+				AmazonS3AccessKeyId:                new("access_key_id"),
+				AmazonS3SecretAccessKey:            new("secret_access_key"),
+				AmazonS3RequestTimeoutMilliseconds: new(int64(5000)),
+				AmazonS3Endpoint:                   new(server.Listener.Addr().String()),
+				AmazonS3Region:                     new("us-east-1"),
+				AmazonS3SSL:                        new(false),
+				AmazonS3SSE:                        new(false),
 			},
 		},
 	})
